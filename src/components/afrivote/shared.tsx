@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import {
   Vote, Shield, BarChart3, LogIn, LogOut, Menu, X, CheckCircle2, Clock,
-  Users, Eye, ChevronRight, Sparkles, Lock, KeyRound, BadgeCheck,
+  Users, Eye, ChevronRight, Sparkles, Lock, KeyRound, BadgeCheck, ScrollText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -142,6 +142,27 @@ export function NavBar() {
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-border/60 bg-secondary/40">
+      {/* Trust bar */}
+      <div className="border-b border-border/60 bg-primary/5">
+        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-6 sm:grid-cols-4 sm:px-6">
+          {[
+            { icon: Shield, label: 'Matric + OTP', sub: 'Verified' },
+            { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted' },
+            { icon: BadgeCheck, label: 'Receipt', sub: 'Anchored' },
+            { icon: ScrollText, label: 'Hash-Chained', sub: 'Audit Log' },
+          ].map((t) => (
+            <div key={t.label} className="flex items-center gap-2">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                <t.icon className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold">{t.label}</div>
+                <div className="text-[10px] text-muted-foreground">{t.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-2">
           <Logo />
@@ -161,6 +182,7 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li>Live Results</li>
             <li>Candidates</li>
+            <li>Timetable</li>
             <li>How It Works</li>
             <li>Verify Your Vote</li>
           </ul>

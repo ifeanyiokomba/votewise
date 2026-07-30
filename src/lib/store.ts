@@ -10,6 +10,7 @@ export type View =
   | 'success'
   | 'verify-receipt'
   | 'voter-dashboard'
+  | 'compare'
   | 'official-login'
   | 'official'
   // Legacy aliases kept for nav compatibility

@@ -990,3 +990,50 @@ Stage Summary:
   Admin can broadcast notifications + see turnout charts.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, CSV file upload,
   accessibility audit, load testing, PostgreSQL migration.
+
+---
+Task ID: CRON-QA-4
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, candidate comparison view, CSV file upload, footer trust bar.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-3 complete). Services running. Ran agent-browser
+  QA — home (hero stats, timetable, FAQ, candidates), admin dashboard (turnout chart, broadcast),
+  all functional. No bugs found. Platform stable.
+- **Feature: Candidate Comparison View** — Created `CompareCandidatesView` component
+  (`src/components/afrivote/compare.tsx`): a horizontal scrollable side-by-side comparison of
+  all candidates for a selected position. Each card shows:
+  - Photo with rank badge (#1, #2...) and party colour stripe + acronym badge
+  - Name, position, slogan
+  - Quick facts table (Level, Party, CGPA)
+  - Manifesto preview (3-line clamp)
+  - "Full Details" button opening the rich detail dialog (gradient header, campaign video, manifesto)
+  Added position selector dropdown. Added "Compare" button to the candidates section header on
+  the home page. Wired `compare` view into store + page.tsx router.
+- **Feature: CSV File Upload for Voters** — Upgraded `VoterImportDialog` in official.tsx:
+  - Drag-and-drop-style file upload zone (click to browse, accepts .csv/.txt)
+  - FileReader parses the file content and populates the textarea
+  - Auto-detects and skips header rows (if first line contains "matric")
+  - Preview panel showing first 5 parsed voters (matric, name, faculty/dept) before import
+  - Import button shows count ("Import 12 voters")
+  - Result screen with 3-column breakdown (Created/Updated/Skipped) + error list
+  Added `useRef` import for the hidden file input.
+- **Styling: Footer Trust Bar** — Added a 4-column trust bar above the footer columns showing
+  key security guarantees with icons: "Matric + OTP Verified", "AES-256-GCM Encrypted",
+  "Receipt Anchored", "Hash-Chained Audit Log". Each with an icon badge. Also added "Timetable"
+  to the footer election links.
+- **Verification:** `bun run lint` → 0 errors. agent-browser: compare view renders with
+  side-by-side candidate cards + position selector + detail dialog; CSV import dialog shows
+  file upload zone + preview; footer trust bar renders; home + admin + voter dashboard all
+  functional; mobile responsive; sticky footer; zero console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 2 new features (candidate comparison view, CSV file upload with preview).
+- ✅ Styling improved (footer trust bar, compare cards with rank/party/CGPA).
+- **Current state:** Platform is feature-rich and polished. All 5 roles work. Voters have a
+  personalized dashboard + can compare candidates side-by-side. Admins can upload CSV files
+  to bulk-import voters with preview. Home has FAQ + timetable + live results + hero stats.
+  Footer shows security guarantees. Dark mode works. Scroll animations work.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, accessibility
+  audit, load testing, PostgreSQL migration, Docker/Nginx CI/CD.

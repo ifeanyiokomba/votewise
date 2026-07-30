@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Lock, Loader2, ArrowLeft, BarChart3, Users, Trophy, Settings as SettingsIcon,
   ScrollText, Eye, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, Upload,
@@ -629,25 +629,114 @@ function VoterImportDialog({ open, onOpenChange, onDone }: any) {
   const [text, setText] = useState('')
   const [result, setResult] = useState<any>(null)
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState<any[] | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function parseCsv(csvText: string): any[] {
+    const lines = csvText.split('\n').map((l) => l.trim()).filter(Boolean)
+    // Skip header row if it looks like one
+    const startIdx = lines[0]?.toLowerCase().includes('matric') ? 1 : 0
+    return lines.slice(startIdx).map((line) => {
+      const p = line.split(',').map((x) => x.trim())
+      return { matric: p[0], fullName: p[1], institutionEmail: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' }
+    })
+  }
+
   function parse() {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
-    return lines.map((line) => { const p = line.split(',').map((x) => x.trim()); return { matric: p[0], fullName: p[1], institutionEmail: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' } })
+    return parseCsv(text)
   }
+
+  function onFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const content = String(ev.target?.result || '')
+      setText(content)
+      const parsed = parseCsv(content)
+      setPreview(parsed.slice(0, 5)) // preview first 5
+      toast.info(`Loaded ${parsed.length} voters from ${file.name}`)
+    }
+    reader.readAsText(file)
+  }
+
   async function doImport() {
+    const voters = parse()
+    if (voters.length === 0) { toast.error('No voters to import'); return }
     setBusy(true)
-    try { const r = await api.adminImportVoters(parse()); setResult(r); onDone(); toast.success(`Imported ${r.created} new, ${r.updated} updated`) } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
+    try {
+      const r = await api.adminImportVoters(voters)
+      setResult(r); onDone()
+      toast.success(`Imported ${r.created} new, ${r.updated} updated`)
+    } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
   }
+
+  function close() {
+    onOpenChange(false); setText(''); setResult(null); setPreview(null)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) close(); else onOpenChange(o) }}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>Bulk Import Voters</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">One voter per line, comma-separated:</p>
-          <pre className="rounded bg-muted p-3 text-xs">matric,fullName,email,phone,facultyCode,departmentCode,level</pre>
-          <Textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder="CSC/2022/001,Demo One,demo1@afrivote.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
-          {result && <Alert><CheckCircle2 className="h-4 w-4" /><AlertTitle>Import complete</AlertTitle><AlertDescription>Created: {result.created} · Updated: {result.updated} · Skipped: {result.skipped}</AlertDescription></Alert>}
-        </div>
-        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button><Button onClick={doImport} disabled={busy} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Import</Button></DialogFooter>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Bulk Import Voters</DialogTitle></DialogHeader>
+        {result ? (
+          <div className="py-6 text-center">
+            <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-600" />
+            <p className="mt-3 font-semibold">Import complete</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+              <div className="rounded-lg bg-emerald-50 p-2"><div className="font-bold text-emerald-700">{result.created}</div><div className="text-xs text-muted-foreground">Created</div></div>
+              <div className="rounded-lg bg-blue-50 p-2"><div className="font-bold text-blue-700">{result.updated}</div><div className="text-xs text-muted-foreground">Updated</div></div>
+              <div className="rounded-lg bg-amber-50 p-2"><div className="font-bold text-amber-700">{result.skipped}</div><div className="text-xs text-muted-foreground">Skipped</div></div>
+            </div>
+            {result.errors?.length > 0 && (
+              <div className="mt-3 max-h-32 overflow-y-auto afrivote-scroll rounded-lg bg-destructive/5 p-3 text-left text-xs text-destructive">
+                {result.errors.slice(0, 10).map((err: string, i: number) => <div key={i}>{err}</div>)}
+              </div>
+            )}
+            <Button className="mt-4" onClick={close}>Done</Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* File upload zone */}
+            <div
+              className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/30 p-6 transition-colors hover:border-primary hover:bg-primary/5"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-8 w-8 text-muted-foreground" />
+              <p className="mt-2 text-sm font-medium">Click to upload a CSV file</p>
+              <p className="text-xs text-muted-foreground">or paste voter data below</p>
+              <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={onFileUpload} className="hidden" />
+            </div>
+            <p className="text-sm text-muted-foreground">Format: one voter per line, comma-separated:</p>
+            <pre className="rounded bg-muted p-3 text-xs">matric,fullName,email,phone,facultyCode,departmentCode,level</pre>
+            <Textarea rows={6} value={text} onChange={(e) => { setText(e.target.value); setPreview(null) }} placeholder="CSC/2022/001,Demo One,demo1@afrivote.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
+            {preview && preview.length > 0 && (
+              <div className="rounded-lg border border-border p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                  <FileCheck2 className="h-3.5 w-3.5" /> Preview ({preview.length} of {parse().length} voters)
+                </div>
+                <div className="space-y-1">
+                  {preview.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <Badge variant="outline" className="font-mono text-[10px]">{v.matric}</Badge>
+                      <span className="font-medium">{v.fullName}</span>
+                      <span className="text-muted-foreground">{v.facultyCode}/{v.departmentCode}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {!result && (
+          <DialogFooter>
+            <Button variant="outline" onClick={close}>Cancel</Button>
+            <Button onClick={doImport} disabled={busy || !text.trim()} className="gap-1.5">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Import {text.trim() ? `${parse().length} voters` : ''}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

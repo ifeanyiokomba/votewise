@@ -166,7 +166,12 @@ export function HomeView() {
                 {allCandidates.length} approved candidates across {positions.length} positions. Tap a candidate to read their manifesto.
               </p>
             </div>
-            <Badge variant="outline">{allCandidates.length} candidates</Badge>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setView('compare')} className="gap-1.5">
+                <Users className="h-4 w-4" /> Compare
+              </Button>
+              <Badge variant="outline">{allCandidates.length} candidates</Badge>
+            </div>
           </div>
           {positions.length === 0 ? (
             <p className="text-muted-foreground">Loading candidates…</p>
