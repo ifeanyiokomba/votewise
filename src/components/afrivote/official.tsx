@@ -131,6 +131,7 @@ export function OfficialDashboard() {
           <TabsTrigger value="candidates" className="gap-1.5"><Trophy className="h-4 w-4" /> Candidates</TabsTrigger>
           {canManageElection && <TabsTrigger value="positions" className="gap-1.5"><Building2 className="h-4 w-4" /> Positions</TabsTrigger>}
           <TabsTrigger value="voters" className="gap-1.5"><Users className="h-4 w-4" /> Voters</TabsTrigger>
+          <TabsTrigger value="collation" className="gap-1.5"><FileCheck2 className="h-4 w-4" /> Collation</TabsTrigger>
           <TabsTrigger value="activity" className="gap-1.5"><Activity className="h-4 w-4" /> Activity</TabsTrigger>
           {canManageOfficials && <TabsTrigger value="officials" className="gap-1.5"><ShieldCheck className="h-4 w-4" /> Officials</TabsTrigger>}
           {canManageElection && <TabsTrigger value="settings" className="gap-1.5"><SettingsIcon className="h-4 w-4" /> Settings</TabsTrigger>}
@@ -142,6 +143,7 @@ export function OfficialDashboard() {
         <TabsContent value="candidates"><CandidatesTab /></TabsContent>
         {canManageElection && <TabsContent value="positions"><PositionsTab /></TabsContent>}
         <TabsContent value="voters"><VotersTab role={role} official={official} /></TabsContent>
+        <TabsContent value="collation"><CollationTab role={role} /></TabsContent>
         <TabsContent value="activity"><ActivityTab /></TabsContent>
         {canManageOfficials && <TabsContent value="officials"><OfficialsTab /></TabsContent>}
         {canManageElection && <TabsContent value="settings"><SettingsTab /></TabsContent>}
@@ -308,6 +310,137 @@ function SystemHealthWidget() {
 }
 
 // Voter activity monitoring tab — real-time feed of login/verify/accredit/vote events
+// Student data collation — dept collects → faculty reviews → committee uploads
+function CollationTab({ role }: { role: string }) {
+  const [collations, setCollations] = useState<any[]>([])
+  const [faculties, setFaculties] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [collationText, setCollationText] = useState('')
+  const [selectedFaculty, setSelectedFaculty] = useState('')
+  const [selectedDept, setSelectedDept] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setLoading(true)
+    try {
+      const [c, f] = await Promise.all([api.adminGetCollations(), api.getFaculties()])
+      setCollations(c.collations); setFaculties(f.faculties)
+    } catch (e: any) { toast.error(e.message) } finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+
+  async function submitCollation() {
+    const lines = collationText.split('\n').map((l) => l.trim()).filter(Boolean)
+    const students = lines.map((line) => {
+      const p = line.split(',').map((x) => x.trim())
+      return { matric: p[0], fullName: p[1], email: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' }
+    }).filter((s) => s.matric && s.fullName)
+    if (students.length === 0) { toast.error('No valid student data'); return }
+    setBusy(true)
+    try {
+      const fac = faculties.find((f) => f.id === selectedFaculty)
+      const dep = fac?.departments?.find((d) => d.id === selectedDept)
+      await api.adminSubmitCollation({
+        facultyId: selectedFaculty || undefined,
+        departmentId: selectedDept || undefined,
+        students: students.map((s) => ({ ...s, facultyCode: s.facultyCode || fac?.code, departmentCode: s.departmentCode || dep?.code })),
+      })
+      toast.success(`${students.length} students submitted for collation`)
+      setSubmitOpen(false); setCollationText(''); load()
+    } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
+  }
+
+  async function updateCollation(id: string, action: string) {
+    try {
+      const d = await api.adminUpdateCollation(id, action)
+      toast.success(`Collation ${action.toLowerCase().replace(/_/g, ' ')}`)
+      if (d.imported !== undefined) toast.success(`${d.imported} voters imported`)
+      load()
+    } catch (e: any) { toast.error(e.message) }
+  }
+
+  const statusBadge = (s: string) => {
+    const map: Record<string, string> = {
+      PENDING: 'bg-amber-100 text-amber-700', FACULTY_APPROVED: 'bg-blue-100 text-blue-700',
+      COMMITTEE_APPROVED: 'bg-emerald-100 text-emerald-700', REJECTED: 'bg-red-100 text-red-700', UPLOADED: 'bg-primary/10 text-primary',
+    }
+    return <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', map[s] || 'bg-muted')}>{s.replace(/_/g, ' ')}</span>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">Department officers collect student data → Faculty reviews → Electoral Committee uploads as voters</p>
+        </div>
+        <Button onClick={() => setSubmitOpen(true)} className="gap-1.5"><Upload className="h-4 w-4" /> Submit Student Data</Button>
+      </div>
+
+      <Card><CardContent className="p-0">
+        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left">
+              <th className="p-3 font-medium">Source</th><th className="p-3 font-medium">Students</th>
+              <th className="p-3 font-medium">Submitted By</th><th className="p-3 font-medium">Status</th>
+              <th className="p-3 font-medium">Date</th><th className="p-3 text-right font-medium">Actions</th>
+            </tr></thead>
+            <tbody>
+              {loading && <tr><td colSpan={6} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
+              {!loading && collations.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No collation submissions yet.</td></tr>}
+              {collations.map((c) => (
+                <tr key={c.id} className="border-t border-border">
+                  <td className="p-3">
+                    <div className="font-medium">{c.department?.name || c.faculty?.name || 'General'}</div>
+                    {c.faculty?.name && <div className="text-xs text-muted-foreground">{c.faculty.name}</div>}
+                  </td>
+                  <td className="p-3 font-mono font-bold">{c.studentCount}</td>
+                  <td className="p-3"><div className="text-xs">{c.submittedByName}</div><div className="text-[10px] text-muted-foreground">{c.submittedByRole.replace(/_/g, ' ')}</div></td>
+                  <td className="p-3">{statusBadge(c.status)}{c.importedCount > 0 && <div className="text-[10px] text-emerald-600">{c.importedCount} imported</div>}</td>
+                  <td className="p-3 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</td>
+                  <td className="p-3 text-right">
+                    {c.status === 'PENDING' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'APPROVE_FACULTY')} className="text-xs text-blue-600">Faculty Approve</Button>}
+                    {c.status === 'FACULTY_APPROVED' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'APPROVE_COMMITTEE')} className="text-xs text-emerald-600">Committee Approve</Button>}
+                    {c.status === 'COMMITTEE_APPROVED' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'UPLOAD')} className="text-xs text-primary">Upload as Voters</Button>}
+                    {(c.status === 'PENDING' || c.status === 'FACULTY_APPROVED') && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'REJECT')} className="text-xs text-destructive">Reject</Button>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent></Card>
+
+      {/* Submit dialog */}
+      <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Submit Student Data</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Paste student data (one per line, comma-separated). This follows the Nigerian SUG practice of departments collating student data before submission to the electoral committee.</p>
+            <pre className="rounded bg-muted p-3 text-xs">matric,fullName,email,phone,facultyCode,departmentCode,level</pre>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Faculty (optional)</Label>
+                <Select value={selectedFaculty} onValueChange={(v) => { setSelectedFaculty(v); setSelectedDept('') }}>
+                  <SelectTrigger><SelectValue placeholder="Auto-detect from data" /></SelectTrigger>
+                  <SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Department (optional)</Label>
+                <Select value={selectedDept} onValueChange={setSelectedDept}>
+                  <SelectTrigger><SelectValue placeholder="Auto-detect from data" /></SelectTrigger>
+                  <SelectContent>{faculties.find((f: any) => f.id === selectedFaculty)?.departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>) || []}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Textarea rows={8} value={collationText} onChange={(e) => setCollationText(e.target.value)} placeholder="CSC/2022/001,Demo One,demo1@afrivote.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setSubmitOpen(false)}>Cancel</Button><Button onClick={submitCollation} disabled={busy || !collationText.trim()} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Submit</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 function ActivityTab() {
   const [logs, setLogs] = useState<any[]>([])
   const [summary, setSummary] = useState<any>(null)

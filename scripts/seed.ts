@@ -43,7 +43,7 @@ async function main() {
     create: {
       id: 'default',
       name: 'SUG General Elections 2024/2025',
-      university: 'Federal University of Lagos',
+      university: 'University of Lagos',
       academicSession: '2024/2025',
       startTime: start, endTime: end,
       accreditationStart: new Date(now.getTime() - 2 * 60 * 1000),

@@ -22,18 +22,21 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "AfriVote SUG — Federal University Voting Platform",
+  title: "AfriVote SUG — Secure University SUG Election Platform",
   description:
-    "Secure, transparent, high-capacity electronic voting for the Students' Union Government (SUG) elections at a Nigerian Federal University. Verify, vote, and verify your vote was counted.",
+    "AfriVote SUG is the trusted electronic voting platform for Students' Union Government (SUG) elections at any Nigerian tertiary institution — universities, polytechnics, and colleges of education. Sign up your institution, set up your election, and vote securely.",
   keywords: [
-    "SUG elections",
-    "Nigeria university voting",
-    "student union government",
-    "electronic voting",
-    "AfriVote",
+    "SUG elections", "Nigeria university voting", "student union government",
+    "electronic voting", "AfriVote", "campus election", "tertiary institution voting",
   ],
   authors: [{ name: "AfriVote Electoral Tech" }],
-  icons: { icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "64x64" },
+      { url: "/logo-afrivote.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/logo-afrivote.png", sizes: "512x512", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

@@ -1378,3 +1378,67 @@ Stage Summary:
 - ✅ Admin OTP resend with channel selection + account unlock.
 - ✅ Voter search by matric/name/email (existing) + flag/unflag/resend OTP actions.
 - **Current state:** All user-requested features implemented and verified.
+
+---
+
+## Task ID: BRAND-LOGO
+Agent: Brand Asset Sub-Agent (general-purpose)
+Task: Generate a professional, trustworthy brand logo and favicon for "AfriVote SUG"
+using the z-ai-web-dev-sdk image-generation skill.
+
+### Context
+The AfriVote SUG platform previously had no dedicated brand mark — `src/app/layout.tsx`
+referenced an unrelated external CDN logo.svg as its favicon. A consistent, on-brand
+emerald-green + gold icon was needed to reinforce trust (elections) and academic context
+(SUG / university).
+
+### Tools Used
+- `image-generation` skill (z-ai-web-dev-sdk) via the `z-ai image` CLI.
+- Python `Pillow` (PIL) to normalize format (the SDK returns JPEG-encoded bytes even when
+  the `.png` extension is requested) and to resize to the final target dimensions.
+
+### Generation Steps
+1. **Main logo** — generated at 1024×1024 (closest supported square size to the requested
+   512×512; 512×512 is not a supported CLI size). Prompt:
+   > Professional minimalist logo for 'AfriVote SUG', a university student union voting
+   > platform in Nigeria. Design: a stylized checkmark/ballot box icon combined with a
+   > graduation cap silhouette, inside a rounded square. Colors: deep emerald green
+   > (#15803d) and warm gold (#b45309). Clean, modern, flat design, suitable for a tech
+   > company logo. White background, centered, high contrast, no text in the icon itself.
+
+2. **Favicon** — generated a simpler, bolder variant (solid emerald rounded square +
+   gold checkmark, no graduation cap, no text) at 1024×1024, then downscaled to 64×64
+   for crisp small-size rendering.
+
+3. **Post-processing** — both images were re-encoded to true PNG (RGBA) and resized with
+   LANCZOS resampling:
+   - `logo-afrivote.png` → 512×512 RGBA PNG (131,647 bytes)
+   - `favicon.png` → 64×64 RGBA PNG (4,415 bytes)
+   - Intermediate `favicon-base.png` removed.
+
+4. **Wired into the app** — updated `src/app/layout.tsx` `metadata.icons` to serve the
+   new local assets (64×64 favicon + 512×512 icon + apple-touch-icon), replacing the old
+   external CDN logo.svg reference.
+
+### Files Touched
+- **Created:** `public/logo-afrivote.png` (512×512 PNG, ~131 KB)
+- **Created:** `public/favicon.png` (64×64 PNG, ~4.4 KB)
+- **Modified:** `src/app/layout.tsx` — `metadata.icons` now points to local PNGs.
+
+### Verification
+```
+$ ls -la public/logo-afrivote.png public/favicon.png
+-rw-rw-r-- 1 z z  4415  public/favicon.png
+-rw-rw-r-- 1 z z 131647 public/logo-afrivote.png
+$ file public/logo-afrivote.png public/favicon.png
+public/logo-afrivote.png: PNG image data, 512 x 512, 8-bit/color RGBA, non-interlaced
+public/favicon.png:       PNG image data, 64 x 64, 8-bit/color RGBA, non-interlaced
+```
+
+### Notes / Next Actions
+- The brand palette (emerald #15803d + gold #b45309) should be propagated into
+  `tailwind.config.ts` / `globals.css` as official `brand` / `accent` tokens in a
+  follow-up, and the `<Logo>` SVG component (currently `public/logo.svg`) can be
+  replaced by an `<Image src="/logo-afrivote.png">` reference in the header/footer.
+- The 512×512 logo can also serve as an OG/social preview image and PWA icon (192/512
+  maskable variants can be derived from it).

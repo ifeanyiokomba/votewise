@@ -52,6 +52,7 @@ export function SignupView() {
       const displayName = form.displayName || generateDisplayName()
       const d = await api.registerTenant({
         type: orgType,
+        institutionType: form.institutionType || 'FEDERAL',
         universityName: form.universityName,
         facultyName: orgType !== 'UNIVERSITY' ? form.facultyName : undefined,
         departmentName: orgType === 'DEPARTMENT' ? form.departmentName : undefined,
@@ -127,6 +128,19 @@ export function SignupView() {
                       <div className="text-sm font-medium">{o.label}</div>
                       <div className="text-[10px] text-muted-foreground">{o.desc}</div>
                     </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Institution type selector */}
+            <div className="space-y-1.5">
+              <Label>Institution Type</Label>
+              <div className="flex flex-wrap gap-2">
+                {(['FEDERAL', 'STATE', 'PRIVATE', 'POLYTECHNIC', 'COLLEGE_OF_EDUCATION'] as const).map((t) => (
+                  <button key={t} onClick={() => set('institutionType', t)}
+                    className={cn('rounded-full border px-3 py-1 text-xs transition-all', (form.institutionType || 'FEDERAL') === t ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted/50')}>
+                    {t.replace(/_/g, ' ')}
                   </button>
                 ))}
               </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import {
   Vote, Shield, BarChart3, LogIn, LogOut, Menu, X, CheckCircle2, Clock,
@@ -17,15 +18,10 @@ import { api } from '@/lib/api'
 export function Logo({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <div className="relative grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-        <Vote className="h-5 w-5" />
-        <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground ring-2 ring-background">
-          ✓
-        </span>
-      </div>
+      <Image src="/logo-afrivote.png" alt="AfriVote SUG" width={36} height={36} className="h-9 w-9 rounded-xl" priority />
       <div className="leading-tight">
         <div className="font-display text-lg font-bold tracking-tight">AfriVote<span className="text-accent"> SUG</span></div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Federal University Elections</div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Tertiary Institution Elections</div>
       </div>
     </div>
   )
@@ -178,7 +174,7 @@ export function Footer() {
           <Logo />
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
             A secure, transparent, and high-capacity electronic voting platform built for the
-            Students&apos; Union Government (SUG) elections of a Nigerian Federal University.
+            Students&apos; Union Government (SUG) elections of a Nigerian tertiary institution.
             Every vote is verifiable. Every action is audited.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">

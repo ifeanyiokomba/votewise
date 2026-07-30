@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 // }
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
-  const { type, universityName, facultyName, departmentName, displayName, slug,
+  const { type, institutionType, universityName, facultyName, departmentName, displayName, slug,
     primaryColour, accentColour, logoUrl, universityLogoUrl,
     adminName, adminEmail, adminPassword } = body
 
@@ -36,10 +36,13 @@ export async function POST(req: NextRequest) {
   const existingOfficial = await db.electionOfficial.findUnique({ where: { email: adminEmail.toLowerCase() } })
   if (existingOfficial) return errorJson('An account with this email already exists', 409)
 
-  // Generate slug and display name
+  // Generate slug, display name, and subdomain
   const baseSlug = (slug || displayName || universityName).toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const finalSlug = baseSlug + '-' + Math.random().toString(36).slice(2, 6)
+  // Auto-assign subdomain: e.g. unilag.afrivote.ng, eng-unilag.afrivote.ng
+  const subdomainBase = type === 'UNIVERSITY' ? universityName : (type === 'FACULTY' ? `${facultyName}-${universityName}` : `${departmentName}-${facultyName}`)
+  const subdomain = subdomainBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 4)
 
   const finalDisplayName = displayName || (
     type === 'UNIVERSITY' ? `${universityName} SUG` :
@@ -51,11 +54,13 @@ export async function POST(req: NextRequest) {
   const tenant = await db.tenant.create({
     data: {
       type,
+      institutionType: institutionType || null,
       universityName,
       facultyName: facultyName || null,
       departmentName: departmentName || null,
       displayName: finalDisplayName,
       slug: finalSlug,
+      subdomain,
       logoUrl: logoUrl || null,
       universityLogoUrl: universityLogoUrl || null,
       primaryColour: primaryColour || '#15803d',
@@ -116,8 +121,10 @@ export async function POST(req: NextRequest) {
     tenant: {
       id: tenant.id,
       type: tenant.type,
+      institutionType: tenant.institutionType,
       displayName: tenant.displayName,
       slug: tenant.slug,
+      subdomain: tenant.subdomain,
       universityName: tenant.universityName,
       facultyName: tenant.facultyName,
       departmentName: tenant.departmentName,

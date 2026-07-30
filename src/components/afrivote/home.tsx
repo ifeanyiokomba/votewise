@@ -54,7 +54,7 @@ export function HomeView() {
           <div className="flex flex-col justify-center">
             <Badge variant="secondary" className="mb-4 w-fit gap-1.5">
               <span className="afrivote-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              {election?.university || 'Federal University of Lagos'} · SUG Elections
+              {election?.university || 'University of Lagos'} · SUG Elections
             </Badge>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
               Your vote.<br />

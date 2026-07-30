@@ -18,19 +18,21 @@ model Tenant {
   id              String   @id @default(cuid())
   // Organization type
   type            String   // UNIVERSITY | FACULTY | DEPARTMENT
+  // Institution type (supports ALL tertiary institutions, not just federal)
+  institutionType String?  // FEDERAL | STATE | PRIVATE | POLYTECHNIC | COLLEGE_OF_EDUCATION | MONOTECHNIC
   // Names — filled based on type
   universityName  String
   facultyName     String?
   departmentName  String?
   // Display name (auto-generated or custom)
-  displayName     String   // e.g. "University of Lagos SUG" or "Faculty of Engineering"
-  slug            String   @unique // URL-friendly identifier
+  displayName     String
+  slug            String   @unique
   // Branding
-  logoUrl         String?  // org logo
-  universityLogoUrl String? // university logo (for faculty/department tenants)
-  primaryColour   String   @default("#15803d") // emerald
-  accentColour    String   @default("#b45309") // gold
-  // Subdomain for production (e.g. unilag.afrivote.ng)
+  logoUrl         String?
+  universityLogoUrl String?
+  primaryColour   String   @default("#15803d")
+  accentColour    String   @default("#b45309")
+  // Subdomain (auto-assigned on signup: e.g. unilag.afrivote.ng)
   subdomain       String?  @unique
   // Admin who created this tenant
   adminEmail      String
@@ -45,6 +47,41 @@ model Tenant {
   officials        ElectionOfficial[]
   voters           Voter[]
   settings         ElectionSetting[]
+  collations       StudentCollation[]
+}
+
+// ---------------------------------------------------------------------------
+// Student data collation — dept collects → faculty reviews → committee uploads
+// ---------------------------------------------------------------------------
+model StudentCollation {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // Source
+  facultyId       String?
+  faculty         Faculty? @relation(fields: [facultyId], references: [id])
+  departmentId    String?
+  department      Department? @relation(fields: [departmentId], references: [id])
+  // Who submitted
+  submittedById   String?
+  submittedByName String
+  submittedByRole String   // DEPARTMENT_OFFICER | FACULTY_OFFICER | ELECTORAL_COMMITTEE
+  // Data
+  studentCount    Int      @default(0)
+  rawData         String?  // JSON array of student records
+  // Approval workflow
+  status          String   @default("PENDING") // PENDING | FACULTY_APPROVED | COMMITTEE_APPROVED | REJECTED | UPLOADED
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+  // When approved by committee, voters are imported
+  importedAt      DateTime?
+  importedCount   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
 }
 
 // ---------------------------------------------------------------------------
@@ -55,7 +92,7 @@ model ElectionSession {
   tenantId        String?
   tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name            String   // e.g. "SUG General Elections 2024/2025"
-  university      String   @default("Federal University of Lagos")
+  university      String   @default("University of Lagos")
   academicSession String   // e.g. "2024/2025"
   startTime       DateTime
   endTime         DateTime
@@ -113,6 +150,7 @@ model Faculty {
   candidates  Candidate[]
   positions   Position[]      @relation("FacultyPosition")
   officials   ElectionOfficial[]
+  collations  StudentCollation[]
 }
 
 model Department {
@@ -129,6 +167,7 @@ model Department {
   candidates Candidate[]
   positions Position[]   @relation("DepartmentPosition")
   officials ElectionOfficial[]
+  collations StudentCollation[]
 }
 
 model Programme {
