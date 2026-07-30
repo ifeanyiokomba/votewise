@@ -1178,3 +1178,46 @@ Stage Summary:
   guide + compare. Public can view certified results. Dark mode works. Accessibility improved.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
   load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: CRON-QA-8
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, admin voter detail drawer, winner crown badge on results.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-7 complete). Services running. Ran agent-browser
+  QA — home (hero, results, faculty turnout, timetable, candidates, guide, certificate),
+  admin dashboard (system health, turnout chart, broadcast), all functional. No bugs found.
+  Platform stable.
+- **Feature: Admin Voter Detail Drawer** — Created `/api/admin/voters/[id]` endpoint returning
+  full voter detail with accreditation records, devices, support tickets, and notifications.
+  Created `VoterDetailDrawer` component in official.tsx: a rich dialog that opens when an
+  admin clicks a voter row, showing:
+  - Gradient header with avatar initials, name, matric, status badge, faculty/level badges
+  - Contact info grid (institutional email, personal email, phone, department)
+  - Vote confirmation banner (if voted, with timestamp)
+  - Accreditation history (channel, device fingerprint, IP, status, timestamp)
+  - Device list (label, fingerprint, IP, trusted badge, last seen)
+  - Support tickets (issue type, status, date)
+  - Registration + verification timestamps
+  Made voter table rows clickable (cursor-pointer + hover). Added `adminGetVoter` to API client.
+- **Styling: Winner Crown Badge** — Enhanced the live results panel leading candidate:
+  - Crown icon badge (gold/accent colour) positioned on the avatar of the leading candidate
+  - Leading candidate's avatar gets a primary-coloured ring
+  - Leading candidate row has a subtle primary/5 background highlight
+  - Leading candidate name is bold (vs medium for others)
+  Added `Crown` icon import from lucide-react.
+- **Verification:** `bun run lint` → 0 errors. agent-browser: voter detail drawer opens on
+  row click showing full voter info (Demo Voter Twelve, PHY/2023/003, contact, faculty);
+  crown badge renders on leading candidates in results; mobile responsive; sticky footer;
+  zero console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 2 new features (admin voter detail drawer, winner crown badge).
+- **Current state:** Platform is feature-rich and polished. All 5 roles work. Admins can now
+  click any voter to see their full history (accreditation, devices, tickets). Live results
+  show crown badges on leading candidates. Home has animated hero + live results + faculty
+  turnout map + timetable + candidates + guide + certificate + FAQ. Dark mode works.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
+  load testing, PostgreSQL migration, Docker/Nginx CI/CD.

@@ -77,6 +77,7 @@ export const api = {
   adminCreatePosition: (data: any) => req('/api/admin/positions', { method: 'POST', body: JSON.stringify(data) }),
   adminGetVoters: (params: string) => req(`/api/admin/voters?${params}`),
   adminCreateVoter: (data: any) => req('/api/admin/voters', { method: 'POST', body: JSON.stringify(data) }),
+  adminGetVoter: (id: string) => req(`/api/admin/voters/${id}`),
   adminImportVoters: (voters: any[]) => req('/api/admin/voters/import', { method: 'POST', body: JSON.stringify({ voters }) }),
   adminGetSettings: () => req('/api/admin/settings'),
   adminUpdateSettings: (data: any) => req('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),

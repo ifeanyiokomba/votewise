@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { TurnoutRing } from '@/components/afrivote/shared'
-import { Users, CheckCircle2, Trophy, MinusCircle } from 'lucide-react'
+import { Users, CheckCircle2, Trophy, MinusCircle, Crown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
@@ -96,16 +96,23 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
                 {p.candidates.map((c: any, i: number) => {
                   const isLeader = i === 0 && c.votes > 0
                   return (
-                    <div key={c.id} className="space-y-1">
+                    <div key={c.id} className={cn('space-y-1 rounded-lg p-1.5 transition-colors', isLeader && 'bg-primary/5')}>
                       <div className="flex items-center gap-3">
                         <span className={cn('w-5 text-right font-mono text-xs', isLeader ? 'font-bold text-primary' : 'text-muted-foreground')}>{i + 1}</span>
-                        <Avatar className="h-8 w-8 ring-1 ring-border">
-                          {c.photoUrl ? <AvatarImage src={c.photoUrl} alt={c.fullName} /> : null}
-                          <AvatarFallback>{c.fullName?.slice(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <div className="relative">
+                          <Avatar className={cn('h-8 w-8 ring-1', isLeader ? 'ring-primary' : 'ring-border')}>
+                            {c.photoUrl ? <AvatarImage src={c.photoUrl} alt={c.fullName} /> : null}
+                            <AvatarFallback>{c.fullName?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          {isLeader && (
+                            <div className="absolute -top-2 -right-1 grid h-4 w-4 place-items-center rounded-full bg-accent text-accent-foreground ring-2 ring-background">
+                              <Crown className="h-2.5 w-2.5" />
+                            </div>
+                          )}
+                        </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm font-medium">{c.fullName}</span>
+                            <span className={cn('truncate text-sm', isLeader ? 'font-bold' : 'font-medium')}>{c.fullName}</span>
                             <span className="shrink-0 font-mono text-xs font-semibold">{c.votes} <span className="text-muted-foreground">({c.pct}%)</span></span>
                           </div>
                           <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">

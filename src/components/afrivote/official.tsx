@@ -604,6 +604,8 @@ function VotersTab({ role, official }: { role: string; official: any }) {
   const [importOpen, setImportOpen] = useState(false)
   const [faculties, setFaculties] = useState<any[]>([])
   const [form, setForm] = useState<any>({ level: '100' })
+  const [detailVoter, setDetailVoter] = useState<any | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const scoped = role === 'FACULTY_OFFICER' || role === 'DEPARTMENT_OFFICER'
 
   async function load() {
@@ -645,7 +647,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
               {loading && <tr><td colSpan={4} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
               {!loading && voters.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No voters found.</td></tr>}
               {voters.map((v) => (
-                <tr key={v.id} className="border-t border-border hover:bg-muted/30">
+                <tr key={v.id} className="cursor-pointer border-t border-border hover:bg-muted/30" onClick={() => { setDetailVoter(v); setDetailOpen(true) }}>
                   <td className="p-3"><div className="font-medium">{v.fullName}</div><div className="font-mono text-xs text-muted-foreground">{v.matric}</div></td>
                   <td className="hidden p-3 text-xs md:table-cell"><div>{v.faculty?.name}</div><div className="text-muted-foreground">{v.department?.name}</div></td>
                   <td className="hidden p-3 sm:table-cell">{v.level}</td>
@@ -677,6 +679,143 @@ function VotersTab({ role, official }: { role: string; official: any }) {
         </DialogContent>
       </Dialog>
       <VoterImportDialog open={importOpen} onOpenChange={setImportOpen} onDone={load} />
+      <VoterDetailDrawer voter={detailVoter} open={detailOpen} onOpenChange={setDetailOpen} />
+    </div>
+  )
+}
+
+function VoterDetailDrawer({ voter, open, onOpenChange }: { voter: any; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [detail, setDetail] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    if (!voter?.id) return
+    let active = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+    api.adminGetVoter(voter.id).then((d) => { if (active) setDetail(d.voter) }).catch(() => {}).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [open, voter?.id])
+  const v = detail || voter
+  if (!v) return null
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
+        <DialogTitle className="sr-only">Voter Details — {v.fullName}</DialogTitle>
+        {/* Header */}
+        <div className="relative bg-gradient-to-br from-primary to-primary/80 p-6 text-primary-foreground">
+          <div className="flex items-center gap-4">
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-primary-foreground/15 font-display text-xl font-bold">
+              {v.fullName?.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-xl font-bold">{v.fullName}</h2>
+              <p className="font-mono text-sm text-primary-foreground/85">{v.matric}</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {v.hasVoted ? <Badge className="bg-emerald-500/30 text-white">Voted</Badge> : <Badge className="bg-amber-500/30 text-white">Pending</Badge>}
+                <Badge className="bg-white/20 text-white">{v.faculty?.name || v.faculty}</Badge>
+                <Badge className="bg-white/20 text-white">{v.level} Level</Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Body */}
+        <div className="afrivote-scroll max-h-[55vh] overflow-y-auto p-6">
+          {loading ? (
+            <div className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="space-y-4">
+              {/* Contact info */}
+              <div className="grid grid-cols-2 gap-3">
+                <InfoCard label="Institutional Email" value={v.institutionEmail || '—'} />
+                <InfoCard label="Personal Email" value={v.personalEmail || '—'} />
+                <InfoCard label="Phone" value={v.phone || '—'} />
+                <InfoCard label="Department" value={v.department?.name || v.department || '—'} />
+              </div>
+              {/* Vote info */}
+              {v.hasVoted && (
+                <div className="rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <span className="font-medium text-emerald-800 dark:text-emerald-300">Vote cast at {v.votedAt ? new Date(v.votedAt).toLocaleString() : '—'}</span>
+                  </div>
+                </div>
+              )}
+              {/* Accreditation */}
+              {v.accreditations && v.accreditations.length > 0 && (
+                <div>
+                  <h3 className="mb-2 flex items-center gap-1.5 font-display text-sm font-semibold"><Fingerprint className="h-4 w-4 text-primary" /> Accreditation</h3>
+                  <div className="space-y-1">
+                    {v.accreditations.map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between rounded-lg border border-border/60 p-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">{a.channel}</Badge>
+                          <span className="text-muted-foreground">{a.deviceFingerprint?.slice(0, 16)}…</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">{a.ipAddress}</span>
+                          <Badge className="bg-emerald-100 text-emerald-700">{a.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Devices */}
+              {v.devices && v.devices.length > 0 && (
+                <div>
+                  <h3 className="mb-2 flex items-center gap-1.5 font-display text-sm font-semibold"><Eye className="h-4 w-4 text-primary" /> Devices ({v.devices.length})</h3>
+                  <div className="space-y-1">
+                    {v.devices.map((d: any) => (
+                      <div key={d.id} className="flex items-center justify-between rounded-lg border border-border/60 p-2 text-xs">
+                        <div>
+                          <div className="font-medium">{d.label}</div>
+                          <div className="text-muted-foreground">{d.fingerprint.slice(0, 16)}… · {d.ipAddress}</div>
+                        </div>
+                        <div className="text-right">
+                          {d.trusted && <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Trusted</Badge>}
+                          <div className="mt-0.5 text-[10px] text-muted-foreground">Last: {new Date(d.lastSeen).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Support tickets */}
+              {v.supportTickets && v.supportTickets.length > 0 && (
+                <div>
+                  <h3 className="mb-2 flex items-center gap-1.5 font-display text-sm font-semibold"><FileCheck2 className="h-4 w-4 text-primary" /> Support Tickets ({v.supportTickets.length})</h3>
+                  <div className="space-y-1">
+                    {v.supportTickets.map((t: any) => (
+                      <div key={t.id} className="flex items-center justify-between rounded-lg border border-border/60 p-2 text-xs">
+                        <span>{t.issueType.replace(/_/g, ' ')}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">{new Date(t.createdAt).toLocaleDateString()}</span>
+                          <Badge variant="outline" className="text-[10px]">{t.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Timestamps */}
+              <div className="border-t border-border pt-3 text-xs text-muted-foreground">
+                <div>Registered: {new Date(v.createdAt).toLocaleString()}</div>
+                {v.verifiedAt && <div>Last verified: {new Date(v.verifiedAt).toLocaleString()}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-muted/50 p-2.5">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="truncate text-sm font-medium">{value}</div>
     </div>
   )
 }
