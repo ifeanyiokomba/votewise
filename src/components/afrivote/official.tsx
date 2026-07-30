@@ -153,6 +153,7 @@ export function OfficialDashboard() {
 function OverviewTab({ election, setElection, role }: { election: any; setElection: (e: any) => void; role: string }) {
   const [stats, setStats] = useState<any>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [broadcastOpen, setBroadcastOpen] = useState(false)
   const canManage = role === 'SUPER_ADMIN' || role === 'ELECTORAL_COMMITTEE'
 
   useEffect(() => {
@@ -219,15 +220,117 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
         <StatCard icon={Building2} label="Positions" value={stats?.positions ?? '—'} />
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Download className="h-4 w-4" /> Export Results</CardTitle></CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.open(api.exportResults('csv'))} className="gap-1.5"><Download className="h-4 w-4" /> Download CSV</Button>
-          <Button variant="outline" size="sm" onClick={() => window.open(api.exportResults('json'))} className="gap-1.5"><Download className="h-4 w-4" /> Download JSON</Button>
-          <p className="w-full text-xs text-muted-foreground">Export is available to all signed-in officials. The export reflects the current live tally.</p>
-        </CardContent>
-      </Card>
+      {/* Turnout by faculty chart */}
+      <TurnoutByFacultyChart />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Download className="h-4 w-4" /> Export Results</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.open(api.exportResults('csv'))} className="gap-1.5"><Download className="h-4 w-4" /> CSV</Button>
+            <Button variant="outline" size="sm" onClick={() => window.open(api.exportResults('json'))} className="gap-1.5"><Download className="h-4 w-4" /> JSON</Button>
+            <p className="w-full text-xs text-muted-foreground">Export reflects the current live tally.</p>
+          </CardContent>
+        </Card>
+        {canManage && (
+          <Card>
+            <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Bell className="h-4 w-4" /> Broadcast Notification</CardTitle></CardHeader>
+            <CardContent>
+              <p className="mb-3 text-xs text-muted-foreground">Send an in-app notification to all registered voters.</p>
+              <Button onClick={() => setBroadcastOpen(true)} className="gap-1.5"><Bell className="h-4 w-4" /> Compose Broadcast</Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <BroadcastDialog open={broadcastOpen} onOpenChange={setBroadcastOpen} />
     </div>
+  )
+}
+
+function TurnoutByFacultyChart() {
+  const [data, setData] = useState<any>(null)
+  useEffect(() => {
+    api.observerAnalytics().then((d) => setData(d)).catch(() => {})
+    const t = setInterval(() => api.observerAnalytics().then((d) => setData(d)).catch(() => {}), 10000)
+    return () => clearInterval(t)
+  }, [])
+  if (!data) return <Card><CardContent className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></CardContent></Card>
+  const max = Math.max(1, ...data.byFaculty.map((f: any) => f.total))
+  return (
+    <Card>
+      <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Turnout by Faculty</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        {data.byFaculty.map((f: any) => (
+          <div key={f.id} className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="truncate">{f.name}</span>
+              <span className="font-mono text-xs">{f.voted}/{f.total} <span className="text-muted-foreground">({f.pct}%)</span></span>
+            </div>
+            <div className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-muted">
+              <div className="afrivote-bar-anim rounded-l-full bg-primary transition-all" style={{ width: `${(f.voted / max) * 100}%` }} />
+              <div className="afrivote-bar-anim rounded-r-full bg-muted-foreground/30 transition-all" style={{ width: `${((f.total - f.voted) / max) * 100}%` }} />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+function BroadcastDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [title, setTitle] = useState('')
+  const [message, setMessage] = useState('')
+  const [type, setType] = useState('INFO')
+  const [facultyId, setFacultyId] = useState('')
+  const [faculties, setFaculties] = useState<any[]>([])
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<any>(null)
+  useEffect(() => { api.getFaculties().then((d) => setFaculties(d.faculties)).catch(() => {}) }, [])
+  async function send() {
+    setBusy(true)
+    try {
+      const d = await api.adminBroadcastNotification({ title, message, type, facultyId: facultyId || undefined })
+      setResult(d); toast.success(`Notification sent to ${d.recipients} voters`)
+    } catch (e: any) { toast.error(e.message) } finally { setBusy(false) }
+  }
+  function close() { onOpenChange(false); setTitle(''); setMessage(''); setType('INFO'); setFacultyId(''); setResult(null) }
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) close(); else onOpenChange(o) }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle className="flex items-center gap-2 font-display"><Bell className="h-5 w-5 text-primary" /> Broadcast Notification</DialogTitle></DialogHeader>
+        {result ? (
+          <div className="py-6 text-center">
+            <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-600" />
+            <p className="mt-3 font-semibold">Notification delivered</p>
+            <p className="mt-1 text-sm text-muted-foreground">Sent to {result.recipients} voters.</p>
+            <Button className="mt-4" onClick={close}>Done</Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Voting closes in 2 hours" /></div>
+            <div className="space-y-1.5"><Label>Message</Label><Textarea rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Detailed message to voters…" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Type</Label>
+                <Select value={type} onValueChange={setType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="INFO">Info</SelectItem><SelectItem value="SUCCESS">Success</SelectItem><SelectItem value="WARNING">Warning</SelectItem><SelectItem value="SECURITY">Security</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5"><Label>Audience</Label>
+                <Select value={facultyId || 'all'} onValueChange={(v) => setFacultyId(v === 'all' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="All faculties" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All faculties</SelectItem>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
+        {!result && (
+          <DialogFooter><Button variant="outline" onClick={close}>Cancel</Button><Button onClick={send} disabled={busy || !title || !message} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />} Send</Button></DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -467,9 +570,9 @@ function VotersTab({ role, official }: { role: string; official: any }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-2">
           <div className="relative flex-1 max-w-xs"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search matric, name, email…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" /></div>
-          <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1) }}>
+          <Select value={status || 'all'} onValueChange={(v) => { setStatus(v === 'all' ? '' : v); setPage(1) }}>
             <SelectTrigger className="w-32"><SelectValue placeholder="All" /></SelectTrigger>
-            <SelectContent><SelectItem value="">All</SelectItem><SelectItem value="voted">Voted</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
+            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="voted">Voted</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
           </Select>
         </div>
         <div className="flex gap-2">
