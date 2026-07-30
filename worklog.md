@@ -1266,3 +1266,51 @@ Stage Summary:
   broadcast + charts + CSV upload. Dark mode works.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
   load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: CRON-QA-10
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, admin candidate screening workflow, public about page.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-9 complete). Services running. Ran agent-browser
+  QA — home (hero, results with donut, faculty turnout, timetable, candidates, guide,
+  certificate), admin dashboard (system health, voter drawer), all functional. No bugs found.
+  Platform stable.
+- **Feature: Admin Candidate Screening Workflow** — Enhanced the CandidatesTab in official.tsx:
+  - Screening status filter dropdown (All/Pending/Approved/Disqualified/Withdrawn) with live
+    counts per status
+  - Quick Approve button (green, appears when not already approved) — one-click screening
+  - Quick Reject button (red, appears when not already disqualified) — one-click screening
+  - Screening detail dialog (opens via FileCheck2 icon): shows candidate info + CGPA, screening
+    decision dropdown, and screening notes textarea — for detailed screening with rationale
+  - Screening status badge in the table reflects the current status
+  - All screening actions are logged via the existing audit trail
+- **Feature: Public About / Election Info Page** — Created `AboutView` component
+  (`src/components/afrivote/about.tsx`): a public page showing:
+  - Election header with name, university, academic session, status badge
+  - 4 overview cards (Voting Window, Positions count, Candidates count, Security info)
+  - Live countdown to voting close
+  - Electoral Committee section (lists SUPER_ADMIN + ELECTORAL_COMMITTEE officials with
+    avatars, roles, 2FA status)
+  - University Information card (university, session, election name, accreditation, ballot
+    secrecy, audit trail)
+  - Contestable Positions grid (all positions with candidate counts + scope)
+  - Contact CTA card (links to voter guide + start voting)
+  - Staggered reveal animations on all sections
+  Added "About" button to the hero section. Wired `about` view into store + page.tsx router.
+- **Verification:** `bun run lint` → 0 errors. agent-browser: about page renders with
+  election info, committee, positions, countdown; admin candidates tab shows screening filter
+  (All (10)) + screening status badges + Reject buttons; mobile responsive; sticky footer;
+  zero console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 2 new features (admin candidate screening workflow, public about page).
+- **Current state:** Platform is feature-rich and polished. All 5 roles work. Admins can now
+  screen candidates with quick approve/reject + detailed notes. Public about page shows
+  election info, committee, and positions. Home has animated hero + live results (donuts +
+  crowns) + faculty turnout + timetable + candidates + guide + certificate + FAQ + about.
+  Observer has live vote feed. Voter has dashboard + compare. Dark mode works.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
+  load testing, PostgreSQL migration, Docker/Nginx CI/CD.

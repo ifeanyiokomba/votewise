@@ -13,6 +13,7 @@ export type View =
   | 'compare'
   | 'certificate'
   | 'guide'
+  | 'about'
   | 'official-login'
   | 'official'
   // Legacy aliases kept for nav compatibility

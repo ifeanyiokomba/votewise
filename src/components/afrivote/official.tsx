@@ -418,6 +418,11 @@ function CandidatesTab() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<any | null>(null)
   const [open, setOpen] = useState(false)
+  const [screenFilter, setScreenFilter] = useState('all')
+  const [screeningCandidate, setScreeningCandidate] = useState<any | null>(null)
+  const [screeningOpen, setScreeningOpen] = useState(false)
+  const [screeningNotes, setScreeningNotes] = useState('')
+  const [screeningStatus, setScreeningStatus] = useState('APPROVED')
 
   async function load() {
     setLoading(true)
@@ -440,10 +445,60 @@ function CandidatesTab() {
     try { await api.adminDeleteCandidate(id); toast.success('Deleted'); load() } catch (e: any) { toast.error(e.message) }
   }
 
+  // Quick screening actions
+  async function quickScreen(id: string, status: string) {
+    try {
+      await api.adminUpdateCandidate(id, { screeningStatus: status, status: status === 'APPROVED' ? 'APPROVED' : status === 'DISQUALIFIED' ? 'DISQUALIFIED' : 'WITHDRAWN' })
+      toast.success(`Candidate ${status.toLowerCase()}`)
+      load()
+    } catch (e: any) { toast.error(e.message) }
+  }
+
+  function openScreeningDialog(c: any) {
+    setScreeningCandidate(c)
+    setScreeningNotes(c.screeningNotes || '')
+    setScreeningStatus(c.screeningStatus || 'APPROVED')
+    setScreeningOpen(true)
+  }
+
+  async function submitScreening() {
+    if (!screeningCandidate) return
+    try {
+      await api.adminUpdateCandidate(screeningCandidate.id, {
+        screeningStatus,
+        screeningNotes,
+        status: screeningStatus === 'APPROVED' ? 'APPROVED' : screeningStatus === 'DISQUALIFIED' ? 'DISQUALIFIED' : 'WITHDRAWN',
+      })
+      toast.success(`Screening updated: ${screeningStatus}`)
+      setScreeningOpen(false); setScreeningCandidate(null)
+      load()
+    } catch (e: any) { toast.error(e.message) }
+  }
+
+  // Filter candidates by screening status
+  const filteredCandidates = screenFilter === 'all' ? candidates : candidates.filter((c) => c.screeningStatus === screenFilter)
+  const screenCounts = {
+    pending: candidates.filter((c) => c.screeningStatus === 'PENDING').length,
+    approved: candidates.filter((c) => c.screeningStatus === 'APPROVED').length,
+    disqualified: candidates.filter((c) => c.screeningStatus === 'DISQUALIFIED').length,
+    withdrawn: candidates.filter((c) => c.screeningStatus === 'WITHDRAWN').length,
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{candidates.length} candidates</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Select value={screenFilter} onValueChange={setScreenFilter}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All ({candidates.length})</SelectItem>
+              <SelectItem value="PENDING">Pending ({screenCounts.pending})</SelectItem>
+              <SelectItem value="APPROVED">Approved ({screenCounts.approved})</SelectItem>
+              <SelectItem value="DISQUALIFIED">Disqualified ({screenCounts.disqualified})</SelectItem>
+              <SelectItem value="WITHDRAWN">Withdrawn ({screenCounts.withdrawn})</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <Button onClick={() => { setEditing({}); setOpen(true) }} className="gap-1.5"><Plus className="h-4 w-4" /> Add Candidate</Button>
       </div>
       <Card><CardContent className="p-0">
@@ -455,14 +510,35 @@ function CandidatesTab() {
             </tr></thead>
             <tbody>
               {loading && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
-              {candidates.map((c) => (
+              {!loading && filteredCandidates.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No candidates match this filter.</td></tr>}
+              {filteredCandidates.map((c) => (
                 <tr key={c.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="p-3"><div className="font-medium">{c.fullName}</div><div className="text-xs text-muted-foreground">{c.slogan}</div></td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="min-w-0">
+                        <div className="font-medium">{c.fullName}</div>
+                        <div className="truncate text-xs text-muted-foreground">{c.slogan}</div>
+                      </div>
+                    </div>
+                  </td>
                   <td className="p-3"><Badge variant="outline" className="text-[10px]">{c.position?.title}</Badge></td>
                   <td className="hidden p-3 md:table-cell"><ScreenBadge status={c.screeningStatus} /></td>
                   <td className="p-3 text-right">
-                    <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true) }}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <div className="flex items-center justify-end gap-1">
+                      {c.screeningStatus !== 'APPROVED' && (
+                        <Button size="sm" variant="ghost" onClick={() => quickScreen(c.id, 'APPROVED')} className="h-7 gap-1 text-xs text-emerald-600 hover:bg-emerald-50">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                        </Button>
+                      )}
+                      {c.screeningStatus !== 'DISQUALIFIED' && (
+                        <Button size="sm" variant="ghost" onClick={() => quickScreen(c.id, 'DISQUALIFIED')} className="h-7 gap-1 text-xs text-destructive hover:bg-destructive/5">
+                          <AlertCircle className="h-3.5 w-3.5" /> Reject
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" onClick={() => openScreeningDialog(c)} title="Screening details"><FileCheck2 className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => { setEditing(c); setOpen(true) }}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -471,6 +547,42 @@ function CandidatesTab() {
         </div>
       </CardContent></Card>
       <CandidateDialog open={open} onOpenChange={setOpen} candidate={editing} positions={positions} faculties={faculties} onSave={save} />
+
+      {/* Screening dialog */}
+      <Dialog open={screeningOpen} onOpenChange={setScreeningOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><FileCheck2 className="h-5 w-5 text-primary" /> Candidate Screening</DialogTitle></DialogHeader>
+          {screeningCandidate && (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-muted/50 p-3">
+                <div className="font-medium">{screeningCandidate.fullName}</div>
+                <div className="text-xs text-muted-foreground">{screeningCandidate.position?.title}</div>
+                {screeningCandidate.cgpa && <div className="mt-1 text-xs">CGPA: <span className="font-mono font-semibold">{screeningCandidate.cgpa.toFixed(2)}</span></div>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Screening Decision</Label>
+                <Select value={screeningStatus} onValueChange={setScreeningStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="DISQUALIFIED">Disqualified</SelectItem>
+                    <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Screening Notes</Label>
+                <Textarea rows={4} value={screeningNotes} onChange={(e) => setScreeningNotes(e.target.value)} placeholder="e.g. Credentials verified, CGPA confirmed above 3.5 threshold. No disciplinary record found." />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScreeningOpen(false)}>Cancel</Button>
+            <Button onClick={submitScreening} className="gap-1.5"><CheckCircle2 className="h-4 w-4" /> Save Screening</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

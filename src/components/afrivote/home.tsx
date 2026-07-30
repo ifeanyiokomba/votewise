@@ -74,6 +74,9 @@ export function HomeView() {
               <Button size="lg" variant="outline" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="gap-2">
                 <Eye className="h-5 w-5" /> View Live Results
               </Button>
+              <Button size="lg" variant="ghost" onClick={() => setView('about')} className="gap-2 text-muted-foreground">
+                <Building2 className="h-5 w-5" /> About
+              </Button>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-primary" /> End-to-end ballot secrecy</span>
