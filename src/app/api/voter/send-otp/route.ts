@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { generateOtp } from '@/lib/crypto'
-import { json, errorJson, getElectionContext, getClientIp, writeAudit, recordSecurityEvent } from '@/lib/election'
+import { json, errorJson, getElectionContext, getClientIp, writeAudit, recordSecurityEvent, logVoterActivity } from '@/lib/election'
 import { RATE_LIMITS } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
   await writeAudit({
     actorId: voter.id, actorRole: 'VOTER', actorName: voter.fullName,
     action: 'OTP_ISSUED', details: { channel, matric }, ip: getClientIp(req),
+  })
+  await logVoterActivity({
+    voterId: voter.id, action: 'SEND_OTP', details: { channel, matric }, ipAddress: getClientIp(req),
   })
   return json({
     ok: true,

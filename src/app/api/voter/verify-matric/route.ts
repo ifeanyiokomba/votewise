@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { json, errorJson, getElectionContext, isVotingOpen } from '@/lib/election'
+import { json, errorJson, getElectionContext, isVotingOpen, logVoterActivity, getClientIp } from '@/lib/election'
 import { RATE_LIMITS } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
   if (!voter) return json({ found: false, message: 'Matriculation number not found in the voter register.' }, 404)
   if (voter.hasVoted) return json({ found: true, hasVoted: true, votedAt: voter.votedAt }, 409)
   if (voter.lockedUntil && voter.lockedUntil > new Date()) return errorJson('Account temporarily locked. Try again later.', 423)
+
+  await logVoterActivity({
+    voterId: voter.id, action: 'VERIFY_MATRIC', details: { matric }, ipAddress: getClientIp(req),
+  })
 
   const channels: string[] = []
   if (voter.institutionEmail || voter.personalEmail) channels.push('EMAIL')

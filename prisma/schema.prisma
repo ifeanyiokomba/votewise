@@ -224,6 +224,13 @@ model Voter {
   lockedUntil       DateTime?
   failedOtpAttempts Int          @default(0)
 
+  // Flagging (admin can flag for suspicious activity — flagged votes don't count)
+  flagged           Boolean      @default(false)
+  flaggedReason     String?
+  flaggedById       String?
+  flaggedBy         ElectionOfficial? @relation(fields: [flaggedById], references: [id], onDelete: SetNull)
+  flaggedAt         DateTime?
+
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -232,10 +239,13 @@ model Voter {
   devices           Device[]
   sessions          Session[]
   notifications     Notification[]
+  chatMessages      ChatMessage[]
+  activityLogs      VoterActivityLog[]
 
   @@index([electionSessionId])
   @@index([facultyId])
   @@index([hasVoted])
+  @@index([flagged])
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +331,9 @@ model ElectionOfficial {
   refreshTokens   RefreshToken[]
   ticketsResolved SupportTicket[]
   certifiedBy     ResultSnapshot[]
+  flaggedVoters   Voter[]
+  chatMessages    ChatMessage[]
+  activityActions VoterActivityLog[]
 
   @@index([role])
 }
@@ -477,4 +490,47 @@ model ResultSnapshot {
   certifiedById String?
   certifiedBy   ElectionOfficial? @relation(fields: [certifiedById], references: [id], onDelete: SetNull)
   certifiedAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Chat messages — recorded conversations between voters and officials
+// ---------------------------------------------------------------------------
+model ChatMessage {
+  id          String   @id @default(cuid())
+  voterId     String?
+  voter       Voter?   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  officialId  String?
+  official    ElectionOfficial? @relation(fields: [officialId], references: [id], onDelete: SetNull)
+  sender      String   // VOTER | BOT | OFFICIAL
+  content     String
+  // For photo/file attachments — stored as base64 data URLs or file paths
+  attachments String?  // JSON array of {type: 'image'|'file', name, dataUrl}
+  // Conversation threading
+  threadId    String   // groups messages in a conversation
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([voterId])
+  @@index([threadId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Voter activity log — tracks voter lifecycle events (NOT vote choices)
+// ---------------------------------------------------------------------------
+model VoterActivityLog {
+  id          String   @id @default(cuid())
+  voterId     String?
+  voter       Voter?   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  actionById  String?
+  actionBy    ElectionOfficial? @relation(fields: [actionById], references: [id], onDelete: SetNull)
+  action      String   // LOGIN | VERIFY_MATRIC | SEND_OTP | VERIFY_OTP | ACCREDIT | VOTE_CAST | FLAG | UNFLAG | OTP_RESEND_BY_ADMIN | LOGOUT
+  details     String?  // JSON
+  ipAddress   String?
+  deviceLabel String?
+  createdAt   DateTime @default(now())
+
+  @@index([voterId])
+  @@index([action])
+  @@index([createdAt])
 }

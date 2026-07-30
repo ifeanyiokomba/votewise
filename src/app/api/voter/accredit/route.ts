@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { json, errorJson, getClientIp, writeAudit } from '@/lib/election'
+import { json, errorJson, getClientIp, writeAudit, logVoterActivity } from '@/lib/election'
 import { deviceFromRequest } from '@/lib/device'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
   await writeAudit({
     actorId: voter.id, actorRole: 'VOTER', actorName: voter.fullName,
     action: 'VOTER_ACCREDITED', details: { device: device.label }, ip: getClientIp(req),
+  })
+  await logVoterActivity({
+    voterId: voter.id, action: 'ACCREDIT', details: { device: device.label }, ipAddress: getClientIp(req), deviceLabel: device.label,
   })
   return json({ ok: true, accredited: true, accreditationId: acc.id })
 }

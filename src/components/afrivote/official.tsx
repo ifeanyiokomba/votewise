@@ -6,6 +6,7 @@ import {
   ScrollText, Eye, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, Upload,
   ShieldCheck, Play, Pause, BadgeCheck, RotateCcw, Search, Building2, Download,
   KeyRound, ShieldAlert, Bell, Fingerprint, Link2, FileCheck2, Activity,
+  LogIn, Vote, Flag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -130,6 +131,7 @@ export function OfficialDashboard() {
           <TabsTrigger value="candidates" className="gap-1.5"><Trophy className="h-4 w-4" /> Candidates</TabsTrigger>
           {canManageElection && <TabsTrigger value="positions" className="gap-1.5"><Building2 className="h-4 w-4" /> Positions</TabsTrigger>}
           <TabsTrigger value="voters" className="gap-1.5"><Users className="h-4 w-4" /> Voters</TabsTrigger>
+          <TabsTrigger value="activity" className="gap-1.5"><Activity className="h-4 w-4" /> Activity</TabsTrigger>
           {canManageOfficials && <TabsTrigger value="officials" className="gap-1.5"><ShieldCheck className="h-4 w-4" /> Officials</TabsTrigger>}
           {canManageElection && <TabsTrigger value="settings" className="gap-1.5"><SettingsIcon className="h-4 w-4" /> Settings</TabsTrigger>}
           {canViewAudit && <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" /> Audit Log</TabsTrigger>}
@@ -140,6 +142,7 @@ export function OfficialDashboard() {
         <TabsContent value="candidates"><CandidatesTab /></TabsContent>
         {canManageElection && <TabsContent value="positions"><PositionsTab /></TabsContent>}
         <TabsContent value="voters"><VotersTab role={role} official={official} /></TabsContent>
+        <TabsContent value="activity"><ActivityTab /></TabsContent>
         {canManageOfficials && <TabsContent value="officials"><OfficialsTab /></TabsContent>}
         {canManageElection && <TabsContent value="settings"><SettingsTab /></TabsContent>}
         {canViewAudit && <TabsContent value="audit"><AuditTab /></TabsContent>}
@@ -301,6 +304,134 @@ function SystemHealthWidget() {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// Voter activity monitoring tab — real-time feed of login/verify/accredit/vote events
+function ActivityTab() {
+  const [logs, setLogs] = useState<any[]>([])
+  const [summary, setSummary] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+
+  async function load() {
+    try {
+      const d = await api.adminGetActivity(filter !== 'all' ? `action=${filter}` : '')
+      setLogs(d.logs); setSummary(d.summary)
+    } catch (e: any) { toast.error(e.message) } finally { setLoading(false) }
+  }
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [filter])
+
+  const actionIcon = (action: string) => {
+    if (action === 'LOGIN') return <LogIn className="h-3.5 w-3.5 text-blue-600" />
+    if (action === 'VERIFY_MATRIC') return <Search className="h-3.5 w-3.5 text-purple-600" />
+    if (action === 'SEND_OTP') return <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+    if (action === 'VERIFY_OTP') return <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+    if (action === 'ACCREDIT') return <Fingerprint className="h-3.5 w-3.5 text-primary" />
+    if (action === 'VOTE_CAST') return <Vote className="h-3.5 w-3.5 text-emerald-600" />
+    if (action === 'FLAG') return <Flag className="h-3.5 w-3.5 text-destructive" />
+    if (action === 'UNFLAG') return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+    if (action === 'OTP_RESEND_BY_ADMIN') return <KeyRound className="h-3.5 w-3.5 text-amber-600" />
+    return <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+  }
+
+  const actionLabel = (action: string) => {
+    const map: Record<string, string> = {
+      LOGIN: 'Logged in', VERIFY_MATRIC: 'Verified matric', SEND_OTP: 'Requested OTP',
+      VERIFY_OTP: 'OTP verified', ACCREDIT: 'Accredited', VOTE_CAST: 'Cast vote',
+      FLAG: 'Flagged', UNFLAG: 'Unflagged', OTP_RESEND_BY_ADMIN: 'Admin resent OTP',
+      CHAT_MESSAGE: 'Sent chat message', LOGOUT: 'Logged out',
+    }
+    return map[action] || action
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary cards */}
+      {summary && (
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
+          {[
+            { label: 'Logins', value: summary.login, cls: 'bg-blue-100 text-blue-700' },
+            { label: 'Matric', value: summary.verify_matric, cls: 'bg-purple-100 text-purple-700' },
+            { label: 'OTPs', value: summary.send_otp, cls: 'bg-amber-100 text-amber-700' },
+            { label: 'Verified', value: summary.verify_otp, cls: 'bg-emerald-100 text-emerald-700' },
+            { label: 'Accredited', value: summary.accredit, cls: 'bg-primary/10 text-primary' },
+            { label: 'Voted', value: summary.vote_cast, cls: 'bg-emerald-100 text-emerald-700' },
+            { label: 'Flagged', value: summary.flagged, cls: 'bg-red-100 text-red-700' },
+          ].map((s) => (
+            <Card key={s.label}>
+              <CardContent className="p-3 text-center">
+                <div className={cn('mx-auto grid h-8 w-8 place-items-center rounded-full text-xs font-bold', s.cls)}>{s.value}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Filter */}
+      <div className="flex items-center gap-2">
+        <Select value={filter} onValueChange={(v) => { setFilter(v); setLoading(true) }}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Actions</SelectItem>
+            <SelectItem value="LOGIN">Logins</SelectItem>
+            <SelectItem value="VERIFY_MATRIC">Matric Verifications</SelectItem>
+            <SelectItem value="SEND_OTP">OTP Requests</SelectItem>
+            <SelectItem value="VERIFY_OTP">OTP Verifications</SelectItem>
+            <SelectItem value="ACCREDIT">Accreditations</SelectItem>
+            <SelectItem value="VOTE_CAST">Votes Cast</SelectItem>
+            <SelectItem value="FLAG">Flags</SelectItem>
+            <SelectItem value="OTP_RESEND_BY_ADMIN">Admin OTP Resends</SelectItem>
+          </SelectContent>
+        </Select>
+        <Badge className="afrivote-live-dot gap-1 bg-emerald-100 text-emerald-700"><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live</Badge>
+      </div>
+
+      {/* Activity feed */}
+      <Card><CardContent className="p-0">
+        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left">
+              <th className="p-3 font-medium">Time</th>
+              <th className="p-3 font-medium">Voter</th>
+              <th className="p-3 font-medium">Action</th>
+              <th className="hidden p-3 font-medium md:table-cell">IP / Device</th>
+              <th className="hidden p-3 font-medium sm:table-cell">By</th>
+            </tr></thead>
+            <tbody>
+              {loading && <tr><td colSpan={5} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
+              {!loading && logs.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No activity recorded yet.</td></tr>}
+              {logs.map((l) => (
+                <tr key={l.id} className="border-t border-border hover:bg-muted/30">
+                  <td className="p-3 font-mono text-xs text-muted-foreground">{new Date(l.createdAt).toLocaleTimeString()}</td>
+                  <td className="p-3">
+                    {l.voter ? (
+                      <div>
+                        <div className="font-medium">{l.voter.fullName}</div>
+                        <div className="font-mono text-xs text-muted-foreground">{l.voter.matric}</div>
+                        {l.voter.flagged && <Badge className="mt-0.5 bg-red-100 text-red-700 text-[9px]">Flagged</Badge>}
+                      </div>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="p-3">
+                    <span className="flex items-center gap-1.5 text-xs">
+                      {actionIcon(l.action)} {actionLabel(l.action)}
+                    </span>
+                  </td>
+                  <td className="hidden p-3 text-xs text-muted-foreground md:table-cell">{l.ipAddress || '—'} {l.deviceLabel && <span className="block text-[10px]">{l.deviceLabel.slice(0, 30)}</span>}</td>
+                  <td className="hidden p-3 text-xs text-muted-foreground sm:table-cell">{l.actionBy?.name || 'Voter'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent></Card>
+    </div>
   )
 }
 
@@ -735,6 +866,36 @@ function VotersTab({ role, official }: { role: string; official: any }) {
     try { await api.adminCreateVoter(form); setOpen(false); setForm({ level: '100' }); toast.success('Voter added'); load() } catch (e: any) { toast.error(e.message) }
   }
 
+  // Flag/unflag voter
+  const [flagVoter, setFlagVoter] = useState<any | null>(null)
+  const [flagOpen, setFlagOpen] = useState(false)
+  const [flagReason, setFlagReason] = useState('')
+  async function onFlag(v: any) {
+    if (v.flagged) {
+      // Unflag directly
+      try { await api.adminFlagVoter(v.id, false); toast.success('Voter unflagged'); load() } catch (e: any) { toast.error(e.message) }
+    } else {
+      setFlagVoter(v); setFlagReason(''); setFlagOpen(true)
+    }
+  }
+  async function submitFlag() {
+    if (!flagVoter) return
+    try { await api.adminFlagVoter(flagVoter.id, true, flagReason); toast.success('Voter flagged — their vote will not count'); setFlagOpen(false); load() } catch (e: any) { toast.error(e.message) }
+  }
+
+  // Resend OTP
+  const [otpVoter, setOtpVoter] = useState<any | null>(null)
+  const [otpOpen, setOtpOpen] = useState(false)
+  const [otpChannel, setOtpChannel] = useState('EMAIL')
+  const [otpResult, setOtpResult] = useState<any>(null)
+  async function onResendOtp(v: any) {
+    setOtpVoter(v); setOtpChannel('EMAIL'); setOtpResult(null); setOtpOpen(true)
+  }
+  async function submitResendOtp() {
+    if (!otpVoter) return
+    try { const d = await api.adminResendOtp(otpVoter.id, otpChannel); setOtpResult(d); toast.success('OTP resent') } catch (e: any) { toast.error(e.message) }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -754,16 +915,38 @@ function VotersTab({ role, official }: { role: string; official: any }) {
       <Card><CardContent className="p-0">
         <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Voter</th><th className="hidden p-3 font-medium md:table-cell">Faculty / Dept</th><th className="hidden p-3 font-medium sm:table-cell">Level</th><th className="p-3 font-medium">Status</th></tr></thead>
+            <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Voter</th><th className="hidden p-3 font-medium md:table-cell">Faculty / Dept</th><th className="hidden p-3 font-medium sm:table-cell">Level</th><th className="p-3 font-medium">Status</th><th className="p-3 text-right font-medium">Actions</th></tr></thead>
             <tbody>
-              {loading && <tr><td colSpan={4} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
-              {!loading && voters.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No voters found.</td></tr>}
+              {loading && <tr><td colSpan={5} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
+              {!loading && voters.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No voters found.</td></tr>}
               {voters.map((v) => (
-                <tr key={v.id} className="cursor-pointer border-t border-border hover:bg-muted/30" onClick={() => { setDetailVoter(v); setDetailOpen(true) }}>
-                  <td className="p-3"><div className="font-medium">{v.fullName}</div><div className="font-mono text-xs text-muted-foreground">{v.matric}</div></td>
+                <tr key={v.id} className={cn('cursor-pointer border-t border-border hover:bg-muted/30', v.flagged && 'bg-red-50 dark:bg-red-950/20')} onClick={() => { setDetailVoter(v); setDetailOpen(true) }}>
+                  <td className="p-3">
+                    <div className="flex items-center gap-1.5">
+                      {v.flagged && <Flag className="h-3.5 w-3.5 text-destructive" />}
+                      <div className="font-medium">{v.fullName}</div>
+                    </div>
+                    <div className="font-mono text-xs text-muted-foreground">{v.matric}</div>
+                  </td>
                   <td className="hidden p-3 text-xs md:table-cell"><div>{v.faculty?.name}</div><div className="text-muted-foreground">{v.department?.name}</div></td>
                   <td className="hidden p-3 sm:table-cell">{v.level}</td>
-                  <td className="p-3">{v.hasVoted ? <Badge className="bg-emerald-100 text-emerald-700">Voted {v.votedAt ? new Date(v.votedAt).toLocaleTimeString() : ''}</Badge> : <Badge variant="secondary">Pending</Badge>}</td>
+                  <td className="p-3">
+                    {v.flagged ? <Badge className="bg-red-100 text-red-700">Flagged</Badge> :
+                     v.hasVoted ? <Badge className="bg-emerald-100 text-emerald-700">Voted</Badge> :
+                     <Badge variant="secondary">Pending</Badge>}
+                  </td>
+                  <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      {!v.hasVoted && (
+                        <Button size="sm" variant="ghost" onClick={() => onResendOtp(v)} title="Resend OTP" className="h-7 gap-1 text-xs">
+                          <KeyRound className="h-3.5 w-3.5" /> OTP
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => onFlag(v)} title={v.flagged ? 'Unflag' : 'Flag voter'} className={cn('h-7 gap-1 text-xs', v.flagged ? 'text-emerald-600' : 'text-destructive')}>
+                        <Flag className="h-3.5 w-3.5" /> {v.flagged ? 'Unflag' : 'Flag'}
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -792,6 +975,60 @@ function VotersTab({ role, official }: { role: string; official: any }) {
       </Dialog>
       <VoterImportDialog open={importOpen} onOpenChange={setImportOpen} onDone={load} />
       <VoterDetailDrawer voter={detailVoter} open={detailOpen} onOpenChange={setDetailOpen} />
+
+      {/* Flag dialog */}
+      <Dialog open={flagOpen} onOpenChange={setFlagOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Flag className="h-5 w-5 text-destructive" /> Flag Voter</DialogTitle></DialogHeader>
+          {flagVoter && (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-destructive/5 p-3 text-sm">
+                <div className="font-medium">{flagVoter.fullName}</div>
+                <div className="font-mono text-xs text-muted-foreground">{flagVoter.matric}</div>
+                <p className="mt-2 text-xs text-destructive">Flagging this voter will prevent their vote from counting. This action is logged in the audit trail.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reason for flagging</Label>
+                <Textarea rows={3} value={flagReason} onChange={(e) => setFlagReason(e.target.value)} placeholder="e.g. Suspicious login from multiple devices, reported impersonation, etc." />
+              </div>
+            </div>
+          )}
+          <DialogFooter><Button variant="outline" onClick={() => setFlagOpen(false)}>Cancel</Button><Button onClick={submitFlag} className="gap-1.5 bg-destructive text-white hover:bg-destructive/90"><Flag className="h-4 w-4" /> Flag Voter</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resend OTP dialog */}
+      <Dialog open={otpOpen} onOpenChange={setOtpOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary" /> Resend OTP</DialogTitle></DialogHeader>
+          {otpVoter && (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                <div className="font-medium">{otpVoter.fullName}</div>
+                <div className="font-mono text-xs text-muted-foreground">{otpVoter.matric}</div>
+              </div>
+              {!otpResult ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Send via</Label>
+                    <Select value={otpChannel} onValueChange={setOtpChannel}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="EMAIL">Email</SelectItem><SelectItem value="SMS">SMS</SelectItem><SelectItem value="WHATSAPP">WhatsApp</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">This will generate a new OTP and send it to the voter's registered contact. The voter's account will also be unlocked if it was locked.</p>
+                </>
+              ) : (
+                <Alert><CheckCircle2 className="h-4 w-4" /><AlertTitle>OTP Sent</AlertTitle><AlertDescription>OTP resent via {otpResult.channel} to {otpResult.maskedDestination}.{otpResult.devOtp && <span className="mt-1 block font-mono text-xs">Dev: {otpResult.devOtp}</span>}</AlertDescription></Alert>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            {!otpResult ? <><Button variant="outline" onClick={() => setOtpOpen(false)}>Cancel</Button><Button onClick={submitResendOtp} className="gap-1.5"><KeyRound className="h-4 w-4" /> Send OTP</Button></> :
+            <Button onClick={() => setOtpOpen(false)}>Done</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

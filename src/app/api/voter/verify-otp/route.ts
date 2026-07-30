@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { randomToken } from '@/lib/crypto'
-import { json, errorJson, getElectionContext, getClientIp, writeAudit, recordSecurityEvent } from '@/lib/election'
+import { json, errorJson, getElectionContext, getClientIp, writeAudit, recordSecurityEvent, logVoterActivity } from '@/lib/election'
 import { deviceFromRequest } from '@/lib/device'
 
 export const dynamic = 'force-dynamic'
@@ -60,6 +60,12 @@ export async function POST(req: NextRequest) {
   await writeAudit({
     actorId: voter.id, actorRole: 'VOTER', actorName: voter.fullName,
     action: 'VOTER_VERIFIED', details: { matric, device: deviceInfo.label }, ip: getClientIp(req),
+  })
+  await logVoterActivity({
+    voterId: voter.id, action: 'VERIFY_OTP', details: { matric, device: deviceInfo.label }, ipAddress: getClientIp(req), deviceLabel: deviceInfo.label,
+  })
+  await logVoterActivity({
+    voterId: voter.id, action: 'LOGIN', details: { matric }, ipAddress: getClientIp(req), deviceLabel: deviceInfo.label,
   })
   return json({
     ok: true,

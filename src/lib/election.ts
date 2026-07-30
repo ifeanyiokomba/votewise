@@ -94,6 +94,33 @@ export async function verifyAuditChain(): Promise<{ intact: boolean; brokenAt?: 
 }
 
 // ---------------------------------------------------------------------------
+// Voter activity logging (tracks login/verify/accredit/vote — NOT vote choices)
+// ---------------------------------------------------------------------------
+export async function logVoterActivity(entry: {
+  voterId?: string
+  actionById?: string
+  action: string
+  details?: Record<string, unknown>
+  ipAddress?: string | null
+  deviceLabel?: string
+}): Promise<void> {
+  try {
+    await db.voterActivityLog.create({
+      data: {
+        voterId: entry.voterId || null,
+        actionById: entry.actionById || null,
+        action: entry.action,
+        details: entry.details ? JSON.stringify(entry.details) : null,
+        ipAddress: entry.ipAddress || null,
+        deviceLabel: entry.deviceLabel || null,
+      },
+    })
+  } catch (e) {
+    console.error('[activity] failed to log', e)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Security events
 // ---------------------------------------------------------------------------
 export async function recordSecurityEvent(entry: {
@@ -188,7 +215,8 @@ export async function computeAggregatedResults(force = false) {
   })
 
   const totalVoters = await db.voter.count({ where: sessionId ? { electionSessionId: sessionId } : {} })
-  const voted = await db.voter.count({ where: { ...(sessionId ? { electionSessionId: sessionId } : {}), hasVoted: true } })
+  // Exclude flagged voters from the "voted" count — their votes don't count.
+  const voted = await db.voter.count({ where: { ...(sessionId ? { electionSessionId: sessionId } : {}), hasVoted: true, flagged: false } })
   const turnoutPct = totalVoters > 0 ? Math.round((voted / totalVoters) * 1000) / 10 : 0
 
   const result = {

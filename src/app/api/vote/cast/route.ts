@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import {
-  json, errorJson, getElectionContext, isVotingOpen, getClientIp, writeAudit, recordSecurityEvent,
+  json, errorJson, getElectionContext, isVotingOpen, getClientIp, writeAudit, recordSecurityEvent, logVoterActivity,
 } from '@/lib/election'
 import { generateReceiptCode, hashVoter, encryptVote, sha256 } from '@/lib/crypto'
 import { RATE_LIMITS } from '@/lib/ratelimit'
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
   const voter = await db.voter.findUnique({ where: { sessionToken: token } })
   if (!voter || !voter.sessionExpiresAt || voter.sessionExpiresAt < new Date()) return errorJson('Voter session expired', 401)
   if (voter.hasVoted) return errorJson('You have already voted', 409)
+  if (voter.flagged) return errorJson('Your account has been flagged. Please contact the Electoral Committee.', 403)
 
   // Rate limit per voter.
   const rl = RATE_LIMITS.voteCast(voter.id)
@@ -146,6 +147,10 @@ export async function POST(req: NextRequest) {
     console.error('[vote/cast] transaction failed', e)
     return errorJson('Failed to cast vote. Please try again.', 500)
   }
+
+  await logVoterActivity({
+    voterId: voter.id, action: 'VOTE_CAST', details: { positions: receipts.length }, ipAddress: getClientIp(req), deviceLabel: req.headers.get('user-agent')?.slice(0, 60),
+  })
 
   return json({ ok: true, receipts, votedAt: new Date() })
 }

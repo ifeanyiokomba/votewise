@@ -1314,3 +1314,67 @@ Stage Summary:
   Observer has live vote feed. Voter has dashboard + compare. Dark mode works.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
   load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: USER-FEATURES-1
+Agent: Lead Developer (main)
+Task: Implement user-requested features — enhanced chat with photo/file/escalation, voter
+activity monitoring, voter flagging, admin OTP resend, conversation recording.
+
+Work Log:
+- **DB Schema:** Added `ChatMessage` model (threadId, sender VOTER/BOT/OFFICIAL, content,
+  attachments JSON, readAt). Added `VoterActivityLog` model (action, details, ipAddress,
+  deviceLabel — tracks LOGIN/VERIFY_MATRIC/SEND_OTP/VERIFY_OTP/ACCREDIT/VOTE_CAST/FLAG/UNFLAG/
+  OTP_RESEND_BY_ADMIN). Added `flagged`, `flaggedReason`, `flaggedById`, `flaggedAt` fields to
+  Voter model. Pushed to DB.
+- **Backend — Chat APIs:**
+  - `/api/chat/send` — voter sends message with optional attachments (photo/file as base64).
+    Stores message, generates bot reply via LLM, or escalates to human officer.
+  - `/api/chat/history` — fetch voter's conversation history.
+  - `/api/chat/conversations` — officials list all voter conversations (latest message per
+    thread, unread count) + reply to a voter conversation.
+- **Backend — Activity Logging:** Added `logVoterActivity()` helper. Wired into verify-matric
+  (VERIFY_MATRIC), send-otp (SEND_OTP), verify-otp (VERIFY_OTP + LOGIN), accredit (ACCREDIT),
+  vote-cast (VOTE_CAST). Does NOT log vote choices — only lifecycle events.
+  - `/api/admin/activity` — real-time activity feed with action filter + summary counts.
+- **Backend — Voter Management:**
+  - `/api/admin/voters/[id]/flag` — flag/unflag voter (flagged votes don't count in results).
+    Logs FLAG/UNFLAG activity + audit + security event.
+  - `/api/admin/voters/[id]/resend-otp` — admin triggers OTP resend (unlocks account too).
+    Logs OTP_RESEND_BY_ADMIN activity + audit.
+  - Updated `computeAggregatedResults` to exclude flagged voters from the voted count.
+  - Updated vote-cast to reject flagged voters (403).
+- **Frontend — Enhanced Chatbot Widget:** Complete rewrite with:
+  - Live photo capture (opens camera via getUserMedia, captures via canvas, attaches as JPEG)
+  - File upload (Paperclip button, accepts images/PDF/docs, base64 attachments, 2MB limit)
+  - Conversation history (loads from /api/chat/history for logged-in voters)
+  - "Talk to an Officer" escalation (marks thread for human response, polls for replies)
+  - Attachment preview bar (thumbnails before sending, remove button)
+  - Message rendering with sender icons (Bot/User/Officer) + attachment display
+  - Support ticket dialog (unchanged)
+- **Frontend — Admin Activity Tab:** New "Activity" tab in the dashboard showing:
+  - 7 summary cards (Logins, Matric, OTPs, Verified, Accredited, Voted, Flagged)
+  - Action filter dropdown (All/Login/Verify/OTP/Accredit/Vote/Flag/Admin OTP Resend)
+  - Real-time activity feed table (time, voter name+matric, action with icon, IP/device, actor)
+  - Auto-refreshes every 5 seconds
+  - Flagged voters shown with red badge in the feed
+- **Frontend — Voter Management with Flag/OTP:** Enhanced VotersTab:
+  - Flagged voters shown with red background + flag icon
+  - "Flag" button (opens dialog with reason textarea) / "Unflag" button (one-click)
+  - "OTP" button (opens dialog with channel selector + result confirmation)
+  - Status column shows "Flagged" / "Voted" / "Pending"
+  - Flag dialog warns that flagged votes won't count
+  - OTP resend dialog shows masked destination + dev OTP
+- **Bug Fix:** Prisma client was stale after schema change (flagged field unknown). Fixed by
+  clearing .next/cache + full server restart.
+- **Verification:** `bun run lint` → 0 errors. API tests: flag ✓, unflag ✓, resend OTP ✓.
+  agent-browser: chatbot has camera/attach/Talk-to-Officer buttons; admin Activity tab renders
+  with summary + filter; Voters tab shows Flag/OTP action buttons; flag dialog works.
+
+Stage Summary:
+- ✅ Enhanced chat with photo capture, file upload, conversation recording, human escalation.
+- ✅ Admin/observer voter activity monitoring (login/verify/accredit/vote — NOT vote choice).
+- ✅ Voter flagging (flagged votes don't count) with reason + audit trail.
+- ✅ Admin OTP resend with channel selection + account unlock.
+- ✅ Voter search by matric/name/email (existing) + flag/unflag/resend OTP actions.
+- **Current state:** All user-requested features implemented and verified.

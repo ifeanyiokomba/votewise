@@ -56,6 +56,10 @@ export const api = {
   // Support + chat
   submitTicket: (payload: any) => req('/api/support/ticket', { method: 'POST', body: JSON.stringify(payload) }),
   chat: (message: string, history: any[]) => req('/api/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+  chatSend: (payload: any) => req('/api/chat/send', { method: 'POST', body: JSON.stringify(payload) }, getVoterToken()),
+  chatHistory: () => req('/api/chat/history', {}, getVoterToken()),
+  chatConversations: () => req('/api/chat/conversations'),
+  chatReply: (threadId: string, message: string) => req('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ threadId, message }) }),
 
   // Auth (officials — cookie-based)
   login: (email: string, password: string, totp?: string) =>
@@ -79,6 +83,9 @@ export const api = {
   adminGetVoters: (params: string) => req(`/api/admin/voters?${params}`),
   adminCreateVoter: (data: any) => req('/api/admin/voters', { method: 'POST', body: JSON.stringify(data) }),
   adminGetVoter: (id: string) => req(`/api/admin/voters/${id}`),
+  adminFlagVoter: (id: string, flagged: boolean, reason?: string) => req(`/api/admin/voters/${id}/flag`, { method: 'POST', body: JSON.stringify({ flagged, reason }) }),
+  adminResendOtp: (id: string, channel?: string) => req(`/api/admin/voters/${id}/resend-otp`, { method: 'POST', body: JSON.stringify({ channel }) }),
+  adminGetActivity: (params = '') => req(`/api/admin/activity${params ? '?' + params : ''}`),
   adminImportVoters: (voters: any[]) => req('/api/admin/voters/import', { method: 'POST', body: JSON.stringify({ voters }) }),
   adminGetSettings: () => req('/api/admin/settings'),
   adminUpdateSettings: (data: any) => req('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
