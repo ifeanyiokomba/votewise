@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Vote, ArrowLeft, ArrowRight, CheckCircle2, Loader2, AlertCircle, Copy,
-  Trophy, Shield, BadgeCheck, MinusCircle, GraduationCap, Lock, Sparkles,
+  Trophy, Shield, BadgeCheck, MinusCircle, GraduationCap, Lock, Sparkles, Mail,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +19,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 export function VoteView() {
-  const { setView, voterToken, voterProfile, setVoterProfile, setVoterToken, lastReceipts, setLastReceipts } = useApp()
+  const { setView, voterToken, voterProfile, setVoterProfile, setVoterToken, lastReceipts, setLastReceipts, setReceiptChannel } = useApp()
   const [ballot, setBallot] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [selections, setSelections] = useState<Record<string, string>>({})
@@ -39,6 +39,7 @@ export function VoteView() {
     try {
       const d = await api.castVote(selections)
       setLastReceipts(d.receipts)
+      setReceiptChannel(d.receiptChannel || null)
       setVoterToken(null); setVoterProfile(null)
       setView('success')
       toast.success('Your vote has been cast and recorded!')
@@ -228,7 +229,8 @@ export function VoteView() {
 }
 
 export function SuccessView() {
-  const { setView, lastReceipts } = useApp()
+  const { setView, lastReceipts, receiptChannel } = useApp()
+  const channelLabel = receiptChannel === 'EMAIL' ? 'email' : receiptChannel === 'SMS' ? 'SMS' : receiptChannel === 'WHATSAPP' ? 'WhatsApp' : 'email'
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
       <Card className="afrivote-card-glow overflow-hidden">
@@ -240,6 +242,15 @@ export function SuccessView() {
           <p className="mt-2 text-primary-foreground/85">Your ballot has been securely cast and counted.</p>
         </div>
         <CardContent className="space-y-4 p-6">
+          {receiptChannel && (
+            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
+              <Mail className="h-4 w-4 text-blue-600" />
+              <AlertTitle className="text-blue-800 dark:text-blue-300">Receipt codes forwarded</AlertTitle>
+              <AlertDescription className="text-blue-700 dark:text-blue-400">
+                Your receipt codes have been sent to your registered {channelLabel}. Please check your {channelLabel} and save them for your records.
+              </AlertDescription>
+            </Alert>
+          )}
           <Alert>
             <BadgeCheck className="h-4 w-4" />
             <AlertTitle>Save your receipt codes</AlertTitle>

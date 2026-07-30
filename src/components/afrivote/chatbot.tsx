@@ -187,10 +187,10 @@ export function ChatbotWidget() {
 
   return (
     <>
-      {/* Floating button */}
-      <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
+      {/* Floating button — always visible, follows scroll, on all pages */}
+      <div className="fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-2 print:hidden">
         {!open && (
-          <Button onClick={() => setOpen(true)} size="lg" className="h-14 w-14 rounded-full shadow-lg gap-0 p-0">
+          <Button onClick={() => setOpen(true)} size="lg" className="h-14 w-14 rounded-full shadow-2xl gap-0 p-0 ring-2 ring-background">
             <MessageCircle className="h-6 w-6" />
             <span className="absolute -right-0.5 -top-0.5 grid h-5 w-5 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground ring-2 ring-background">AI</span>
           </Button>
@@ -199,7 +199,7 @@ export function ChatbotWidget() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-sm sm:max-w-md">
+        <div className="fixed bottom-5 right-5 z-[100] w-[calc(100vw-2.5rem)] max-w-sm sm:max-w-md print:hidden">
           <Card className="afrivote-card-glow flex h-[34rem] flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between bg-primary p-3 text-primary-foreground">

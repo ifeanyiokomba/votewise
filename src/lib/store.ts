@@ -55,6 +55,8 @@ interface AppState {
 
   lastReceipts: any[] | null
   setLastReceipts: (r: any[] | null) => void
+  receiptChannel: string | null
+  setReceiptChannel: (c: string | null) => void
 
   hydrate: () => void
 }
@@ -83,6 +85,8 @@ export const useApp = create<AppState>((set) => ({
 
   lastReceipts: null,
   setLastReceipts: (r) => set({ lastReceipts: r }),
+  receiptChannel: null,
+  setReceiptChannel: (c) => set({ receiptChannel: c }),
 
   hydrate: () => {
     set({

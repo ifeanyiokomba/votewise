@@ -152,5 +152,16 @@ export async function POST(req: NextRequest) {
     voterId: voter.id, action: 'VOTE_CAST', details: { positions: receipts.length }, ipAddress: getClientIp(req), deviceLabel: req.headers.get('user-agent')?.slice(0, 60),
   })
 
-  return json({ ok: true, receipts, votedAt: new Date() })
+  // Forward receipt codes to the voter via the same channel used for OTP verification.
+  // In sandbox: log to console. In production: dispatch to Resend (email) / Termii (SMS/WA).
+  const channel = voter.otpChannel || 'EMAIL'
+  const dest = channel === 'EMAIL' ? (voter.institutionEmail || voter.personalEmail) : voter.phone
+  const receiptList = receipts.map((r: any) => `${r.positionTitle}: ${r.receiptCode}`).join('\n')
+  const receiptMessage = `Dear ${voter.fullName}, your vote has been recorded and counted. Here are your receipt codes (save them to verify your vote later):\n\n${receiptList}\n\nYou can verify any of these codes on the AfriVote homepage. Your vote choice remains secret.`
+  console.log(`[RECEIPT FORWARD] ${channel} -> ${dest || voter.matric}:\n${receiptMessage}`)
+  // Enqueue async send (no-op transport in sandbox; production uses Resend/Termii)
+  const { enqueue } = await import('@/lib/jobs')
+  enqueue('receipt.forward', { channel, destination: dest, voterName: voter.fullName, receipts, message: receiptMessage })
+
+  return json({ ok: true, receipts, votedAt: new Date(), receiptChannel: channel, receiptForwarded: !!dest })
 }
