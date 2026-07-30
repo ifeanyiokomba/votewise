@@ -1,42 +1,60 @@
 import { NextRequest } from 'next/server'
-import { json, errorJson, getElectionContext, isVotingOpen, getClientIp, writeAudit } from '@/lib/election'
-import { generateReceiptCode, hashVoter } from '@/lib/crypto'
 import { db } from '@/lib/db'
+import {
+  json, errorJson, getElectionContext, isVotingOpen, getClientIp, writeAudit, recordSecurityEvent,
+} from '@/lib/election'
+import { generateReceiptCode, hashVoter, encryptVote, sha256 } from '@/lib/crypto'
+import { RATE_LIMITS } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
 // POST /api/vote/cast
-// Body: { selections: { [positionId]: candidateId | 'NOTA' } }
-// Atomic transaction: marks voter hasVoted, inserts vote rows (with receipt
-// codes), writes audit log. Returns ALL receipt codes so the voter can verify
-// their vote later. The vote rows do NOT reference the voter id — only an
-// opaque hash — so votes remain unlinkable.
+// Headers: x-voter-token (or x-session-token / Authorization)
+// Body: { selections: { [positionId]: candidateId | 'NOTA' }, idempotencyKey? }
+//
+// Atomic transaction:
+//  1. Re-fetch voter inside txn (race-safe hasVoted check).
+//  2. Validate each selection against eligible positions (scope).
+//  3. Encrypt each choice with AES-256-GCM.
+//  4. Insert EncryptedVote rows (unique idempotencyKey + receiptCode).
+//  5. Mark voter hasVoted, revoke session.
+//  6. Append hash-chained AuditLog.
 export async function POST(req: NextRequest) {
-  const token = req.headers.get('x-voter-token') || req.headers.get('x-session-token') || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+  const token =
+    req.headers.get('x-voter-token') ||
+    req.headers.get('x-session-token') ||
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (!token) return errorJson('No voter session', 401)
 
   const body = await req.json().catch(() => ({}))
   const selections: Record<string, string> = body.selections || {}
-  if (!selections || Object.keys(selections).length === 0) {
-    return errorJson('No selections provided', 400)
-  }
+  if (!selections || Object.keys(selections).length === 0) return errorJson('No selections provided', 400)
 
   const { election, settings } = await getElectionContext()
   if (!election) return errorJson('Election not configured', 503)
-  if (!isVotingOpen(election.status, election.startTime, election.endTime)) {
-    return errorJson('Voting is not open', 403)
-  }
+  if (!isVotingOpen(election.status, election.startTime, election.endTime)) return errorJson('Voting is not open', 403)
 
   const voter = await db.voter.findUnique({ where: { sessionToken: token } })
-  if (!voter || !voter.sessionExpiresAt || voter.sessionExpiresAt < new Date()) {
-    return errorJson('Voter session expired', 401)
-  }
+  if (!voter || !voter.sessionExpiresAt || voter.sessionExpiresAt < new Date()) return errorJson('Voter session expired', 401)
   if (voter.hasVoted) return errorJson('You have already voted', 409)
 
-  // Validate each selection against the voter's eligible positions.
+  // Rate limit per voter.
+  const rl = RATE_LIMITS.voteCast(voter.id)
+  if (!rl.allowed) return errorJson('Too many requests. Please wait a moment.', 429)
+
+  // Accreditation gate.
+  if (settings?.requireAccreditation) {
+    const acc = await db.accreditation.findUnique({
+      where: { voterId_electionSessionId: { voterId: voter.id, electionSessionId: election.id } },
+    })
+    if (!acc || acc.status !== 'APPROVED') return errorJson('You must complete accreditation before voting.', 403)
+  }
+
+  // Validate selections against eligible positions.
   const eligiblePositions = await db.position.findMany({
     where: {
       id: { in: Object.keys(selections) },
+      electionSessionId: election.id,
       OR: [
         { scope: 'UNIVERSITY' },
         { scope: 'FACULTY', facultyId: voter.facultyId },
@@ -45,19 +63,16 @@ export async function POST(req: NextRequest) {
     },
     include: { candidates: { where: { status: 'APPROVED' } } },
   })
-
   const eligibleIds = new Set(eligiblePositions.map((p) => p.id))
   for (const posId of Object.keys(selections)) {
     if (!eligibleIds.has(posId)) return errorJson(`Position ${posId} is not eligible for you`, 403)
   }
 
-  // Build vote rows.
   const voterHash = hashVoter(voter.matric)
   const receipts: { positionId: string; positionTitle: string; receiptCode: string }[] = []
 
   try {
     await db.$transaction(async (tx) => {
-      // Re-fetch the voter inside the transaction to double-check hasVoted (race-safe).
       const fresh = await tx.voter.findUnique({ where: { id: voter.id } })
       if (!fresh || fresh.hasVoted) throw new Error('ALREADY_VOTED')
 
@@ -72,14 +87,25 @@ export async function POST(req: NextRequest) {
         } else if (!(settings?.notaEnabled ?? true)) {
           throw new Error('NOTA is not enabled')
         }
+
+        // Encrypt the choice.
+        const blob = encryptVote({ candidateId, isNota })
         const receiptCode = generateReceiptCode()
-        await tx.vote.create({
+        const idempotencyKey = sha256(`${voter.id}|${election.id}|${pos.id}`)
+
+        await tx.encryptedVote.create({
           data: {
+            electionSessionId: election.id,
             voterHash,
-            candidateId,
             positionId: pos.id,
-            isNota,
+            // Pre-certify: leave candidateId/isNota null (encrypted only).
+            candidateId: null,
+            isNota: false,
+            ciphertext: blob.ciphertext,
+            iv: blob.iv,
+            keyId: blob.keyId,
             receiptCode,
+            idempotencyKey,
           },
         })
         receipts.push({ positionId: pos.id, positionTitle: pos.title, receiptCode })
@@ -88,29 +114,35 @@ export async function POST(req: NextRequest) {
       await tx.voter.update({
         where: { id: voter.id },
         data: {
-          hasVoted: true,
-          votedAt: new Date(),
-          sessionToken: null,
-          sessionExpiresAt: null,
-          otpCode: null,
-          otpExpiresAt: null,
+          hasVoted: true, votedAt: new Date(),
+          sessionToken: null, sessionExpiresAt: null, sessionDeviceId: null,
+          otpCode: null, otpExpiresAt: null,
         },
       })
 
+      // Hash-chained audit log (computed inside the txn for ordering).
+      const last = await tx.auditLog.findFirst({ orderBy: { createdAt: 'desc' } })
+      const { computeAuditHash, AUDIT_GENESIS, randomToken } = await import('@/lib/crypto')
+      const prevHash = last?.hash || AUDIT_GENESIS
+      const createdAt = new Date()
+      const nonce = randomToken(8)
+      const detailsStr = JSON.stringify({ positions: receipts.map((r) => r.positionId), count: receipts.length })
+      const hash = computeAuditHash({ prevHash, actorId: voter.id, action: 'VOTE_CAST', details: detailsStr, createdAt, nonce })
       await tx.auditLog.create({
         data: {
-          electionId: 'default',
-          actorId: voter.id,
-          actorRole: 'VOTER',
-          actorName: voter.fullName,
-          action: 'VOTE_CAST',
-          details: JSON.stringify({ positions: receipts.map((r) => r.positionId), count: receipts.length }),
-          ip: getClientIp(req),
+          electionId: election.id, actorId: voter.id, actorRole: 'VOTER', actorName: voter.fullName,
+          action: 'VOTE_CAST', details: detailsStr, ip: getClientIp(req),
+          prevHash, hash, nonce, createdAt,
         },
       })
     })
   } catch (e: any) {
     if (e?.message === 'ALREADY_VOTED') return errorJson('You have already voted', 409)
+    // Unique constraint on idempotencyKey → replay attempt.
+    if (e?.code === 'P2002') {
+      await recordSecurityEvent({ severity: 'HIGH', category: 'SUSPICIOUS', actorId: voter.id, ipAddress: getClientIp(req), message: `Replay attempt (idempotencyKey collision) for voter ${voter.matric}` })
+      return errorJson('Duplicate vote attempt detected and blocked.', 409)
+    }
     console.error('[vote/cast] transaction failed', e)
     return errorJson('Failed to cast vote. Please try again.', 500)
   }

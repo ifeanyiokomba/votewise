@@ -1,5 +1,6 @@
-// AfriVote SUG — Federal University Students' Union Government Voting System
-// Prisma schema. SQLite datasource.
+// AfriVote SUG v2 — Enterprise Prisma schema.
+// Normalized, indexed, constraint-rich. SQLite in sandbox; swap `provider` to
+// `postgresql` + `DATABASE_URL` for production (no other changes needed).
 
 generator client {
   provider = "prisma-client-js"
@@ -11,37 +12,53 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Election configuration (singleton row, id = "default")
+// Election configuration
 // ---------------------------------------------------------------------------
-model Election {
-  id              String   @id @default("default")
-  name            String   @default("SUG General Elections 2025")
+model ElectionSession {
+  id              String   @id @default(cuid())
+  name            String   // e.g. "SUG General Elections 2024/2025"
   university      String   @default("Federal University of Lagos")
-  academicSession String   @default("2024/2025")
+  academicSession String   // e.g. "2024/2025"
   startTime       DateTime
   endTime         DateTime
-  status          String   @default("setup") // setup | published | open | closed | certified
+  accreditationStart DateTime?
+  accreditationEnd   DateTime?
+  status          String   @default("DRAFT") // DRAFT|PUBLISHED|ACCREDITATION|VOTING|CLOSED|CERTIFIED
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  resultSnapshots ResultSnapshot[]
+  voters          Voter[]
+  votes           EncryptedVote[]
+  positions       Position[]
+  candidates      Candidate[]
+  accreditations  Accreditation[]
   auditLogs       AuditLog[]
+  resultSnapshots ResultSnapshot[]
+  notifications   Notification[]
+
+  @@index([status])
 }
 
 model ElectionSetting {
-  id                  String   @id @default("default")
-  publicLiveResults   Boolean  @default(true)
-  showTurnout         Boolean  @default(true)
-  requireOtp          Boolean  @default(true)
-  otpTtlSeconds       Int      @default(600)
-  ballotRandomization Boolean  @default(true)
-  notaEnabled         Boolean  @default(true)
-  maxOtpAttempts      Int      @default(5)
-  updatedAt           DateTime @updatedAt
+  id                       String   @id @default("default")
+  electionSessionId        String?
+  publicLiveResults        Boolean  @default(true)
+  showTurnout              Boolean  @default(true)
+  requireOtp               Boolean  @default(true)
+  requireAccreditation     Boolean  @default(true)
+  otpTtlSeconds            Int      @default(600)
+  ballotRandomization      Boolean  @default(true)
+  notaEnabled              Boolean  @default(true)
+  maxOtpAttempts           Int      @default(5)
+  singleDeviceEnforcement  Boolean  @default(false)
+  sessionTtlMinutes        Int      @default(30)
+  accessTtlMinutes         Int      @default(15)
+  refreshTtlDays           Int      @default(7)
+  updatedAt                DateTime @updatedAt
 }
 
 // ---------------------------------------------------------------------------
-// Academic structure & constituencies
+// Academic structure (normalized lookups)
 // ---------------------------------------------------------------------------
 model Faculty {
   id        String       @id @default(cuid())
@@ -49,9 +66,11 @@ model Faculty {
   code      String       @unique
   createdAt DateTime     @default(now())
   departments Department[]
-  voters    Voter[]
-  candidates Candidate[]
-  positions Position[]   @relation("FacultyPosition")
+  programmes  Programme[]
+  voters      Voter[]
+  candidates  Candidate[]
+  positions   Position[]      @relation("FacultyPosition")
+  officials   ElectionOfficial[]
 }
 
 model Department {
@@ -61,9 +80,45 @@ model Department {
   facultyId String
   faculty   Faculty      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   createdAt DateTime     @default(now())
+  programmes Programme[]
   voters    Voter[]
   candidates Candidate[]
   positions Position[]   @relation("DepartmentPosition")
+  officials ElectionOfficial[]
+}
+
+model Programme {
+  id           String   @id @default(cuid())
+  name         String
+  code         String   @unique
+  facultyId    String
+  faculty      Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  durationYears Int     @default(4)
+  createdAt    DateTime @default(now())
+  voters       Voter[]
+}
+
+model Level {
+  id    String @id @default(cuid())
+  code  String @unique // 100, 200, 300, 400, 500, 600
+  name  String
+  order Int
+}
+
+// ---------------------------------------------------------------------------
+// Political parties (optional — many SUG elections are non-partisan)
+// ---------------------------------------------------------------------------
+model PoliticalParty {
+  id          String      @id @default(cuid())
+  name        String
+  acronym     String      @unique
+  colour      String?
+  logoUrl     String?
+  manifesto   String?
+  createdAt   DateTime    @default(now())
+  candidates  Candidate[]
 }
 
 // ---------------------------------------------------------------------------
@@ -71,163 +126,355 @@ model Department {
 // ---------------------------------------------------------------------------
 model Position {
   id            String      @id @default(cuid())
+  electionSessionId String?
+  electionSession ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
   title         String
   slug          String      @unique
   description   String?
-  scope         String      // UNIVERSITY | FACULTY | DEPARTMENT
+  scope         String      // UNIVERSITY|FACULTY|DEPARTMENT
   order         Int         @default(0)
   facultyId     String?
   faculty       Faculty?    @relation("FacultyPosition", fields: [facultyId], references: [id], onDelete: Cascade)
   departmentId  String?
   department    Department? @relation("DepartmentPosition", fields: [departmentId], references: [id], onDelete: Cascade)
   candidates    Candidate[]
-  votes         Vote[]
+  votes         EncryptedVote[]
   createdAt     DateTime    @default(now())
+
+  @@index([electionSessionId])
 }
 
 model Candidate {
-  id            String      @id @default(cuid())
-  fullName      String
-  slug          String      @unique
-  positionId    String
-  position      Position    @relation(fields: [positionId], references: [id], onDelete: Cascade)
-  facultyId     String?
-  faculty       Faculty?    @relation(fields: [facultyId], references: [id])
-  departmentId  String?
-  department    Department? @relation(fields: [departmentId], references: [id])
-  level         String?
-  slogan        String?
-  manifesto     String?
-  photoUrl      String?
-  status        String      @default("APPROVED") // APPROVED | DISQUALIFIED | WITHDRAWN
-  displayOrder  Int         @default(0)
-  votes         Vote[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  electionSessionId String?
+  electionSession  ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
+  fullName         String
+  slug             String      @unique
+  positionId       String
+  position         Position    @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  facultyId        String?
+  faculty          Faculty?    @relation(fields: [facultyId], references: [id])
+  departmentId     String?
+  department       Department? @relation(fields: [departmentId], references: [id])
+  programmeId      String?
+  level            String?
+  politicalPartyId String?
+  politicalParty   PoliticalParty? @relation(fields: [politicalPartyId], references: [id])
+  slogan           String?
+  manifesto        String?
+  campaignVideoUrl String?
+  photoUrl         String?
+  screeningStatus  String      @default("PENDING") // PENDING|APPROVED|DISQUALIFIED|WITHDRAWN
+  screeningNotes   String?
+  screenedById     String?
+  screenedAt       DateTime?
+  cgpa             Float?
+  status           String      @default("APPROVED") // APPROVED|DISQUALIFIED|WITHDRAWN (runtime eligibility)
+  displayOrder     Int         @default(0)
+  votes            EncryptedVote[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([positionId])
+  @@index([screeningStatus])
 }
 
 // ---------------------------------------------------------------------------
-// Voters & sessions (identity is verified by matric + OTP)
+// Voters (students on the register)
 // ---------------------------------------------------------------------------
 model Voter {
   id                String       @id @default(cuid())
+  electionSessionId String?
+  electionSession   ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
   matric            String       @unique
   fullName          String
-  email             String?
+  institutionEmail  String?
+  personalEmail     String?
   phone             String?
   facultyId         String
   faculty           Faculty      @relation(fields: [facultyId], references: [id])
   departmentId      String
   department        Department   @relation(fields: [departmentId], references: [id])
+  programmeId       String?
+  programme         Programme?   @relation(fields: [programmeId], references: [id])
   level             String
-  hasVoted          Boolean      @default(false)
-  votedAt           DateTime?
+
+  // Verification + email verification
+  emailVerified     Boolean      @default(false)
+  emailVerifyToken  String?
+
   // OTP state
   otpCode           String?
   otpExpiresAt      DateTime?
   otpAttempts       Int          @default(0)
-  otpChannel        String?      // EMAIL | SMS | WHATSAPP
+  otpChannel        String?      // EMAIL|SMS|WHATSAPP
   otpIssuedAt       DateTime?
-  // Session state (a verified voter gets a session token to cast a vote)
+
+  // Session state
   sessionToken      String?      @unique
   sessionExpiresAt  DateTime?
+  sessionDeviceId   String?      // bound device for this session
   verifiedAt        DateTime?
+
+  // Voting state
+  hasVoted          Boolean      @default(false)
+  votedAt           DateTime?
+
+  // Lockout (voter-side, for OTP brute force)
+  lockedUntil       DateTime?
+  failedOtpAttempts Int          @default(0)
+
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+
+  accreditations    Accreditation[]
   supportTickets    SupportTicket[]
+  devices           Device[]
+  sessions          Session[]
+  notifications     Notification[]
+
+  @@index([electionSessionId])
+  @@index([facultyId])
+  @@index([hasVoted])
 }
 
 // ---------------------------------------------------------------------------
-// Votes — receipt-anchored but unlinkable.
-// We store voterId as an opaque hash (not the FK) so the vote cannot be
-// traced back to a specific voter row. The receiptCode is the only handle
-// the voter holds to prove their vote was counted.
+// Accreditation (pre-voting clearance, mirrors Nigerian campus practice)
 // ---------------------------------------------------------------------------
-model Vote {
-  id           String   @id @default(cuid())
-  voterHash    String   // sha256(matric + salt), opaque
-  candidateId  String?
-  candidate    Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
-  positionId   String
-  position     Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
-  isNota       Boolean  @default(false) // true if "None of the above" was selected
-  receiptCode  String   @unique
-  createdAt    DateTime @default(now())
+model Accreditation {
+  id                String   @id @default(cuid())
+  electionSessionId String?
+  electionSession   ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
+  voterId           String
+  voter             Voter    @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  status            String   @default("APPROVED") // PENDING|APPROVED|REJECTED
+  channel           String   @default("MATRIC")   // MATRIC|BIOMETRIC|PORTAL|QR
+  deviceFingerprint String?
+  ipAddress         String?
+  accreditedAt      DateTime @default(now())
+  notes             String?
+
+  @@unique([voterId, electionSessionId])
+  @@index([electionSessionId])
+}
+
+// ---------------------------------------------------------------------------
+// Encrypted votes — ballot secrecy at rest
+// The plaintext choice is NEVER stored. Only the encrypted ciphertext + the
+// opaque voterHash + the receiptCode (returned to the voter) are persisted.
+// ---------------------------------------------------------------------------
+model EncryptedVote {
+  id                String   @id @default(cuid())
+  electionSessionId String?
+  electionSession   ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
+  voterHash         String   // sha256(matric + pepper), opaque, not a FK
+  positionId        String
+  position          Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  candidateId       String?  // stored encrypted in `ciphertext`; this nullable
+                             // field is ONLY populated AFTER certification for
+                             // the public results snapshot, never before.
+  candidate         Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  isNota            Boolean  @default(false) // also encrypted in ciphertext; mirrored here only post-certify
+  ciphertext        String   // AES-256-GCM of JSON {candidateId, isNota}
+  iv                String   // base64 IV
+  keyId             String   // which envelope key was used (for rotation)
+  receiptCode       String   @unique
+  idempotencyKey    String   @unique // sha256(voterId + electionSessionId + positionId)
+  createdAt         DateTime @default(now())
 
   @@index([positionId])
-  @@index([candidateId])
+  @@index([electionSessionId])
+  @@index([voterHash])
 }
 
 // ---------------------------------------------------------------------------
-// Admins & Observers (credential auth)
+// Election officials (RBAC) — replaces flat Admin/Observer
 // ---------------------------------------------------------------------------
-model Admin {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         String   @default("ADMIN") // SUPER_ADMIN | ADMIN
-  createdAt    DateTime @default(now())
-  certifiedBy  ResultSnapshot[]
-}
+model ElectionOfficial {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String
+  role            String   // SUPER_ADMIN|ELECTORAL_COMMITTEE|FACULTY_OFFICER|DEPARTMENT_OFFICER|OBSERVER
+  scopeFacultyId  String?
+  scopeFaculty    Faculty? @relation(fields: [scopeFacultyId], references: [id])
+  scopeDepartmentId String?
+  scopeDepartment Department? @relation(fields: [scopeDepartmentId], references: [id])
+  organization    String?
+  passwordHash    String
+  // 2FA
+  totpSecret      String?
+  totpEnabled     Boolean  @default(false)
+  backupCodes     String?  // JSON array of hashed codes
+  // Email verification + lockout
+  emailVerified   Boolean  @default(false)
+  emailVerifyToken String?
+  passwordResetToken String?
+  passwordResetExpiresAt DateTime?
+  failedAttempts  Int      @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-model Observer {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  organization String?
-  passwordHash String
-  createdAt    DateTime @default(now())
+  devices         Device[]
+  sessions        Session[]
+  refreshTokens   RefreshToken[]
   ticketsResolved SupportTicket[]
+  certifiedBy     ResultSnapshot[]
+
+  @@index([role])
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  voterId     String?
+  voter       Voter?   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  officialId  String?
+  official    ElectionOfficial? @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  fingerprint String   // sha256(UA + screen + tz + salt)
+  label       String?  // human-friendly, e.g. "Chrome on Android"
+  userAgent   String?
+  ipAddress   String?
+  firstSeen   DateTime @default(now())
+  lastSeen    DateTime @default(now())
+  trusted     Boolean  @default(false)
+
+  @@unique([voterId, fingerprint])
+  @@unique([officialId, fingerprint])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  voterId     String?
+  voter       Voter?   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  officialId  String?
+  official    ElectionOfficial? @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  deviceId    String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  lastSeenAt  DateTime @default(now())
+
+  @@index([voterId])
+  @@index([officialId])
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  officialId  String
+  official    ElectionOfficial @relation(fields: [officialId], references: [id], onDelete: Cascade)
+  tokenHash   String   @unique // sha256 of the refresh token
+  family      String   // token family id (for theft detection)
+  deviceId    String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  revokedAt   DateTime? // set on rotation or revocation
+
+  @@index([officialId])
+  @@index([family])
 }
 
 // ---------------------------------------------------------------------------
-// Audit & support
+// Audit log — hash-chained (tamper-evident)
 // ---------------------------------------------------------------------------
 model AuditLog {
-  id         String    @id @default(cuid())
-  electionId String?
-  election   Election? @relation(fields: [electionId], references: [id])
-  actorId    String
-  actorRole  String    // SUPER_ADMIN | ADMIN | OBSERVER | SYSTEM
-  actorName  String
-  action     String
-  details    String?   // JSON string
-  ip         String?
-  createdAt  DateTime  @default(now())
+  id           String    @id @default(cuid())
+  electionId   String?
+  election     ElectionSession? @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  actorId      String
+  actorRole    String    // SUPER_ADMIN|ELECTORAL_COMMITTEE|FACULTY_OFFICER|DEPARTMENT_OFFICER|OBSERVER|VOTER|SYSTEM
+  actorName    String
+  action       String
+  details      String?   // JSON string
+  ip           String?
+  prevHash     String    // hash of the previous row (genesis = "GENESIS")
+  hash         String    // sha256(prevHash + actorId + action + details + createdAt + nonce)
+  nonce        String
+  createdAt    DateTime  @default(now())
 
   @@index([actorId])
   @@index([createdAt])
+  @@index([action])
 }
 
+// ---------------------------------------------------------------------------
+// Security events (separate from audit — for alerting/anomaly detection)
+// ---------------------------------------------------------------------------
+model SecurityEvent {
+  id         String   @id @default(cuid())
+  severity   String   // LOW|MEDIUM|HIGH|CRITICAL
+  category   String   // AUTH_FAILURE|OTP_BURST|DEVICE_CHANGE|RATE_LIMIT|AUDIT_TAMPER|SUSPICIOUS
+  actorId    String?
+  actorEmail String?
+  ipAddress  String?
+  message    String
+  details    String?  // JSON
+  resolved   Boolean  @default(false)
+  resolvedById String?
+  resolvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([severity])
+  @@index([category])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Support tickets & notifications
+// ---------------------------------------------------------------------------
 model SupportTicket {
   id           String    @id @default(cuid())
   voterId      String?
   voter        Voter?    @relation(fields: [voterId], references: [id], onDelete: SetNull)
   voterMatric  String
   voterName    String
-  issueType    String    // OTP_NOT_RECEIVED | CANNOT_LOGIN | VERIFICATION_FAILED | OTHER
+  issueType    String
   description  String
-  status       String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CLOSED
-  priority     String    @default("NORMAL") // LOW | NORMAL | HIGH
+  status       String    @default("OPEN")
+  priority     String    @default("NORMAL")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   resolvedAt   DateTime?
   resolvedById String?
-  resolvedBy   Observer? @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedBy   ElectionOfficial? @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
   resolution   String?
 
   @@index([status])
 }
 
+model Notification {
+  id        String   @id @default(cuid())
+  electionSessionId String?
+  electionSession ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
+  voterId   String?
+  voter     Voter?   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  officialId String?
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO|SUCCESS|WARNING|SECURITY
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([voterId])
+  @@index([officialId])
+}
+
+// ---------------------------------------------------------------------------
+// Certified result snapshots (HMAC-signed, tamper-evident)
+// ---------------------------------------------------------------------------
 model ResultSnapshot {
-  id           String   @id @default(cuid())
-  electionId   String
-  election     Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
-  snapshot     String   // JSON string of all results at certification time
-  totalVotes   Int
-  turnoutPct   Float
+  id            String   @id @default(cuid())
+  electionId    String
+  election      ElectionSession @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  snapshot      String   // JSON of all results at certification
+  signature     String   // HMAC-SHA256(snapshot + secret)
+  totalVotes    Int
+  turnoutPct    Float
   certifiedById String?
-  certifiedBy   Admin?   @relation(fields: [certifiedById], references: [id], onDelete: SetNull)
+  certifiedBy   ElectionOfficial? @relation(fields: [certifiedById], references: [id], onDelete: SetNull)
   certifiedAt   DateTime @default(now())
 }

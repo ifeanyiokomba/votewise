@@ -1,13 +1,12 @@
 import { NextRequest } from 'next/server'
-import { json, errorJson, getClientIp, writeAudit } from '@/lib/election'
-import { requireAdmin } from '@/lib/guards'
 import { db } from '@/lib/db'
+import { json, errorJson, getClientIp, writeAudit } from '@/lib/election'
+import { requireOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/admin/positions
 export async function GET(req: NextRequest) {
-  const auth = await requireAdmin(req)
+  const auth = await requireOfficial(req, 'election.manage')
   if (auth instanceof Response) return auth
   const positions = await db.position.findMany({
     orderBy: { order: 'asc' },
@@ -16,17 +15,23 @@ export async function GET(req: NextRequest) {
   return json({ positions })
 }
 
-// POST /api/admin/positions
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin(req)
+  const auth = await requireOfficial(req, 'election.manage')
   if (auth instanceof Response) return auth
   const body = await req.json().catch(() => ({}))
   const { title, scope, description, facultyId, departmentId, order } = body
   if (!title || !scope) return errorJson('title and scope are required', 400)
   const slug = String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).slice(2, 5)
+  const election = await db.electionSession.findFirst({ orderBy: { createdAt: 'desc' } })
   const position = await db.position.create({
-    data: { title, slug, scope, description: description || null, facultyId: scope === 'FACULTY' ? facultyId : null, departmentId: scope === 'DEPARTMENT' ? departmentId : null, order: typeof order === 'number' ? order : 0 },
+    data: {
+      title, slug, scope, description: description || null,
+      electionSessionId: election?.id || null,
+      facultyId: scope === 'FACULTY' ? facultyId : null,
+      departmentId: scope === 'DEPARTMENT' ? departmentId : null,
+      order: typeof order === 'number' ? order : 0,
+    },
   })
-  await writeAudit({ actorId: auth.admin!.id, actorRole: auth.admin!.role, actorName: auth.admin!.name, action: 'POSITION_CREATE', details: { positionId: position.id, title }, ip: getClientIp(req) })
+  await writeAudit({ actorId: (auth as any).official.id, actorRole: (auth as any).official.role, actorName: (auth as any).official.name, action: 'POSITION_CREATE', details: { positionId: position.id, title }, ip: getClientIp(req) })
   return json({ ok: true, position })
 }

@@ -1,28 +1,35 @@
 import { NextRequest } from 'next/server'
-import { computeAggregatedResults, getElectionContext, computeLiveStatus, json } from '@/lib/election'
+import { db } from '@/lib/db'
+import { getElectionContext, computeLiveStatus, json, errorJson } from '@/lib/election'
+import { requireOfficial } from '@/lib/guards'
+import { writeAudit, getClientIp } from '@/lib/election'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/election — public election metadata + settings (no live counts).
-export async function GET(req: NextRequest) {
+// GET /api/election — public election metadata + settings.
+export async function GET() {
   const { election, settings } = await getElectionContext()
   if (!election) return json({ error: 'Election not configured' }, 404)
-  const liveStatus = computeLiveStatus(election.status, election.startTime, election.endTime)
   return json({
+    id: election.id,
     name: election.name,
     university: election.university,
     academicSession: election.academicSession,
     status: election.status,
-    liveStatus,
+    liveStatus: computeLiveStatus(election.status, election.startTime, election.endTime),
     startTime: election.startTime,
     endTime: election.endTime,
+    accreditationStart: election.accreditationStart,
+    accreditationEnd: election.accreditationEnd,
     settings: settings
       ? {
           publicLiveResults: settings.publicLiveResults,
           showTurnout: settings.showTurnout,
           requireOtp: settings.requireOtp,
+          requireAccreditation: settings.requireAccreditation,
           ballotRandomization: settings.ballotRandomization,
           notaEnabled: settings.notaEnabled,
+          singleDeviceEnforcement: settings.singleDeviceEnforcement,
           otpTtlSeconds: settings.otpTtlSeconds,
         }
       : null,
@@ -30,29 +37,26 @@ export async function GET(req: NextRequest) {
   })
 }
 
-// PUT /api/election — admin updates election meta (name, university, times).
+// PUT /api/election — admin updates election meta.
 export async function PUT(req: NextRequest) {
-  const { requireAdmin } = await import('@/lib/guards')
-  const auth = await requireAdmin(req)
+  const auth = await requireOfficial(req, 'election.manage')
   if (auth instanceof Response) return auth
   const body = await req.json().catch(() => ({}))
-  const { name, university, academicSession, startTime, endTime } = body
+  const { name, university, academicSession, startTime, endTime, accreditationStart, accreditationEnd } = body
   const data: Record<string, unknown> = {}
   if (typeof name === 'string') data.name = name
   if (typeof university === 'string') data.university = university
   if (typeof academicSession === 'string') data.academicSession = academicSession
   if (startTime) data.startTime = new Date(startTime)
   if (endTime) data.endTime = new Date(endTime)
-  const { db } = await import('@/lib/db')
-  const updated = await db.election.update({ where: { id: 'default' }, data })
-  const { writeAudit, getClientIp } = await import('@/lib/election')
-  await writeAudit({
-    actorId: auth.admin!.id,
-    actorRole: auth.admin!.role,
-    actorName: auth.admin!.name,
-    action: 'ELECTION_UPDATE',
-    details: data,
-    ip: getClientIp(req),
-  })
+  if (accreditationStart) data.accreditationStart = new Date(accreditationStart)
+  if (accreditationEnd) data.accreditationEnd = new Date(accreditationEnd)
+  const updated = await db.electionSession.update({ where: { id: (auth as any).official ? await currentElectionId() : 'default' } as any, data })
+  await writeAudit({ actorId: (auth as any).official.id, actorRole: (auth as any).official.role, actorName: (auth as any).official.name, action: 'ELECTION_UPDATE', details: data, ip: getClientIp(req) })
   return json({ ok: true, election: updated })
+}
+
+async function currentElectionId() {
+  const e = await db.electionSession.findFirst({ orderBy: { createdAt: 'desc' } })
+  return e?.id || 'default'
 }

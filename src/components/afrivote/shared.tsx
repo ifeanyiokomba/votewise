@@ -37,7 +37,7 @@ const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
 ]
 
 export function NavBar() {
-  const { view, setView, admin, observer, voterProfile, setAdminToken, setAdmin, setObserverToken, setObserver } = useApp()
+  const { view, setView, official, voterProfile } = useApp()
   const [open, setOpen] = useState(false)
 
   function scrollTo(id: string) {
@@ -48,13 +48,6 @@ export function NavBar() {
     } else {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     }
-  }
-
-  function logoutAdmin() {
-    setAdminToken(null); setAdmin(null); setView('home')
-  }
-  function logoutObserver() {
-    setObserverToken(null); setObserver(null); setView('home')
   }
 
   return (
@@ -83,24 +76,14 @@ export function NavBar() {
               <BadgeCheck className="h-4 w-4" /> Continue Voting
             </Button>
           )}
-          {!admin && !observer && (
-            <Button variant="outline" size="sm" onClick={() => setView('admin-login')} className="gap-1.5">
-              <Lock className="h-4 w-4" /> Admin
+          {!official && (
+            <Button variant="outline" size="sm" onClick={() => setView('official-login')} className="gap-1.5">
+              <Lock className="h-4 w-4" /> Official Portal
             </Button>
           )}
-          {!admin && !observer && (
-            <Button variant="ghost" size="sm" onClick={() => setView('observer-login')} className="gap-1.5">
-              <Eye className="h-4 w-4" /> Observer
-            </Button>
-          )}
-          {admin && (
-            <Button variant="outline" size="sm" onClick={() => setView('admin')} className="gap-1.5">
-              <BarChart3 className="h-4 w-4" /> Admin Dashboard
-            </Button>
-          )}
-          {observer && (
-            <Button variant="outline" size="sm" onClick={() => setView('observer')} className="gap-1.5">
-              <Eye className="h-4 w-4" /> Observer Desk
+          {official && (
+            <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5">
+              <BarChart3 className="h-4 w-4" /> {official.role.split('_').map((w: string) => w[0] + w.slice(1).toLowerCase()).join(' ')} Dashboard
             </Button>
           )}
         </div>
@@ -129,24 +112,14 @@ export function NavBar() {
                 <BadgeCheck className="h-4 w-4" /> Continue Voting
               </Button>
             )}
-            {!admin && !observer && (
-              <>
-                <Button variant="outline" size="sm" onClick={() => { setView('admin-login'); setOpen(false) }} className="gap-1.5">
-                  <Lock className="h-4 w-4" /> Admin Login
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => { setView('observer-login'); setOpen(false) }} className="gap-1.5">
-                  <Eye className="h-4 w-4" /> Observer Login
-                </Button>
-              </>
-            )}
-            {admin && (
-              <Button variant="outline" size="sm" onClick={() => { setView('admin'); setOpen(false) }} className="gap-1.5">
-                <BarChart3 className="h-4 w-4" /> Admin Dashboard
+            {!official && (
+              <Button variant="outline" size="sm" onClick={() => { setView('official-login'); setOpen(false) }} className="gap-1.5">
+                <Lock className="h-4 w-4" /> Official Portal
               </Button>
             )}
-            {observer && (
-              <Button variant="outline" size="sm" onClick={() => { setView('observer'); setOpen(false) }} className="gap-1.5">
-                <Eye className="h-4 w-4" /> Observer Desk
+            {official && (
+              <Button variant="outline" size="sm" onClick={() => { setView('official'); setOpen(false) }} className="gap-1.5">
+                <BarChart3 className="h-4 w-4" /> Dashboard
               </Button>
             )}
           </div>

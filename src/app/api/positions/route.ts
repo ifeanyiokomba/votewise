@@ -1,9 +1,8 @@
-import { json } from '@/lib/election'
 import { db } from '@/lib/db'
+import { json } from '@/lib/election'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/positions — public list of positions + approved candidates (manifesto info).
 export async function GET() {
   const positions = await db.position.findMany({
     orderBy: { order: 'asc' },
@@ -12,15 +11,9 @@ export async function GET() {
         where: { status: 'APPROVED' },
         orderBy: { displayOrder: 'asc' },
         select: {
-          id: true,
-          fullName: true,
-          slug: true,
-          photoUrl: true,
-          slogan: true,
-          manifesto: true,
-          level: true,
-          facultyId: true,
-          departmentId: true,
+          id: true, fullName: true, slug: true, photoUrl: true, slogan: true,
+          manifesto: true, campaignVideoUrl: true, level: true, facultyId: true, departmentId: true,
+          politicalParty: { select: { id: true, name: true, acronym: true, colour: true } },
         },
       },
       faculty: { select: { id: true, name: true, code: true } },

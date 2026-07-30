@@ -7,65 +7,48 @@ import { NavBar, Footer } from '@/components/afrivote/shared'
 import { HomeView } from '@/components/afrivote/home'
 import { VerifyView } from '@/components/afrivote/verify'
 import { VoteView, SuccessView, ReceiptVerifyView } from '@/components/afrivote/vote'
-import { AdminLoginView, AdminDashboard } from '@/components/afrivote/admin'
-import { ObserverLoginView, ObserverDashboard } from '@/components/afrivote/observer'
+import { OfficialLoginView, OfficialDashboard } from '@/components/afrivote/official'
+import { ObserverAnalyticsView } from '@/components/afrivote/observer-analytics'
 import { ChatbotWidget } from '@/components/afrivote/chatbot'
+import { api } from '@/lib/api'
 
 export default function Home() {
-  const { view, hydrate, voterToken, adminToken, observerToken, setVoterProfile, setAdmin, setObserver, election, settings } = useApp()
+  const { view, hydrate, voterToken, official, setVoterProfile, setOfficial, setLive } = useApp()
 
-  // Hydrate tokens from localStorage on mount.
   useEffect(() => { hydrate() }, [hydrate])
-
-  // Connect to the live-results WebSocket once + REST fallback so the UI always
-  // has data even if the socket takes a moment to (re)connect.
   useEffect(() => {
     getResultsSocket()
-    import('@/lib/api').then(({ api }) => {
-      api.getResults().then((d) => { if (!d.hidden) useApp.getState().setLive(d) }).catch(() => {})
-    })
-  }, [])
+    api.getResults().then((d) => { if (!d.hidden) setLive(d) }).catch(() => {})
+  }, [setLive])
 
-  // If we have a voter token, validate the session & load profile.
+  // Validate voter session if a token exists.
   useEffect(() => {
     if (!voterToken) return
-    import('@/lib/api').then(({ api }) => {
-      api.getVoterSession().then((d) => { if (d.valid) setVoterProfile(d.voter) }).catch(() => {})
-    })
+    api.getVoterSession().then((d) => { if (d.valid) setVoterProfile(d.voter) }).catch(() => {})
   }, [voterToken, setVoterProfile])
 
-  // Validate admin token.
+  // Validate official session (cookie-based) on mount.
   useEffect(() => {
-    if (!adminToken) return
-    import('@/lib/api').then(({ api }) => {
-      api.adminSession().then((d) => { if (d.valid) setAdmin(d.admin) }).catch(() => {})
-    })
-  }, [adminToken, setAdmin])
+    api.me().then((d) => { if (d.valid) setOfficial(d.official) }).catch(() => {})
+  }, [setOfficial])
 
-  // Validate observer token.
-  useEffect(() => {
-    if (!observerToken) return
-    import('@/lib/api').then(({ api }) => {
-      api.observerSession().then((d) => { if (d.valid) setObserver(d.observer) }).catch(() => {})
-    })
-  }, [observerToken, setObserver])
-
-  // Scroll to top on view change.
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, [view])
+
+  const v = view === 'admin-login' || view === 'observer-login' ? 'official-login'
+    : view === 'admin' || view === 'observer' ? 'official'
+    : view
 
   return (
     <div className="flex min-h-screen flex-col">
       <NavBar />
       <main className="flex-1">
-        {view === 'home' && <HomeView />}
-        {view === 'verify' && <VerifyView />}
-        {view === 'vote' && <VoteView />}
-        {view === 'success' && <SuccessView />}
-        {view === 'verify-receipt' && <ReceiptVerifyView />}
-        {view === 'admin-login' && <AdminLoginView />}
-        {view === 'admin' && <AdminDashboard />}
-        {view === 'observer-login' && <ObserverLoginView />}
-        {view === 'observer' && <ObserverDashboard />}
+        {v === 'home' && <HomeView />}
+        {v === 'verify' && <VerifyView />}
+        {v === 'vote' && <VoteView />}
+        {v === 'success' && <SuccessView />}
+        {v === 'verify-receipt' && <ReceiptVerifyView />}
+        {v === 'official-login' && <OfficialLoginView />}
+        {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
       </main>
       <Footer />
       <ChatbotWidget />

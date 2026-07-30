@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server'
-import { json } from '@/lib/election'
-import { requireAdmin } from '@/lib/guards'
 import { db } from '@/lib/db'
+import { json, getClientIp, writeAudit } from '@/lib/election'
+import { requireOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/admin/audit-logs — paginated, newest first.
+// GET /api/admin/audit-logs
 export async function GET(req: NextRequest) {
-  const auth = await requireAdmin(req)
+  const auth = await requireOfficial(req, 'audit.view')
   if (auth instanceof Response) return auth
   const { searchParams } = new URL(req.url)
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))

@@ -1,58 +1,96 @@
-// Signed token (HMAC) sessions for admin & observer. Stateless, DB-free.
-import { createHmac, timingSafeEqual } from 'crypto'
+// AfriVote SUG v2 — JWT access + refresh token auth with HttpOnly cookies.
+// Stateless access token (15 min) + rotating refresh token (7 days, family-tracked).
+// Tokens NEVER touch JavaScript (HttpOnly cookies) → XSS cannot steal them.
 
-const SECRET = process.env.SESSION_SECRET || 'afrivote-sug-session-secret-dev-only'
+import { SignJWT, jwtVerify } from 'jose'
+import { cookies } from 'next/headers'
+import { NextRequest } from 'next/server'
+import { randomToken, sha256 } from '@/lib/crypto'
 
-export interface SessionPayload {
-  sub: string // user id
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'OBSERVER'
+const ACCESS_SECRET = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET || 'afrivote-access-secret-dev-only-32bytes!!'.slice(0, 32))
+const REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || 'afrivote-refresh-secret-dev-only-32byte!'.slice(0, 32))
+
+export const ACCESS_COOKIE = 'afrivote_access'
+export const REFRESH_COOKIE = 'afrivote_refresh'
+
+export interface AccessPayload {
+  sub: string        // official id
+  role: string       // SUPER_ADMIN|ELECTORAL_COMMITTEE|FACULTY_OFFICER|DEPARTMENT_OFFICER|OBSERVER
   name: string
   email: string
+  scopeFacultyId?: string | null
+  scopeDepartmentId?: string | null
+  type: 'access'
   iat: number
   exp: number
 }
 
-export function signToken(payload: Omit<SessionPayload, 'iat' | 'exp'>, ttlSeconds = 60 * 60 * 12): string {
-  const iat = Math.floor(Date.now() / 1000)
-  const exp = iat + ttlSeconds
-  const body: SessionPayload = { ...payload, iat, exp }
-  const data = Buffer.from(JSON.stringify(body)).toString('base64url')
-  const sig = createHmac('sha256', SECRET).update(data).digest('base64url')
-  return `${data}.${sig}`
+export async function signAccessToken(payload: Omit<AccessPayload, 'type' | 'iat' | 'exp'>, ttlMinutes = 15): Promise<string> {
+  return new SignJWT({ ...payload, type: 'access' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(`${ttlMinutes}m`)
+    .setSubject(payload.sub)
+    .sign(ACCESS_SECRET)
 }
 
-export function verifyToken(token: string | undefined | null): SessionPayload | null {
+export async function verifyAccessToken(token: string | undefined | null): Promise<AccessPayload | null> {
   if (!token) return null
-  const parts = token.split('.')
-  if (parts.length !== 2) return null
-  const [data, sig] = parts
-  const expected = createHmac('sha256', SECRET).update(data).digest('base64url')
   try {
-    const a = Buffer.from(sig)
-    const b = Buffer.from(expected)
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return null
-    const payload = JSON.parse(Buffer.from(data, 'base64url').toString()) as SessionPayload
-    if (payload.exp * 1000 < Date.now()) return null
-    return payload
+    const { payload } = await jwtVerify(token, ACCESS_SECRET)
+    if (payload.type !== 'access') return null
+    return payload as unknown as AccessPayload
   } catch {
     return null
   }
 }
 
-// Read token from request headers (Authorization: Bearer ... or x-session-token).
-export function readTokenFromHeaders(headers: Headers): string | null {
-  const auth = headers.get('authorization')
-  if (auth?.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim()
-  const x = headers.get('x-session-token')
-  if (x) return x
-  return null
+// Refresh tokens are opaque random strings; we store their HASH in the DB.
+export function newRefreshToken(): { token: string; tokenHash: string; family: string } {
+  const token = randomToken(40)
+  const family = randomToken(16)
+  return { token, tokenHash: sha256(token), family }
 }
 
-// Cookie helper — also accept session via cookie.
-export function readTokenFromRequest(req: Request): string | null {
-  const fromHeader = readTokenFromHeaders(req.headers)
-  if (fromHeader) return fromHeader
-  const cookie = req.headers.get('cookie') || ''
-  const match = cookie.match(/(?:^|;\s*)afrivote-session=([^;]+)/)
-  return match ? match[1] : null
+export function hashRefreshToken(token: string): string {
+  return sha256(token)
+}
+
+export async function verifyRefreshToken(token: string | undefined | null): Promise<{ tokenHash: string } | null> {
+  if (!token) return null
+  return { tokenHash: hashRefreshToken(token) }
+}
+
+// ---------------------------------------------------------------------------
+// Cookie helpers (server-side)
+// ---------------------------------------------------------------------------
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+}
+
+export async function setAuthCookies(accessToken: string, refreshToken: string, accessTtlMin = 15, refreshTtlDays = 7) {
+  const c = await cookies()
+  c.set(ACCESS_COOKIE, accessToken, { ...COOKIE_OPTS, maxAge: accessTtlMin * 60 })
+  c.set(REFRESH_COOKIE, refreshToken, { ...COOKIE_OPTS, maxAge: refreshTtlDays * 24 * 60 * 60 })
+}
+
+export async function clearAuthCookies() {
+  const c = await cookies()
+  c.delete(ACCESS_COOKIE)
+  c.delete(REFRESH_COOKIE)
+}
+
+export function readAccessCookie(req: NextRequest): string | null {
+  return req.cookies.get(ACCESS_COOKIE)?.value || null
+}
+export function readRefreshCookie(req: NextRequest): string | null {
+  return req.cookies.get(REFRESH_COOKIE)?.value || null
+}
+
+// For non-browser clients (e.g. tests), also accept Authorization header.
+export function readAccessToken(req: NextRequest): string | null {
+  return readAccessCookie(req) || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || null
 }
