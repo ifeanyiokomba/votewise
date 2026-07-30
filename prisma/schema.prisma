@@ -1,0 +1,233 @@
+// AfriVote SUG — Federal University Students' Union Government Voting System
+// Prisma schema. SQLite datasource.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Election configuration (singleton row, id = "default")
+// ---------------------------------------------------------------------------
+model Election {
+  id              String   @id @default("default")
+  name            String   @default("SUG General Elections 2025")
+  university      String   @default("Federal University of Lagos")
+  academicSession String   @default("2024/2025")
+  startTime       DateTime
+  endTime         DateTime
+  status          String   @default("setup") // setup | published | open | closed | certified
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  resultSnapshots ResultSnapshot[]
+  auditLogs       AuditLog[]
+}
+
+model ElectionSetting {
+  id                  String   @id @default("default")
+  publicLiveResults   Boolean  @default(true)
+  showTurnout         Boolean  @default(true)
+  requireOtp          Boolean  @default(true)
+  otpTtlSeconds       Int      @default(600)
+  ballotRandomization Boolean  @default(true)
+  notaEnabled         Boolean  @default(true)
+  maxOtpAttempts      Int      @default(5)
+  updatedAt           DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Academic structure & constituencies
+// ---------------------------------------------------------------------------
+model Faculty {
+  id        String       @id @default(cuid())
+  name      String
+  code      String       @unique
+  createdAt DateTime     @default(now())
+  departments Department[]
+  voters    Voter[]
+  candidates Candidate[]
+  positions Position[]   @relation("FacultyPosition")
+}
+
+model Department {
+  id        String       @id @default(cuid())
+  name      String
+  code      String       @unique
+  facultyId String
+  faculty   Faculty      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  voters    Voter[]
+  candidates Candidate[]
+  positions Position[]   @relation("DepartmentPosition")
+}
+
+// ---------------------------------------------------------------------------
+// Positions & Candidates
+// ---------------------------------------------------------------------------
+model Position {
+  id            String      @id @default(cuid())
+  title         String
+  slug          String      @unique
+  description   String?
+  scope         String      // UNIVERSITY | FACULTY | DEPARTMENT
+  order         Int         @default(0)
+  facultyId     String?
+  faculty       Faculty?    @relation("FacultyPosition", fields: [facultyId], references: [id], onDelete: Cascade)
+  departmentId  String?
+  department    Department? @relation("DepartmentPosition", fields: [departmentId], references: [id], onDelete: Cascade)
+  candidates    Candidate[]
+  votes         Vote[]
+  createdAt     DateTime    @default(now())
+}
+
+model Candidate {
+  id            String      @id @default(cuid())
+  fullName      String
+  slug          String      @unique
+  positionId    String
+  position      Position    @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  facultyId     String?
+  faculty       Faculty?    @relation(fields: [facultyId], references: [id])
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  level         String?
+  slogan        String?
+  manifesto     String?
+  photoUrl      String?
+  status        String      @default("APPROVED") // APPROVED | DISQUALIFIED | WITHDRAWN
+  displayOrder  Int         @default(0)
+  votes         Vote[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Voters & sessions (identity is verified by matric + OTP)
+// ---------------------------------------------------------------------------
+model Voter {
+  id                String       @id @default(cuid())
+  matric            String       @unique
+  fullName          String
+  email             String?
+  phone             String?
+  facultyId         String
+  faculty           Faculty      @relation(fields: [facultyId], references: [id])
+  departmentId      String
+  department        Department   @relation(fields: [departmentId], references: [id])
+  level             String
+  hasVoted          Boolean      @default(false)
+  votedAt           DateTime?
+  // OTP state
+  otpCode           String?
+  otpExpiresAt      DateTime?
+  otpAttempts       Int          @default(0)
+  otpChannel        String?      // EMAIL | SMS | WHATSAPP
+  otpIssuedAt       DateTime?
+  // Session state (a verified voter gets a session token to cast a vote)
+  sessionToken      String?      @unique
+  sessionExpiresAt  DateTime?
+  verifiedAt        DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  supportTickets    SupportTicket[]
+}
+
+// ---------------------------------------------------------------------------
+// Votes — receipt-anchored but unlinkable.
+// We store voterId as an opaque hash (not the FK) so the vote cannot be
+// traced back to a specific voter row. The receiptCode is the only handle
+// the voter holds to prove their vote was counted.
+// ---------------------------------------------------------------------------
+model Vote {
+  id           String   @id @default(cuid())
+  voterHash    String   // sha256(matric + salt), opaque
+  candidateId  String?
+  candidate    Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  positionId   String
+  position     Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  isNota       Boolean  @default(false) // true if "None of the above" was selected
+  receiptCode  String   @unique
+  createdAt    DateTime @default(now())
+
+  @@index([positionId])
+  @@index([candidateId])
+}
+
+// ---------------------------------------------------------------------------
+// Admins & Observers (credential auth)
+// ---------------------------------------------------------------------------
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("ADMIN") // SUPER_ADMIN | ADMIN
+  createdAt    DateTime @default(now())
+  certifiedBy  ResultSnapshot[]
+}
+
+model Observer {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  organization String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  ticketsResolved SupportTicket[]
+}
+
+// ---------------------------------------------------------------------------
+// Audit & support
+// ---------------------------------------------------------------------------
+model AuditLog {
+  id         String    @id @default(cuid())
+  electionId String?
+  election   Election? @relation(fields: [electionId], references: [id])
+  actorId    String
+  actorRole  String    // SUPER_ADMIN | ADMIN | OBSERVER | SYSTEM
+  actorName  String
+  action     String
+  details    String?   // JSON string
+  ip         String?
+  createdAt  DateTime  @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model SupportTicket {
+  id           String    @id @default(cuid())
+  voterId      String?
+  voter        Voter?    @relation(fields: [voterId], references: [id], onDelete: SetNull)
+  voterMatric  String
+  voterName    String
+  issueType    String    // OTP_NOT_RECEIVED | CANNOT_LOGIN | VERIFICATION_FAILED | OTHER
+  description  String
+  status       String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CLOSED
+  priority     String    @default("NORMAL") // LOW | NORMAL | HIGH
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   Observer? @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolution   String?
+
+  @@index([status])
+}
+
+model ResultSnapshot {
+  id           String   @id @default(cuid())
+  electionId   String
+  election     Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  snapshot     String   // JSON string of all results at certification time
+  totalVotes   Int
+  turnoutPct   Float
+  certifiedById String?
+  certifiedBy   Admin?   @relation(fields: [certifiedById], references: [id], onDelete: SetNull)
+  certifiedAt   DateTime @default(now())
+}
