@@ -50,5 +50,33 @@ test
 prompt
 
 server.log
+results-service.log
+
 # Skills directory
 /skills/
+
+# Database (SQLite)
+db/*.db
+db/*.db-journal
+
+# Agent context
+/agent-ctx/
+
+# Uploads
+/upload/
+
+# Download
+/download/
+
+# Tests
+/tests/
+
+# Screenshots
+screenshot-*.png
+
+# Z-AI config
+.z-ai-config
+.zscripts/
+
+# Modified marker
+.modified
