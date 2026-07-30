@@ -1221,3 +1221,48 @@ Stage Summary:
   turnout map + timetable + candidates + guide + certificate + FAQ. Dark mode works.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
   load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: CRON-QA-9
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, observer live vote feed, vote share donut chart.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-8 complete). Services running. Ran agent-browser
+  QA — home (hero, results, faculty turnout, timetable, candidates, guide, certificate),
+  admin dashboard (system health, turnout chart, voter drawer), all functional. No bugs found.
+  Platform stable.
+- **Feature: Observer Live Vote Feed** — Created `/api/vote-feed` public endpoint returning the
+  last 30 votes with position titles. Created `LiveVoteFeed` component
+  (`src/components/afrivote/live-vote-feed.tsx`): a real-time streaming feed showing:
+  - Each vote as a card with vote icon, "Vote cast" label, position title, and time-ago
+  - New votes highlighted with primary border + fade-in/slide-in animation (2s highlight)
+  - Auto-refreshes every 3 seconds
+  - Scrollable list (max-h-80) with custom scrollbar
+  - "X recent" badge with live dot indicator
+  - Empty state when no votes cast
+  Added "Vote Feed" tab to the observer analytics dashboard. Added `getVoteFeed` to API client.
+- **Feature: Vote Share Donut Chart** — Created `VoteShareDonut` component
+  (`src/components/afrivote/donut.tsx`): an SVG donut chart showing vote share between
+  candidates for a position:
+  - Multi-coloured segments (6 distinct oklch colours) proportional to vote counts
+  - Center label showing total votes
+  - Legend with colour dots, candidate names, and percentages
+  - Smooth transition animations on segment growth
+  - Only renders when there are votes AND multiple candidates (avoids clutter for uncontested)
+  Added to the live results panel below the candidate list (before NOTA). Used an immutable
+  reduce-based approach for cumulative offset calculation (to satisfy eslint immutability rule).
+- **Verification:** `bun run lint` → 0 errors. agent-browser: donut chart renders on results
+  (3 segments for President with 3 candidates); observer vote feed tab present; mobile
+  responsive; sticky footer; zero console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 2 new features (observer live vote feed, vote share donut chart).
+- **Current state:** Platform is feature-rich and polished. All 5 roles work. Observers now
+  have a live vote feed stream. Results show donut charts for vote share. Home has animated
+  hero + live results (with donuts + crown badges) + faculty turnout map + timetable +
+  candidates + guide + certificate + FAQ. Admin has system health + voter detail drawer +
+  broadcast + charts + CSV upload. Dark mode works.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
+  load testing, PostgreSQL migration, Docker/Nginx CI/CD.

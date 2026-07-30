@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Eye, Loader2, Users, CheckCircle2, Clock, Search, Ticket,
-  TrendingUp, Building2, GraduationCap, Download, LogOut, BarChart3,
+  TrendingUp, Building2, GraduationCap, Download, LogOut, BarChart3, Activity,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +15,7 @@ import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { TurnoutRing, StatusBadge } from '@/components/afrivote/shared'
 import { LiveResultsPanel } from '@/components/afrivote/live-results'
+import { LiveVoteFeed } from '@/components/afrivote/live-vote-feed'
 import { cn } from '@/lib/utils'
 
 export function ObserverAnalyticsView() {
@@ -38,11 +39,13 @@ export function ObserverAnalyticsView() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="afrivote-scroll mb-6 flex w-full max-w-full overflow-x-auto">
           <TabsTrigger value="analytics" className="gap-1.5"><TrendingUp className="h-4 w-4" /> Live Analytics</TabsTrigger>
+          <TabsTrigger value="feed" className="gap-1.5"><Activity className="h-4 w-4" /> Vote Feed</TabsTrigger>
           <TabsTrigger value="results" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Results</TabsTrigger>
           <TabsTrigger value="voters" className="gap-1.5"><Users className="h-4 w-4" /> Voter Search</TabsTrigger>
           <TabsTrigger value="tickets" className="gap-1.5"><Ticket className="h-4 w-4" /> Support Tickets</TabsTrigger>
         </TabsList>
         <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
+        <TabsContent value="feed"><LiveVoteFeed /></TabsContent>
         <TabsContent value="results"><LiveResultsPanel /></TabsContent>
         <TabsContent value="voters"><VoterSearchTab /></TabsContent>
         <TabsContent value="tickets"><TicketsTab /></TabsContent>

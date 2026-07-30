@@ -37,6 +37,7 @@ export const api = {
   getCandidates: () => req('/api/candidates'),
   getFaculties: () => req('/api/faculties'),
   getTurnout: () => req('/api/turnout'),
+  getVoteFeed: () => req('/api/vote-feed'),
 
   // Voter
   verifyMatric: (matric: string) => req('/api/voter/verify-matric', { method: 'POST', body: JSON.stringify({ matric }) }),

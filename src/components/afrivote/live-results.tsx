@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { TurnoutRing } from '@/components/afrivote/shared'
+import { VoteShareDonut } from '@/components/afrivote/donut'
 import { Users, CheckCircle2, Trophy, MinusCircle, Crown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -131,6 +132,12 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
                     <MinusCircle className="h-4 w-4 text-muted-foreground" />
                     <span className="flex-1 text-xs text-muted-foreground">None of the Above (NOTA)</span>
                     <span className="font-mono text-xs font-semibold">{p.notaVotes} <span className="text-muted-foreground">({p.totalVotes > 0 ? Math.round((p.notaVotes / p.totalVotes) * 1000) / 10 : 0}%)</span></span>
+                  </div>
+                )}
+                {/* Vote share donut (only when there are votes) */}
+                {p.totalVotes > 0 && p.candidates.length > 1 && (
+                  <div className="border-t border-border/60 pt-3">
+                    <VoteShareDonut candidates={p.candidates} size={100} />
                   </div>
                 )}
               </CardContent>
