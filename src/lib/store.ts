@@ -11,6 +11,7 @@ export type View =
   | 'verify-receipt'
   | 'voter-dashboard'
   | 'compare'
+  | 'certificate'
   | 'official-login'
   | 'official'
   // Legacy aliases kept for nav compatibility

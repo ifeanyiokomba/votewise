@@ -5,7 +5,7 @@ import Image from 'next/image'
 import {
   Shield, KeyRound, BadgeCheck, Vote, Users, Eye, Lock, FileCheck2,
   CheckCircle2, ArrowRight, ScrollText, Building2, GraduationCap, Clock, Calendar,
-  FileText, Play,
+  FileText, Play, Award,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,7 +44,12 @@ export function HomeView() {
     <div className="flex flex-col">
       {/* HERO */}
       <section className="afrivote-hero-bg relative overflow-hidden border-b border-border/60">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-2 md:py-16">
+        {/* Animated background orbs */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+          <div className="afrivote-orb absolute -left-20 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="afrivote-orb afrivote-orb-delay absolute -right-20 top-20 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+        </div>
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-2 md:py-16">
           <div className="flex flex-col justify-center">
             <Badge variant="secondary" className="mb-4 w-fit gap-1.5">
               <span className="afrivote-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
@@ -258,23 +263,34 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* VERIFY RECEIPT CTA */}
+      {/* VERIFY RECEIPT + CERTIFICATE CTA */}
       <section id="receipt" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
-        <Card className="afrivote-card-glow overflow-hidden">
-          <CardContent className="grid gap-6 p-8 md:grid-cols-[1fr_auto] md:items-center">
-            <div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="afrivote-card-glow overflow-hidden">
+            <CardContent className="p-6">
               <Badge variant="secondary" className="mb-2 gap-1"><BadgeCheck className="h-3.5 w-3.5" /> Voter-verifiable</Badge>
-              <h3 className="font-display text-2xl font-bold">Already voted? Verify your receipt.</h3>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              <h3 className="font-display text-xl font-bold">Verify Your Receipt</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
                 Enter the receipt code you received after voting to confirm your ballot was recorded and counted.
-                Your choice remains secret — this only proves the vote exists.
               </p>
-            </div>
-            <Button size="lg" variant="outline" onClick={() => setView('verify-receipt')} className="gap-2">
-              <BadgeCheck className="h-5 w-5" /> Verify My Vote
-            </Button>
-          </CardContent>
-        </Card>
+              <Button size="sm" variant="outline" onClick={() => setView('verify-receipt')} className="mt-4 gap-1.5">
+                <BadgeCheck className="h-4 w-4" /> Verify My Vote
+              </Button>
+            </CardContent>
+          </Card>
+          <Card className="afrivote-card-glow overflow-hidden">
+            <CardContent className="p-6">
+              <Badge variant="secondary" className="mb-2 gap-1"><Award className="h-3.5 w-3.5" /> Certified</Badge>
+              <h3 className="font-display text-xl font-bold">Official Results Certificate</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                View the cryptographically signed, printable certificate of certified election results.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setView('certificate')} className="mt-4 gap-1.5">
+                <Award className="h-4 w-4" /> View Certificate
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       {/* FAQ */}

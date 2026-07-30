@@ -1037,3 +1037,54 @@ Stage Summary:
   Footer shows security guarantees. Dark mode works. Scroll animations work.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, accessibility
   audit, load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: CRON-QA-5
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, public results certificate page, accessibility improvements,
+hero animated background, receipt/certificate section redesign.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-4 complete). Services running. Ran agent-browser
+  QA — home (hero stats, timetable, FAQ, candidates, compare view), admin dashboard (turnout
+  chart, broadcast), all functional. No bugs found. Platform stable.
+- **Feature: Public Results Certificate Page** — Created `CertificateView` component
+  (`src/components/afrivote/certificate.tsx`): a printable, shareable page showing certified
+  election results with:
+  - Certificate header with award icon, election name, university, session
+  - Certification info (certified by, certified at)
+  - HMAC-SHA256 signature verification (green alert if valid, red if tampered)
+  - Turnout summary (registered, votes cast, turnout %)
+  - Per-position results with winner highlighted (trophy + green badge) + all candidates ranked
+  - Cryptographic signature footer with snapshot ID
+  - Print button (triggers browser print with print CSS that hides nav/footer)
+  - Share button (Web Share API or clipboard fallback)
+  Created `/api/results/certificate` endpoint that fetches the latest ResultSnapshot, verifies
+  its HMAC signature, and returns the full certified results. Added `getCertificate` to API client.
+  Wired `certificate` view into store + page.tsx router.
+- **Feature: Accessibility Improvements** — Added skip-to-content link (`.skip-link` CSS class
+  that's invisible until focused, allows keyboard users to skip the nav). Added `id="main-content"`
+  target on the main element. Added `aria-hidden="true"` on decorative hero orbs. Added print
+  styles in globals.css (`@media print` hides header/footer/chatbot, removes shadows).
+- **Styling: Hero Animated Background** — Added two animated gradient orbs (blurred circles)
+  to the hero section that drift slowly using a 12s `afrivote-orb` keyframe animation. One
+  primary-coloured, one accent-coloured, with a 6s delay offset for organic movement.
+  Added `afrivote-orb` and `afrivote-orb-delay` CSS classes.
+- **Styling: Receipt + Certificate Section Redesign** — Replaced the single receipt CTA card
+  with a 2-column grid: "Verify Your Receipt" card + "Official Results Certificate" card.
+  Each has a badge, title, description, and action button.
+- **Verification:** `bun run lint` → 0 errors. agent-browser: certificate view renders ("Not
+  Yet Certified" since election is voting); receipt+certificate section shows 2 cards; skip
+  link present; hero orbs animate; mobile responsive; sticky footer; zero console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 2 new features (public results certificate page, accessibility skip-to-content).
+- ✅ Styling improved (hero animated orbs, receipt+certificate 2-column section, print styles).
+- **Current state:** Platform is feature-rich and polished. All 5 roles work. Voters have a
+  personalized dashboard + can compare candidates. Admins can upload CSV + broadcast + see
+  charts. Public can view certified results with cryptographic verification. Home has FAQ +
+  timetable + live results + hero stats + animated background. Accessibility improved with
+  skip-to-content link. Dark mode works. Print styles work for certificate.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, accessibility
+  audit (WCAG), load testing, PostgreSQL migration, Docker/Nginx CI/CD.

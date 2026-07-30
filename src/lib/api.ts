@@ -97,4 +97,7 @@ export const api = {
 
   // Results export (officials)
   exportResults: (format: 'csv' | 'json') => `/api/results/export?format=${format}`,
+
+  // Public certificate
+  getCertificate: () => req('/api/results/certificate'),
 }

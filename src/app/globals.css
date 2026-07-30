@@ -174,3 +174,40 @@
 .afrivote-bar-anim {
   animation: afrivote-bar 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Hero animated gradient orbs */
+@keyframes afrivote-orb {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+.afrivote-orb {
+  animation: afrivote-orb 12s ease-in-out infinite;
+}
+.afrivote-orb-delay {
+  animation-delay: -6s;
+}
+
+/* Print styles for certificate */
+@media print {
+  header, footer, .print\:hidden { display: none !important; }
+  main { padding: 0 !important; }
+  body { background: white !important; }
+  .afrivote-card-glow { box-shadow: none !important; border: 1px solid #ccc !important; }
+}
+
+/* Skip-to-content link for accessibility */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+}
+.skip-link:focus {
+  left: 0;
+}

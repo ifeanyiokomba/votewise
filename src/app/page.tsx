@@ -9,6 +9,7 @@ import { VerifyView } from '@/components/afrivote/verify'
 import { VoteView, SuccessView, ReceiptVerifyView } from '@/components/afrivote/vote'
 import { VoterDashboard } from '@/components/afrivote/voter-dashboard'
 import { CompareCandidatesView } from '@/components/afrivote/compare'
+import { CertificateView } from '@/components/afrivote/certificate'
 import { OfficialLoginView, OfficialDashboard } from '@/components/afrivote/official'
 import { ObserverAnalyticsView } from '@/components/afrivote/observer-analytics'
 import { ChatbotWidget } from '@/components/afrivote/chatbot'
@@ -42,8 +43,9 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <a href="#main-content" className="skip-link">Skip to content</a>
       <NavBar />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         {v === 'home' && <HomeView />}
         {v === 'verify' && <VerifyView />}
         {v === 'vote' && <VoteView />}
@@ -51,6 +53,7 @@ export default function Home() {
         {v === 'verify-receipt' && <ReceiptVerifyView />}
         {v === 'voter-dashboard' && <VoterDashboard />}
         {v === 'compare' && <CompareCandidatesView />}
+        {v === 'certificate' && <CertificateView />}
         {v === 'official-login' && <OfficialLoginView />}
         {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
       </main>
