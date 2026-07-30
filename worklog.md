@@ -1134,3 +1134,47 @@ Stage Summary:
   animated hero + timetable + live results + stats. Dark mode works. Accessibility improved.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
   load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: CRON-QA-7
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, faculty turnout map visualization, public turnout API.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-6 complete). Services running. Ran agent-browser
+  QA — home (hero stats, timetable, FAQ, candidates, compare, guide, certificate buttons),
+  admin dashboard (system health, turnout chart, broadcast), all functional. No bugs found.
+  Platform stable.
+- **Feature: Public Turnout API** — Created `/api/turnout` endpoint that returns turnout by
+  faculty (id, name, code, total, voted, pct) + summary (totalVoters, voted, turnoutPct).
+  Respects the `showTurnout` setting (returns hidden if disabled). Public — no auth required.
+  Added `getTurnout` to the API client.
+- **Feature: Faculty Turnout Map Visualization** — Created `FacultyTurnoutMap` component
+  (`src/components/afrivote/faculty-turnout.tsx`): a grid of faculty cards showing:
+  - Faculty name + code
+  - Large turnout percentage (primary colour)
+  - Animated progress bar (width proportional to votes cast, leading faculty highlighted)
+  - Voted/total counts with icons
+  - Mini SVG turnout ring showing the ratio
+  - Remaining voters count
+  - Leading faculty card highlighted with primary border + bg
+  - Summary bar at the bottom (total registered, total voted, overall turnout %)
+  - Auto-refreshes every 5 seconds
+  - Staggered reveal animations on cards
+  Added to the home page below the live results section. Uses the Reveal component for
+  scroll animations.
+- **Verification:** `bun run lint` → 0 errors. agent-browser: faculty turnout map renders
+  with all 6 faculties (Arts 100%, Engineering 66.7%, Science 75%, etc.), percentages,
+  progress bars, and summary; auto-refreshes; mobile responsive; sticky footer; zero
+  console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 2 new features (public turnout API, faculty turnout map visualization).
+- **Current state:** Platform is feature-rich and polished. All 5 roles work. Home page now
+  shows: animated hero + live results + activity feed + faculty turnout map + timetable +
+  candidates (with compare) + how it works (with guide link) + security + receipt/certificate
+  + FAQ. Admin has system health + broadcast + charts + CSV upload. Voters have dashboard +
+  guide + compare. Public can view certified results. Dark mode works. Accessibility improved.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
+  load testing, PostgreSQL migration, Docker/Nginx CI/CD.

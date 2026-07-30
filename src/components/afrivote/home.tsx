@@ -19,6 +19,7 @@ import { StatusBadge, Countdown } from '@/components/afrivote/shared'
 import { LiveResultsPanel } from '@/components/afrivote/live-results'
 import { ElectionTimetable, LiveActivityFeed, ResultsSkeleton } from '@/components/afrivote/timetable'
 import { FaqSection, Reveal } from '@/components/afrivote/faq'
+import { FacultyTurnoutMap } from '@/components/afrivote/faculty-turnout'
 
 const HOW_STEPS = [
   { icon: KeyRound, title: '1. Verify Matric', desc: 'Enter your matriculation number. We check it against the official student register before anything else.' },
@@ -142,6 +143,10 @@ export function HomeView() {
           <div className="space-y-6">
             <LiveActivityFeed />
           </div>
+        </div>
+        {/* Faculty turnout map */}
+        <div className="mt-6">
+          <FacultyTurnoutMap />
         </div>
       </section>
 
