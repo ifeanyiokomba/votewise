@@ -5,7 +5,7 @@ import Image from 'next/image'
 import {
   Shield, KeyRound, BadgeCheck, Vote, Users, Eye, Lock, FileCheck2,
   CheckCircle2, ArrowRight, ScrollText, Building2, GraduationCap, Clock, Calendar,
-  FileText, Play, Award,
+  FileText, Play, Award, BookOpen,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -236,9 +236,12 @@ export function HomeView() {
           ))}
         </div>
         <Reveal delay={400}>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button size="lg" onClick={() => setView('verify')} className="gap-2">
               Start Voting <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button size="lg" variant="outline" onClick={() => setView('guide')} className="gap-2">
+              <BookOpen className="h-5 w-5" /> Full Guide
             </Button>
           </div>
         </Reveal>

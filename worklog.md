@@ -1088,3 +1088,49 @@ Stage Summary:
   skip-to-content link. Dark mode works. Print styles work for certificate.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, accessibility
   audit (WCAG), load testing, PostgreSQL migration, Docker/Nginx CI/CD.
+
+---
+Task ID: CRON-QA-6
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, critical bug fix, voter guide page, admin system health dashboard.
+
+Work Log:
+- **QA Assessment:** Found a CRITICAL bug — `/api/results/certificate` imported `hmacVerify`
+  from `@/lib/election` but it's exported from `@/lib/crypto`. This caused a Turbopack
+  compilation error that broke ALL API routes (election, results, positions, auth/me all
+  returned 500). Fixed the import. Required a dev server restart to clear the stale Turbopack
+  cache. After restart, all APIs recovered (200). This was a build-breaking issue affecting
+  the entire application.
+- **Feature: Voter Guide / Help Center Page** — Created `GuideView` component
+  (`src/components/afrivote/guide.tsx`): a visual step-by-step guide to voting with:
+  - 5-step interactive timeline (Verify Matric → Receive PIN → Accreditation → Cast Ballot →
+    Get Receipt) with clickable step indicators
+  - Active step detail card with coloured header, duration badge, description, and tips list
+  - Previous/Next navigation with step counter
+  - "Key Features & Guarantees" grid (6 cards: Email/SMS/WhatsApp delivery, Ballot Secrecy,
+    Audit Trail, Observer Access)
+  - Support CTA alert pointing to chatbot + support tickets
+  - Reveal animations on sections
+  Added "Full Guide" button to the How It Works section on home. Wired `guide` view into
+  store + page.tsx router.
+- **Feature: Admin System Health Dashboard** — Created `/api/admin/health` endpoint that
+  checks: Database (SQLite query latency), In-Memory Cache (read/write probe), Results
+  WebSocket Service (TCP fetch to port 3030), Vote Encryption Key (loaded check). Returns
+  aggregate counts (voters, votes, candidates, positions, officials, audit logs, security
+  events), process uptime, and memory usage.
+  Created `SystemHealthWidget` component in official.tsx OverviewTab: shows overall health
+  badge (HEALTHY/DEGRADED), per-check status cards with icons + latency, counts summary,
+  uptime/memory/timestamp footer. Auto-refreshes every 15 seconds.
+- **Verification:** `bun run lint` → 0 errors. agent-browser: guide view renders with 5-step
+  timeline + tips + features grid; admin system health widget shows 4 healthy checks + counts
+  + uptime + memory; all APIs 200; mobile responsive; sticky footer; zero console/runtime errors.
+
+Stage Summary:
+- ✅ CRITICAL bug fixed (hmacVerify import breaking all APIs).
+- ✅ 2 new features (voter guide page, admin system health dashboard).
+- **Current state:** Platform is fully functional and feature-rich. All 5 roles work. Voters
+  have a dashboard + guide + compare + FAQ. Admins have system health + broadcast + charts +
+  CSV upload. Public can view certified results with cryptographic verification. Home has
+  animated hero + timetable + live results + stats. Dark mode works. Accessibility improved.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, WCAG audit,
+  load testing, PostgreSQL migration, Docker/Nginx CI/CD.

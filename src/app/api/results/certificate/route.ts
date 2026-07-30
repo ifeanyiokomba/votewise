@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
-import { json, errorJson, hmacVerify } from '@/lib/election'
+import { json, errorJson } from '@/lib/election'
+import { hmacVerify } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic'
 

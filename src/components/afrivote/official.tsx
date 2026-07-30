@@ -5,7 +5,7 @@ import {
   Lock, Loader2, ArrowLeft, BarChart3, Users, Trophy, Settings as SettingsIcon,
   ScrollText, Eye, Plus, Trash2, Pencil, CheckCircle2, AlertCircle, Upload,
   ShieldCheck, Play, Pause, BadgeCheck, RotateCcw, Search, Building2, Download,
-  KeyRound, ShieldAlert, Bell, Fingerprint, Link2, FileCheck2,
+  KeyRound, ShieldAlert, Bell, Fingerprint, Link2, FileCheck2, Activity,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -243,8 +243,64 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
         )}
       </div>
 
+      <SystemHealthWidget />
+
       <BroadcastDialog open={broadcastOpen} onOpenChange={setBroadcastOpen} />
     </div>
+  )
+}
+
+function SystemHealthWidget() {
+  const [health, setHealth] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  async function load() {
+    try { const d = await api.adminGetHealth(); setHealth(d) } catch {} finally { setLoading(false) }
+  }
+  useEffect(() => {
+    load()
+    const t = setInterval(load, 15000)
+    return () => clearInterval(t)
+  }, [])
+  if (loading) return <Card><CardContent className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></CardContent></Card>
+  if (!health) return null
+  const statusIcon = (s: string) => s === 'healthy' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : s === 'degraded' ? <AlertCircle className="h-4 w-4 text-amber-600" /> : <AlertCircle className="h-4 w-4 text-destructive" />
+  const statusCls = (s: string) => s === 'healthy' ? 'text-emerald-600' : s === 'degraded' ? 'text-amber-600' : 'text-destructive'
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="font-display text-base flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> System Health</CardTitle>
+          <Badge className={cn('gap-1', health.overall === 'healthy' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+            <span className={cn('h-1.5 w-1.5 rounded-full', health.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500')} />
+            {health.overall.toUpperCase()}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {health.checks.map((c: any) => (
+            <div key={c.name} className="flex items-center gap-2 rounded-lg border border-border/60 p-2.5">
+              {statusIcon(c.status)}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">{c.name}</div>
+                <div className="text-xs text-muted-foreground">{c.detail}</div>
+              </div>
+              <span className={cn('text-xs font-semibold capitalize', statusCls(c.status))}>{c.status}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3 text-center text-xs">
+          <div><div className="font-bold text-foreground">{health.counts.voters}</div><div className="text-muted-foreground">Voters</div></div>
+          <div><div className="font-bold text-foreground">{health.counts.votes}</div><div className="text-muted-foreground">Votes</div></div>
+          <div><div className="font-bold text-foreground">{health.counts.auditLogs}</div><div className="text-muted-foreground">Audit Logs</div></div>
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>Uptime: {Math.floor(health.uptime / 60)}m {Math.floor(health.uptime % 60)}s</span>
+          {health.memory && <span>Memory: {health.memory.usedMb} MB</span>}
+          <span>Updated: {new Date(health.timestamp).toLocaleTimeString()}</span>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

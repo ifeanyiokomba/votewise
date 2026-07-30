@@ -83,6 +83,7 @@ export const api = {
   adminVerifyAudit: () => req('/api/admin/audit-verify'),
   adminGetSecurityEvents: (params = '') => req(`/api/admin/security-events${params ? '?' + params : ''}`),
   adminResolveSecurityEvent: (id: string, resolved: boolean) => req('/api/admin/security-events', { method: 'PATCH', body: JSON.stringify({ id, resolved }) }),
+  adminGetHealth: () => req('/api/admin/health'),
   adminElectionAction: (action: string) => req(`/api/admin/election/${action}`, { method: 'POST' }),
   adminUpdateElection: (data: any) => req('/api/election', { method: 'PUT', body: JSON.stringify(data) }),
   adminGetOfficials: () => req('/api/admin/observers'),

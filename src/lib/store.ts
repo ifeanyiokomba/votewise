@@ -12,6 +12,7 @@ export type View =
   | 'voter-dashboard'
   | 'compare'
   | 'certificate'
+  | 'guide'
   | 'official-login'
   | 'official'
   // Legacy aliases kept for nav compatibility
