@@ -12,6 +12,7 @@ import { CompareCandidatesView } from '@/components/afrivote/compare'
 import { CertificateView } from '@/components/afrivote/certificate'
 import { GuideView } from '@/components/afrivote/guide'
 import { AboutView } from '@/components/afrivote/about'
+import { SignupView } from '@/components/afrivote/signup'
 import { OfficialLoginView, OfficialDashboard } from '@/components/afrivote/official'
 import { ObserverAnalyticsView } from '@/components/afrivote/observer-analytics'
 import { ChatbotWidget } from '@/components/afrivote/chatbot'
@@ -58,6 +59,7 @@ export default function Home() {
         {v === 'certificate' && <CertificateView />}
         {v === 'guide' && <GuideView />}
         {v === 'about' && <AboutView />}
+        {v === 'signup' && <SignupView />}
         {v === 'official-login' && <OfficialLoginView />}
         {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
       </main>

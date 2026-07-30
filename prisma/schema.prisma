@@ -12,10 +12,48 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
+// Multi-tenant: Organizations (University / Faculty / Department)
+// ---------------------------------------------------------------------------
+model Tenant {
+  id              String   @id @default(cuid())
+  // Organization type
+  type            String   // UNIVERSITY | FACULTY | DEPARTMENT
+  // Names — filled based on type
+  universityName  String
+  facultyName     String?
+  departmentName  String?
+  // Display name (auto-generated or custom)
+  displayName     String   // e.g. "University of Lagos SUG" or "Faculty of Engineering"
+  slug            String   @unique // URL-friendly identifier
+  // Branding
+  logoUrl         String?  // org logo
+  universityLogoUrl String? // university logo (for faculty/department tenants)
+  primaryColour   String   @default("#15803d") // emerald
+  accentColour    String   @default("#b45309") // gold
+  // Subdomain for production (e.g. unilag.afrivote.ng)
+  subdomain       String?  @unique
+  // Admin who created this tenant
+  adminEmail      String
+  // Status
+  status          String   @default("ACTIVE") // ACTIVE | SUSPENDED | TRIAL
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  electionSessions ElectionSession[]
+  faculties        Faculty[]
+  departments      Department[]
+  officials        ElectionOfficial[]
+  voters           Voter[]
+  settings         ElectionSetting[]
+}
+
+// ---------------------------------------------------------------------------
 // Election configuration
 // ---------------------------------------------------------------------------
 model ElectionSession {
   id              String   @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name            String   // e.g. "SUG General Elections 2024/2025"
   university      String   @default("Federal University of Lagos")
   academicSession String   // e.g. "2024/2025"
@@ -41,6 +79,8 @@ model ElectionSession {
 
 model ElectionSetting {
   id                       String   @id @default("default")
+  tenantId                 String?
+  tenant                   Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   electionSessionId        String?
   publicLiveResults        Boolean  @default(true)
   showTurnout              Boolean  @default(true)
@@ -62,6 +102,8 @@ model ElectionSetting {
 // ---------------------------------------------------------------------------
 model Faculty {
   id        String       @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
   code      String       @unique
   createdAt DateTime     @default(now())
@@ -75,6 +117,8 @@ model Faculty {
 
 model Department {
   id        String       @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String
   code      String       @unique
   facultyId String
@@ -184,6 +228,8 @@ model Candidate {
 // ---------------------------------------------------------------------------
 model Voter {
   id                String       @id @default(cuid())
+  tenantId          String?
+  tenant            Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   electionSessionId String?
   electionSession   ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
   matric            String       @unique
@@ -302,6 +348,8 @@ model EncryptedVote {
 // ---------------------------------------------------------------------------
 model ElectionOfficial {
   id              String   @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   email           String   @unique
   name            String
   role            String   // SUPER_ADMIN|ELECTORAL_COMMITTEE|FACULTY_OFFICER|DEPARTMENT_OFFICER|OBSERVER

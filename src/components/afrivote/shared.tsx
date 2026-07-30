@@ -85,6 +85,11 @@ export function NavBar() {
               <Lock className="h-4 w-4" /> Official Portal
             </Button>
           )}
+          {!official && (
+            <Button size="sm" onClick={() => setView('signup')} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
+              <Sparkles className="h-4 w-4" /> Sign Up
+            </Button>
+          )}
           {official && (
             <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5">
               <BarChart3 className="h-4 w-4" /> {official.role.split('_').map((w: string) => w[0] + w.slice(1).toLowerCase()).join(' ')} Dashboard
@@ -121,6 +126,11 @@ export function NavBar() {
             {!official && (
               <Button variant="outline" size="sm" onClick={() => { setView('official-login'); setOpen(false) }} className="gap-1.5">
                 <Lock className="h-4 w-4" /> Official Portal
+              </Button>
+            )}
+            {!official && (
+              <Button size="sm" onClick={() => { setView('signup'); setOpen(false) }} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
+                <Sparkles className="h-4 w-4" /> Sign Up Your Organization
               </Button>
             )}
             {official && (

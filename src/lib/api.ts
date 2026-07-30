@@ -32,6 +32,10 @@ async function req<T = any>(path: string, opts: RequestInit = {}, voterToken?: s
 export const api = {
   // Public
   getElection: () => req('/api/election'),
+  // Tenant (multi-organization)
+  registerTenant: (data: any) => req('/api/tenant/register', { method: 'POST', body: JSON.stringify(data) }),
+  getCurrentTenant: () => req('/api/tenant/current'),
+  listTenants: () => req('/api/tenant/list'),
   getPositions: () => req('/api/positions'),
   getResults: () => req('/api/results'),
   getCandidates: () => req('/api/candidates'),

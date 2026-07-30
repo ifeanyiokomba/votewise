@@ -306,6 +306,43 @@ export function HomeView() {
 
       {/* FAQ */}
       <FaqSection />
+
+      {/* ORG SIGNUP CTA */}
+      <section className="border-t border-border/60 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center">
+          <div>
+            <Badge variant="secondary" className="mb-2 gap-1"><Building2 className="h-3.5 w-3.5" /> For Any Institution</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">Run Your Own Election</h2>
+            <p className="mt-2 max-w-lg text-muted-foreground">
+              AfriVote SUG works for any Nigerian university, faculty, or department. Sign up with your
+              organization name and logo, and we&apos;ll set up a fully branded, secure voting platform in minutes.
+            </p>
+            <div className="mt-4 space-y-1.5">
+              {['University-wide SUG elections', 'Faculty representative elections', 'Departmental senator elections', 'Custom branding with your logo & colours'].map((f) => (
+                <div key={f} className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+                </div>
+              ))}
+            </div>
+            <Button size="lg" onClick={() => setView('signup')} className="mt-6 gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+              <Building2 className="h-5 w-5" /> Set Up Your Election
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: Building2, label: 'University', desc: 'Full SUG election' },
+              { icon: GraduationCap, label: 'Faculty', desc: 'Faculty rep election' },
+              { icon: Users, label: 'Department', desc: 'Dept senator election' },
+            ].map((o, i) => (
+              <div key={i} className="rounded-xl border border-border/60 bg-card p-4 text-center">
+                <o.icon className="mx-auto h-8 w-8 text-primary" />
+                <div className="mt-2 text-sm font-semibold">{o.label}</div>
+                <div className="text-[10px] text-muted-foreground">{o.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

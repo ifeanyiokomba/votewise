@@ -14,6 +14,7 @@ export type View =
   | 'certificate'
   | 'guide'
   | 'about'
+  | 'signup'
   | 'official-login'
   | 'official'
   // Legacy aliases kept for nav compatibility
