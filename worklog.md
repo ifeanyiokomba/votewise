@@ -944,3 +944,49 @@ Stage Summary:
   with manifestos + videos. Admin can broadcast notifications. Turnout charts render live.
 - **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, CSV file upload,
   accessibility audit, load testing, PostgreSQL migration.
+
+---
+Task ID: CRON-QA-3
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, voter dashboard, FAQ section, scroll animations, styling polish.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (CRON-QA-2 complete). Services running. Ran agent-browser
+  QA — home (hero stats, timetable, candidate dialog), admin dashboard (turnout chart, broadcast),
+  voter flow all functional. No bugs found. Platform stable.
+- **Feature: Voter Dashboard** — Created `VoterDashboard` component (`src/components/afrivote/
+  voter-dashboard.tsx`): a personalized landing page for logged-in voters showing:
+  - Welcome header with voter name, matric, faculty, level
+  - Election status card with live countdown
+  - Voting status card (accredited/pending/voted) with contextual CTA (Complete Accreditation
+    → Open My Ballot, or Verify Receipt if voted)
+  - Eligible positions list (from ballot API) with candidate counts
+  - Sidebar: quick stats, notifications, help links
+  Added `voter-dashboard` to the View type + page.tsx router. Updated NavBar so logged-in
+  voters see "My Dashboard" instead of "Cast Your Vote".
+- **Feature: FAQ Section** — Created `FaqSection` component (`src/components/afrivote/faq.tsx`)
+  with 8 comprehensive Q&As covering: matric verification, OTP issues, ballot secrecy,
+  eligibility, candidate ordering, vote finality, result calculation, and accreditation.
+  Uses shadcn Accordion for expand/collapse. Added to home page + nav.
+- **Feature: Scroll Reveal Animations** — Created `Reveal` component using IntersectionObserver
+  that fades + slides up children when they enter the viewport. Applied to the "How It Works"
+  section (staggered card reveals with 100ms delays) and the FAQ section. Adds a polished,
+  modern feel without heavy animation libraries.
+- **Styling Improvements:** How It Works cards now have `h-full` for equal heights, staggered
+  reveal animations, and the section header fades in. FAQ uses a card-glow container with
+  clean accordion styling. Voter dashboard uses a responsive 2-column grid (main + sidebar).
+- **Verification:** `bun run lint` → 0 errors. agent-browser: FAQ renders + accordion expands;
+  voter dashboard renders after login (PHY/2023/003 → OTP → accreditation → "My Dashboard"
+  shows welcome, countdown, accredited status, eligible positions); scroll animations work;
+  mobile responsive; sticky footer; zero console/runtime errors.
+
+Stage Summary:
+- ✅ No bugs found in QA — platform stable.
+- ✅ 3 new features (voter dashboard, FAQ section, scroll reveal animations).
+- ✅ Styling improved (staggered reveals, equal-height cards, responsive voter dashboard).
+- **Current state:** Platform is feature-complete and polished. All 5 roles work. Voters now
+  have a personalized dashboard. Home page has FAQ. Sections animate on scroll. Live results
+  stream. Audit chain intact. Dark mode works. Candidate details with manifestos + videos.
+  Admin can broadcast notifications + see turnout charts.
+- **Unresolved / next-phase:** Real OTP delivery, biometric accreditation, CSV file upload,
+  accessibility audit, load testing, PostgreSQL migration.

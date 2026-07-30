@@ -36,6 +36,7 @@ const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
   { label: 'Candidates', target: 'candidates' },
   { label: 'Timetable', target: 'timetable' },
   { label: 'How It Works', target: 'how' },
+  { label: 'FAQ', target: 'faq' },
   { label: 'Verify Receipt', target: 'receipt' },
 ]
 
@@ -75,8 +76,8 @@ export function NavBar() {
             </Button>
           )}
           {voterProfile && (
-            <Button onClick={() => setView('vote')} size="sm" className="gap-1.5">
-              <BadgeCheck className="h-4 w-4" /> Continue Voting
+            <Button onClick={() => setView('voter-dashboard')} size="sm" className="gap-1.5">
+              <BadgeCheck className="h-4 w-4" /> My Dashboard
             </Button>
           )}
           {!official && (

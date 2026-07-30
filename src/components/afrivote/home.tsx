@@ -18,6 +18,7 @@ import { api } from '@/lib/api'
 import { StatusBadge, Countdown } from '@/components/afrivote/shared'
 import { LiveResultsPanel } from '@/components/afrivote/live-results'
 import { ElectionTimetable, LiveActivityFeed, ResultsSkeleton } from '@/components/afrivote/timetable'
+import { FaqSection, Reveal } from '@/components/afrivote/faq'
 
 const HOW_STEPS = [
   { icon: KeyRound, title: '1. Verify Matric', desc: 'Enter your matriculation number. We check it against the official student register before anything else.' },
@@ -200,31 +201,37 @@ export function HomeView() {
 
       {/* HOW IT WORKS */}
       <section id="how" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
-        <div className="mb-8 text-center">
-          <Badge variant="secondary" className="mb-2">4 Simple Steps</Badge>
-          <h2 className="font-display text-3xl font-bold sm:text-4xl">How Voting Works</h2>
-          <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-            Designed to be fast, transparent, and tamper-proof — even on a 2G connection.
-          </p>
-        </div>
+        <Reveal>
+          <div className="mb-8 text-center">
+            <Badge variant="secondary" className="mb-2">4 Simple Steps</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">How Voting Works</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+              Designed to be fast, transparent, and tamper-proof — even on a 2G connection.
+            </p>
+          </div>
+        </Reveal>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {HOW_STEPS.map((s) => (
-            <Card key={s.title} className="afrivote-card-glow relative overflow-hidden">
-              <CardHeader>
-                <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <s.icon className="h-6 w-6" />
-                </div>
-                <CardTitle className="mt-3 font-display text-base">{s.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{s.desc}</CardContent>
-            </Card>
+          {HOW_STEPS.map((s, i) => (
+            <Reveal key={s.title} delay={i * 100}>
+              <Card className="afrivote-card-glow relative h-full overflow-hidden">
+                <CardHeader>
+                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <s.icon className="h-6 w-6" />
+                  </div>
+                  <CardTitle className="mt-3 font-display text-base">{s.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">{s.desc}</CardContent>
+              </Card>
+            </Reveal>
           ))}
         </div>
-        <div className="mt-8 flex justify-center">
-          <Button size="lg" onClick={() => setView('verify')} className="gap-2">
-            Start Voting <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
+        <Reveal delay={400}>
+          <div className="mt-8 flex justify-center">
+            <Button size="lg" onClick={() => setView('verify')} className="gap-2">
+              Start Voting <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </Reveal>
       </section>
 
       {/* TRUST / SECURITY */}
@@ -264,6 +271,9 @@ export function HomeView() {
           </CardContent>
         </Card>
       </section>
+
+      {/* FAQ */}
+      <FaqSection />
     </div>
   )
 }
