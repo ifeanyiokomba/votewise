@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggle } from '@/components/afrivote/theme-toggle'
+import { VoterNotifications } from '@/components/afrivote/voter-notifications'
 import { cn } from '@/lib/utils'
 import { useApp, View } from '@/lib/store'
 import { api } from '@/lib/api'
@@ -32,6 +34,7 @@ export function Logo({ className }: { className?: string }) {
 const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
   { label: 'Live Results', target: 'results' },
   { label: 'Candidates', target: 'candidates' },
+  { label: 'Timetable', target: 'timetable' },
   { label: 'How It Works', target: 'how' },
   { label: 'Verify Receipt', target: 'receipt' },
 ]
@@ -86,6 +89,8 @@ export function NavBar() {
               <BarChart3 className="h-4 w-4" /> {official.role.split('_').map((w: string) => w[0] + w.slice(1).toLowerCase()).join(' ')} Dashboard
             </Button>
           )}
+          {voterProfile && <VoterNotifications />}
+          <ThemeToggle />
         </div>
 
         <button className="md:hidden" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
@@ -122,6 +127,10 @@ export function NavBar() {
                 <BarChart3 className="h-4 w-4" /> Dashboard
               </Button>
             )}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-muted-foreground">Theme</span>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       )}
@@ -179,14 +188,20 @@ export function Footer() {
 }
 
 export function StatusBadge({ status }: { status: string }) {
+  // Normalise v2 uppercase statuses (DRAFT/PUBLISHED/VOTING/CLOSED/CERTIFIED)
+  // and v1 lowercase (setup/published/open/closed/certified) to a common key.
+  const key = (status || 'setup').toLowerCase()
   const map: Record<string, { label: string; cls: string; icon: any }> = {
+    draft: { label: 'Draft', cls: 'bg-muted text-muted-foreground', icon: Clock },
     setup: { label: 'Setup', cls: 'bg-muted text-muted-foreground', icon: Clock },
     published: { label: 'Published', cls: 'bg-blue-100 text-blue-700', icon: Sparkles },
+    accreditation: { label: 'Accreditation', cls: 'bg-purple-100 text-purple-700', icon: KeyRound },
+    voting: { label: 'Voting Open', cls: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
     open: { label: 'Voting Open', cls: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
     closed: { label: 'Voting Closed', cls: 'bg-amber-100 text-amber-700', icon: Clock },
     certified: { label: 'Certified', cls: 'bg-accent text-accent-foreground', icon: BadgeCheck },
   }
-  const m = map[status] || map.setup
+  const m = map[key] || map.setup
   const Icon = m.icon
   return (
     <span className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold', m.cls)}>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import {
   Shield, KeyRound, BadgeCheck, Vote, Users, Eye, Lock, FileCheck2,
-  CheckCircle2, ArrowRight, ScrollText, Building2, GraduationCap, Clock,
+  CheckCircle2, ArrowRight, ScrollText, Building2, GraduationCap, Clock, Calendar,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +15,7 @@ import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
 import { StatusBadge, Countdown } from '@/components/afrivote/shared'
 import { LiveResultsPanel } from '@/components/afrivote/live-results'
+import { ElectionTimetable, LiveActivityFeed, ResultsSkeleton } from '@/components/afrivote/timetable'
 
 const HOW_STEPS = [
   { icon: KeyRound, title: '1. Verify Matric', desc: 'Enter your matriculation number. We check it against the official student register before anything else.' },
@@ -120,7 +121,28 @@ export function HomeView() {
             </div>
           )}
         </div>
-        <LiveResultsPanel />
+        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <LiveResultsPanel />
+          <div className="space-y-6">
+            <LiveActivityFeed />
+          </div>
+        </div>
+      </section>
+
+      {/* ELECTION TIMETABLE */}
+      <section id="timetable" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+          <div className="mb-8 text-center">
+            <Badge variant="secondary" className="mb-2 gap-1"><Calendar className="h-3.5 w-3.5" /> Full Cycle</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">Election Timetable</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+              From nomination to appeal — the complete SUG election lifecycle, following Nigerian federal university electoral practice.
+            </p>
+          </div>
+          <div className="mx-auto max-w-2xl">
+            <ElectionTimetable election={election} />
+          </div>
+        </div>
       </section>
 
       {/* CANDIDATES */}

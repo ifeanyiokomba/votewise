@@ -48,6 +48,8 @@ export const api = {
   castVote: (selections: Record<string, string>) =>
     req('/api/vote/cast', { method: 'POST', body: JSON.stringify({ selections }) }, getVoterToken()),
   verifyReceipt: (receiptCode: string) => req('/api/vote/verify-receipt', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  getNotifications: () => req('/api/voter/notifications', {}, getVoterToken()),
+  markNotificationsRead: () => req('/api/voter/notifications', { method: 'POST' }, getVoterToken()),
 
   // Support + chat
   submitTicket: (payload: any) => req('/api/support/ticket', { method: 'POST', body: JSON.stringify(payload) }),

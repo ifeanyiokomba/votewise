@@ -839,3 +839,56 @@ Stage Summary:
 - **Unresolved / next-phase:** real OTP delivery (Resend/Termii), biometric accreditation,
   CSV voter upload via file (currently paste), accessibility (WCAG) audit, load testing,
   PostgreSQL migration, Docker/Nginx CI/CD, Sentry/Prometheus monitoring.
+
+---
+Task ID: CRON-QA-1
+Agent: QA Engineer + Feature Developer (main)
+Task: Periodic QA assessment, bug fixes, styling improvements, and new feature development.
+
+Work Log:
+- **QA Assessment:** Reviewed worklog (v2 enterprise platform complete). Ran agent-browser
+  end-to-end QA across home, voter flow, admin dashboard, observer, chatbot. Found 2 bugs:
+  1. **Duplicate candidates** — seed script used `randomBytes` in slug generation, so
+     re-seeding created duplicate candidate rows (President had 6 candidates instead of 3,
+     visible in ballot + results + admin). Votes were split across duplicates.
+  2. **StatusBadge showed "Setup"** instead of "Voting Open" — v2 uses uppercase status
+     values (VOTING/CLOSED/CERTIFIED) but the StatusBadge map only had v1 lowercase keys
+     (setup/open/closed).
+- **Bug Fix 1 (duplicate candidates):** Changed seed to use deterministic slugs
+  (`fullName-positionSlug` instead of `fullName-randomBytes`). Wrote cleanup script
+  (`scripts/cleanup-duplicates.ts`). Reset DB and re-seeded — now 10 candidates, 0 dups,
+  President shows 3 candidates with correct vote counts (4/2/2).
+- **Bug Fix 2 (StatusBadge):** Updated `shared.tsx` StatusBadge to normalise v2 uppercase
+  statuses to lowercase keys and added 'draft'/'voting'/'accreditation' mappings. Verified:
+  dashboard now shows "Voting Open" correctly.
+- **Feature: Dark mode toggle** — Created `ThemeToggle` component (Light/Dark/System
+  dropdown using next-themes). Added to NavBar (desktop + mobile). Verified: dark class
+  applied to `<html>`, dark theme renders correctly.
+- **Feature: Election Timetable** — Created `ElectionTimetable` component showing the full
+  SUG election lifecycle (7 phases: Nomination → Screening → Campaign → Silence → Voting →
+  Collation → Appeal) with a vertical timeline, phase status (past/active/future), date
+  ranges, and an animated ping on the active phase. Added as a new home page section with
+  nav link. Phases computed relative to election start/end times following Nigerian SUG
+  practice (2-week campaign, 24h silence, 7-day appeal window).
+- **Feature: Live Activity Feed** — Created `LiveActivityFeed` component showing recent
+  votes streaming in (position + timestamp), with a scrollable list and live dot indicator.
+  Added to the results section as a sidebar next to the live results panel.
+- **Feature: Voter Notifications** — Created `/api/voter/notifications` GET (fetch) + POST
+  (mark-read) endpoints. Created `VoterNotifications` bell component (popover with unread
+  count badge, auto-refreshes every 30s, auto-marks-read on open). Added to NavBar when a
+  voter is logged in. Admins can broadcast via the existing `/api/admin/notifications`.
+- **Styling: Skeleton loaders** — Created `ResultsSkeleton` component with animated pulse
+  placeholders for the results panel (turnout ring + position cards).
+- **Verification:** `bun run lint` → 0 errors. agent-browser: home renders timetable +
+  activity feed + correct status badge; admin dashboard shows "Voting Open" + 10 candidates;
+  dark mode toggles correctly; mobile responsive; sticky footer; zero console errors.
+
+Stage Summary:
+- ✅ Both bugs fixed (duplicate candidates, StatusBadge).
+- ✅ 4 new features added (dark mode, timetable, live activity feed, voter notifications).
+- ✅ Styling improved (skeleton loaders, timetable timeline with animations).
+- **Current state:** Platform is stable and feature-rich. All 5 roles work. Voting flow
+  (matric → OTP → accreditation → ballot → encrypted receipts → verification) verified.
+  Live results stream via WebSocket. Audit chain intact. Dark mode works.
+- **Unresolved / next-phase:** Real OTP delivery (Resend/Termii), biometric accreditation,
+  CSV file upload (currently paste), accessibility audit, load testing, PostgreSQL migration.

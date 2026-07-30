@@ -164,7 +164,9 @@ async function main() {
   ]
   for (const c of candidateDefs) {
     const pos = posMap.get(c.position)!
-    const slug = c.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + randomBytes(2).toString('hex')
+    // Deterministic slug: fullName + positionSlug — ensures upsert finds the
+    // existing row on re-seed instead of creating duplicates.
+    const slug = c.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + c.position
     await db.candidate.upsert({
       where: { slug },
       create: {
