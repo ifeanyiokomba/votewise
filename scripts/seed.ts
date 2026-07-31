@@ -312,6 +312,227 @@ async function main() {
     console.log('[seed] 8 encrypted demo votes cast + audit chain started')
   }
 
+  // =========================================================================
+  // CHAPTER 1 — Generic Organization hierarchy seed
+  // Creates platform super admin + two demo organizations (one academic, one
+  // non-academic) to prove the platform works for ANY organization.
+  // =========================================================================
+  console.log('[seed][chapter1] creating generic organizations…')
+
+  // --- Platform Super Admin (platform-wide, no org) ---
+  await db.organizationMember.upsert({
+    where: { email: 'admin@votewise.ng' },
+    create: {
+      email: 'admin@votewise.ng',
+      name: 'Platform Super Admin',
+      role: 'PLATFORM_SUPER_ADMIN',
+      passwordHash: hashPassword('admin123'),
+      emailVerified: true,
+    },
+    update: {},
+  })
+
+  // --- Organization #1: A university (academic) ---
+  const orgUni = await db.organization.upsert({
+    where: { slug: 'demo-university' },
+    create: {
+      name: 'Demo University',
+      slug: 'demo-university',
+      subdomain: 'demo',
+      primaryColour: '#15803d',
+      accentColour: '#b45309',
+      ownerEmail: 'admin@votewise.ng',
+      ownerName: 'Platform Super Admin',
+      status: 'ACTIVE',
+      plan: 'PAYG',
+      voterQuota: 50000,
+      category: 'UNIVERSITY',
+      description: 'A federal university running student union government elections.',
+    },
+    update: {},
+  })
+  await db.organizationTerminology.upsert({
+    where: { organizationId: orgUni.id },
+    create: {
+      organizationId: orgUni.id,
+      organizationLabel: 'University',
+      workspaceLabel: 'Faculty',
+      voterGroupLabel: 'Department',
+      voterLabel: 'Student',
+      candidateLabel: 'Aspirant',
+      electionLabel: 'Election',
+      positionLabel: 'Office',
+      officialLabel: 'Electoral Committee',
+    },
+    update: {},
+  })
+  // Workspaces (Faculties) + Voter Groups (Departments) for the university
+  const uniWorkspaces = [
+    { name: 'Faculty of Engineering', slug: 'engineering', code: 'ENG' },
+    { name: 'Faculty of Science', slug: 'science', code: 'SCI' },
+    { name: 'Faculty of Arts', slug: 'arts', code: 'ART' },
+  ]
+  for (const w of uniWorkspaces) {
+    const ws = await db.workspace.upsert({
+      where: { organizationId_slug: { organizationId: orgUni.id, slug: w.slug } },
+      create: { organizationId: orgUni.id, name: w.name, slug: w.slug, code: w.code },
+      update: {},
+    })
+    const deptDefs = w.slug === 'engineering'
+      ? ['Electrical Engineering', 'Mechanical Engineering', 'Civil Engineering']
+      : w.slug === 'science'
+      ? ['Computer Science', 'Physics', 'Chemistry']
+      : ['English', 'History', 'Philosophy']
+    for (const d of deptDefs) {
+      const dslug = d.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      await db.voterGroup.upsert({
+        where: { organizationId_slug: { organizationId: orgUni.id, slug: `${w.slug}-${dslug}` } },
+        create: {
+          organizationId: orgUni.id, workspaceId: ws.id,
+          name: d, slug: `${w.slug}-${dslug}`, code: `${w.code}-${d.split(' ')[0].slice(0,3).toUpperCase()}`,
+        },
+        update: {},
+      })
+    }
+  }
+  // Org owner + admin + observer for the university
+  for (const m of [
+    { email: 'owner.uni@votewise.ng', name: 'Vice Chancellor', role: 'ORG_OWNER' },
+    { email: 'admin.uni@votewise.ng', name: 'Registrar', role: 'ORG_ADMIN' },
+    { email: 'observer.uni@votewise.ng', name: 'External Observer', role: 'OBSERVER' },
+  ]) {
+    await db.organizationMember.upsert({
+      where: { email: m.email },
+      create: {
+        organizationId: orgUni.id, email: m.email, name: m.name, role: m.role,
+        passwordHash: hashPassword('org123'), emailVerified: true,
+      },
+      update: {},
+    })
+  }
+
+  // --- Organization #2: A professional body (NON-academic — proves genericity) ---
+  const orgNMA = await db.organization.upsert({
+    where: { slug: 'nigeria-medical-association' },
+    create: {
+      name: 'Nigeria Medical Association',
+      slug: 'nigeria-medical-association',
+      subdomain: 'nma',
+      primaryColour: '#0f766e',
+      accentColour: '#b45309',
+      ownerEmail: 'owner.nma@votewise.ng',
+      ownerName: 'NMA Secretary General',
+      status: 'TRIAL',
+      plan: 'PAYG',
+      voterQuota: 0,
+      category: 'PROFESSIONAL_BODY',
+      description: 'National professional body for medical doctors in Nigeria.',
+    },
+    update: {},
+  })
+  await db.organizationTerminology.upsert({
+    where: { organizationId: orgNMA.id },
+    create: {
+      organizationId: orgNMA.id,
+      organizationLabel: 'Association',
+      workspaceLabel: 'State Chapter',
+      voterGroupLabel: 'Branch',
+      voterLabel: 'Member',
+      candidateLabel: 'Candidate',
+      electionLabel: 'Election',
+      positionLabel: 'Office',
+      officialLabel: 'Electoral Committee',
+      observerLabel: 'Observer',
+    },
+    update: {},
+  })
+  // Workspaces (State Chapters) + Voter Groups (Branches)
+  const nmaWorkspaces = [
+    { name: 'Lagos State Chapter', slug: 'lagos', code: 'LAG' },
+    { name: 'Abuja FCT Chapter', slug: 'abuja', code: 'ABJ' },
+    { name: 'Rivers State Chapter', slug: 'rivers', code: 'RIV' },
+  ]
+  for (const w of nmaWorkspaces) {
+    const ws = await db.workspace.upsert({
+      where: { organizationId_slug: { organizationId: orgNMA.id, slug: w.slug } },
+      create: { organizationId: orgNMA.id, name: w.name, slug: w.slug, code: w.code },
+      update: {},
+    })
+    for (const b of ['General Practitioners', 'Specialists', 'House Officers']) {
+      const bslug = b.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      await db.voterGroup.upsert({
+        where: { organizationId_slug: { organizationId: orgNMA.id, slug: `${w.slug}-${bslug}` } },
+        create: {
+          organizationId: orgNMA.id, workspaceId: ws.id,
+          name: b, slug: `${w.slug}-${bslug}`, code: `${w.code}-${b.split(' ')[0].slice(0,3).toUpperCase()}`,
+        },
+        update: {},
+      })
+    }
+  }
+  // Org owner + observer for NMA
+  for (const m of [
+    { email: 'owner.nma@votewise.ng', name: 'NMA President', role: 'ORG_OWNER' },
+    { email: 'observer.nma@votewise.ng', name: 'NMA Observer', role: 'OBSERVER' },
+  ]) {
+    await db.organizationMember.upsert({
+      where: { email: m.email },
+      create: {
+        organizationId: orgNMA.id, email: m.email, name: m.name, role: m.role,
+        passwordHash: hashPassword('org123'), emailVerified: true,
+      },
+      update: {},
+    })
+  }
+
+  // --- Organization #3: A cooperative society (NON-academic) ---
+  const orgCoop = await db.organization.upsert({
+    where: { slug: 'lagos-staff-cooperative' },
+    create: {
+      name: 'Lagos Staff Cooperative Society',
+      slug: 'lagos-staff-cooperative',
+      subdomain: 'coop',
+      primaryColour: '#7c3aed',
+      accentColour: '#b45309',
+      ownerEmail: 'owner.coop@votewise.ng',
+      ownerName: 'Cooperative Chairman',
+      status: 'TRIAL',
+      plan: 'PAYG',
+      category: 'COOPERATIVE',
+      description: 'A staff cooperative society running annual executive elections.',
+    },
+    update: {},
+  })
+  await db.organizationTerminology.upsert({
+    where: { organizationId: orgCoop.id },
+    create: {
+      organizationId: orgCoop.id,
+      organizationLabel: 'Cooperative',
+      workspaceLabel: 'Branch',
+      voterGroupLabel: 'Unit',
+      voterLabel: 'Member',
+      candidateLabel: 'Candidate',
+      electionLabel: 'Election',
+      positionLabel: 'Office',
+      officialLabel: 'Electoral Committee',
+    },
+    update: {},
+  })
+  for (const w of [
+    { name: 'Mainland Branch', slug: 'mainland', code: 'MNL' },
+    { name: 'Island Branch', slug: 'island', code: 'ISL' },
+  ]) {
+    await db.workspace.upsert({
+      where: { organizationId_slug: { organizationId: orgCoop.id, slug: w.slug } },
+      create: { organizationId: orgCoop.id, name: w.name, slug: w.slug, code: w.code },
+      update: {},
+    })
+  }
+
+  console.log('[seed][chapter1] created 3 organizations (university, professional body, cooperative)')
+  console.log('[seed][chapter1] created platform super admin + 5 org members')
+  console.log('[seed][chapter1] 6 roles established: PLATFORM_SUPER_ADMIN, ORG_OWNER, ORG_ADMIN, OBSERVER, VOTER, GUEST')
+
   console.log('[seed] done ✅')
   console.log('  Super Admin:           admin@votewise.ng / admin123')
   console.log('  Electoral Committee:   elcom@votewise.ng / elcom123')
@@ -319,6 +540,11 @@ async function main() {
   console.log('  Dept Officer (CSC):    csc.dept@votewise.ng / dept123')
   console.log('  Observer:              observer@votewise.ng / observer123')
   console.log('  Fresh voter:           ECO/2021/014 (OTP shown in UI in dev)')
+  console.log('  --- Chapter 1 generic orgs ---')
+  console.log('  Org Owner (Uni):       owner.uni@votewise.ng / org123')
+  console.log('  Org Admin (Uni):       admin.uni@votewise.ng / org123')
+  console.log('  Org Owner (NMA):       owner.nma@votewise.ng / org123')
+  console.log('  Org Owner (Coop):      owner.coop@votewise.ng / org123')
 }
 
 main().catch((e) => { console.error(e); process.exit(1) }).finally(() => db.$disconnect())

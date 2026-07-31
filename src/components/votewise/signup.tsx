@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import {
-  ArrowLeft, Building2, GraduationCap, Users, Shield, CheckCircle2, Loader2,
-  AlertCircle, Upload, Palette, Sparkles,
+  ArrowLeft, Building2, Users, Shield, CheckCircle2, Loader2,
+  AlertCircle, Upload, Palette, Sparkles, Heart, Church, Briefcase,
+  Landmark, Store, Dumbbell, Home, Award, Users2, Network, PartyPopper,
+  GraduationCap, BookOpen, Layers, Globe, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,12 +18,60 @@ import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-type OrgType = 'UNIVERSITY' | 'FACULTY' | 'DEPARTMENT'
+// The 20+ organization categories. Purely informational — never gates features.
+const ORG_CATEGORIES = [
+  { value: 'UNIVERSITY', icon: GraduationCap, label: 'University' },
+  { value: 'POLYTECHNIC', icon: BookOpen, label: 'Polytechnic' },
+  { value: 'COLLEGE', icon: BookOpen, label: 'College' },
+  { value: 'STUDENT_UNION', icon: Users2, label: 'Student Union' },
+  { value: 'ALUMNI_ASSOCIATION', icon: Users, label: 'Alumni Association' },
+  { value: 'CHURCH', icon: Church, label: 'Church' },
+  { value: 'MOSQUE', icon: Landmark, label: 'Mosque' },
+  { value: 'NGO', icon: Heart, label: 'NGO' },
+  { value: 'POLITICAL_PARTY', icon: PartyPopper, label: 'Political Party' },
+  { value: 'GOVERNMENT', icon: Landmark, label: 'Government Agency' },
+  { value: 'COMPANY', icon: Briefcase, label: 'Company' },
+  { value: 'COOPERATIVE', icon: Users2, label: 'Cooperative' },
+  { value: 'PROFESSIONAL_BODY', icon: Award, label: 'Professional Body' },
+  { value: 'COMMUNITY', icon: Home, label: 'Community' },
+  { value: 'CLUB', icon: Users, label: 'Club' },
+  { value: 'ASSOCIATION', icon: Network, label: 'Association' },
+  { value: 'TRADE_UNION', icon: Users2, label: 'Trade Union' },
+  { value: 'MARKET_ASSOCIATION', icon: Store, label: 'Market Association' },
+  { value: 'RESIDENT_ASSOCIATION', icon: Home, label: 'Resident Association' },
+  { value: 'SPORTS_CLUB', icon: Dumbbell, label: 'Sports Club' },
+  { value: 'OTHER', icon: Building2, label: 'Other' },
+]
+
+// Preset terminology bundles — selecting a category auto-suggests terminology.
+const TERMINOLOGY_PRESETS: Record<string, any> = {
+  UNIVERSITY: { organizationLabel: 'University', workspaceLabel: 'Faculty', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
+  POLYTECHNIC: { organizationLabel: 'Polytechnic', workspaceLabel: 'School', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
+  COLLEGE: { organizationLabel: 'College', workspaceLabel: 'School', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
+  STUDENT_UNION: { organizationLabel: 'Student Union', workspaceLabel: 'Faculty', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
+  CHURCH: { organizationLabel: 'Church', workspaceLabel: 'Parish', voterGroupLabel: 'Fellowship', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  MOSQUE: { organizationLabel: 'Mosque', workspaceLabel: 'Branch', voterGroupLabel: 'Unit', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  NGO: { organizationLabel: 'Organization', workspaceLabel: 'Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  POLITICAL_PARTY: { organizationLabel: 'Party', workspaceLabel: 'State Chapter', voterGroupLabel: 'Ward', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  GOVERNMENT: { organizationLabel: 'Agency', workspaceLabel: 'Department', voterGroupLabel: 'Unit', voterLabel: 'Staff', candidateLabel: 'Candidate' },
+  COMPANY: { organizationLabel: 'Company', workspaceLabel: 'Division', voterGroupLabel: 'Department', voterLabel: 'Employee', candidateLabel: 'Candidate' },
+  COOPERATIVE: { organizationLabel: 'Cooperative', workspaceLabel: 'Branch', voterGroupLabel: 'Unit', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  PROFESSIONAL_BODY: { organizationLabel: 'Association', workspaceLabel: 'State Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  COMMUNITY: { organizationLabel: 'Community', workspaceLabel: 'Village', voterGroupLabel: 'Household', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  CLUB: { organizationLabel: 'Club', workspaceLabel: 'Chapter', voterGroupLabel: 'Group', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  TRADE_UNION: { organizationLabel: 'Union', workspaceLabel: 'State Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  MARKET_ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Section', voterGroupLabel: 'Line', voterLabel: 'Trader', candidateLabel: 'Candidate' },
+  RESIDENT_ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Estate', voterGroupLabel: 'Street', voterLabel: 'Resident', candidateLabel: 'Candidate' },
+  SPORTS_CLUB: { organizationLabel: 'Club', workspaceLabel: 'Team', voterGroupLabel: 'Squad', voterLabel: 'Member', candidateLabel: 'Candidate' },
+  ALUMNI_ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Chapter', voterGroupLabel: 'Set', voterLabel: 'Alumnus', candidateLabel: 'Candidate' },
+  OTHER: { organizationLabel: 'Organization', workspaceLabel: 'Workspace', voterGroupLabel: 'Voter Group', voterLabel: 'Voter', candidateLabel: 'Candidate' },
+}
 
 export function SignupView() {
   const { setView, setOfficial } = useApp()
   const [step, setStep] = useState(1)
-  const [orgType, setOrgType] = useState<OrgType>('UNIVERSITY')
+  const [category, setCategory] = useState('UNIVERSITY')
   const [form, setForm] = useState<any>({
     primaryColour: '#15803d',
     accentColour: '#b45309',
@@ -31,48 +81,53 @@ export function SignupView() {
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
-  function generateDisplayName() {
-    if (orgType === 'UNIVERSITY') return `${form.universityName || 'University'} Elections`
-    if (orgType === 'FACULTY') return `${form.facultyName || 'Faculty'} — ${form.universityName || 'University'}`
-    return `${form.departmentName || 'Department'} — ${form.facultyName || 'Faculty'}, ${form.universityName || 'University'}`
+  function selectCategory(cat: string) {
+    setCategory(cat)
+    // Auto-apply terminology preset (user can still override in step 3)
+    const preset = TERMINOLOGY_PRESETS[cat]
+    if (preset) {
+      setForm((f: any) => ({ ...f, ...preset }))
+    }
   }
 
-  function onLogoUpload(e: React.ChangeEvent<HTMLInputElement>, field: string) {
+  function onLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 1024 * 1024) { toast.error('Logo must be under 1MB'); return }
     const reader = new FileReader()
-    reader.onload = (ev) => set(field, ev.target?.result)
+    reader.onload = (ev) => set('logoUrl', ev.target?.result)
     reader.readAsDataURL(file)
   }
 
   async function submit() {
     setBusy(true); setError(null)
     try {
-      const displayName = form.displayName || generateDisplayName()
-      const d = await api.registerTenant({
-        type: orgType,
-        institutionType: form.institutionType || 'FEDERAL',
-        universityName: form.universityName,
-        facultyName: orgType !== 'UNIVERSITY' ? form.facultyName : undefined,
-        departmentName: orgType === 'DEPARTMENT' ? form.departmentName : undefined,
-        displayName,
+      const d = await api.registerOrganization({
+        name: form.name,
+        category,
+        description: form.description,
         primaryColour: form.primaryColour,
         accentColour: form.accentColour,
         logoUrl: form.logoUrl,
-        universityLogoUrl: form.universityLogoUrl,
-        adminName: form.adminName,
-        adminEmail: form.adminEmail,
-        adminPassword: form.adminPassword,
+        ownerName: form.ownerName,
+        ownerEmail: form.ownerEmail,
+        ownerPassword: form.ownerPassword,
+        terminology: {
+          organizationLabel: form.organizationLabel,
+          workspaceLabel: form.workspaceLabel,
+          voterGroupLabel: form.voterGroupLabel,
+          voterLabel: form.voterLabel,
+          candidateLabel: form.candidateLabel,
+        },
       })
       setOfficial(d.official)
-      toast.success(`${d.tenant.displayName} created! Welcome, ${d.official.name}.`)
+      toast.success(`${d.organization.name} created! Welcome, ${d.member.name}.`)
       setView('official')
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
 
-  const canProceedStep1 = form.universityName && (orgType === 'UNIVERSITY' || form.facultyName) && (orgType !== 'DEPARTMENT' || form.departmentName)
-  const canProceedStep2 = form.adminName && form.adminEmail && form.adminPassword?.length >= 8
+  const canProceedStep1 = form.name && form.name.trim().length >= 2
+  const canProceedStep2 = form.ownerName && form.ownerEmail && form.ownerPassword?.length >= 8
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
@@ -82,11 +137,11 @@ export function SignupView() {
 
       <div className="mb-6 text-center">
         <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3.5 w-3.5" /> Get Started
+          <Sparkles className="h-3.5 w-3.5" /> Simple Onboarding · Under 5 Minutes
         </div>
-        <h1 className="font-display text-3xl font-bold sm:text-4xl">Set Up Your Election</h1>
+        <h1 className="font-display text-3xl font-bold sm:text-4xl">Register Your Organization</h1>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-          Register your university, faculty, or department to run a secure SUG election.
+          Any organization. University, company, church, NGO, cooperative, association — VoteWise works for all of them.
         </p>
       </div>
 
@@ -98,7 +153,7 @@ export function SignupView() {
               {s < step ? <CheckCircle2 className="h-4 w-4" /> : s}
             </div>
             <span className={cn('hidden text-xs sm:inline', s === step ? 'font-medium' : 'text-muted-foreground')}>
-              {s === 1 ? 'Organization' : s === 2 ? 'Admin Account' : 'Branding'}
+              {s === 1 ? 'Organization' : s === 2 ? 'Owner Account' : 'Branding & Terms'}
             </span>
             {s < 3 && <div className={cn('h-0.5 w-8', s < step ? 'bg-emerald-500' : 'bg-muted')} />}
           </div>
@@ -107,72 +162,37 @@ export function SignupView() {
 
       {error && <Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
 
-      {/* Step 1: Organization type + names */}
+      {/* Step 1: Organization details */}
       {step === 1 && (
         <Card className="votewise-card-glow">
           <CardHeader><CardTitle className="font-display">Organization Details</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {/* Org type selector */}
+            <div className="space-y-1.5">
+              <Label>Organization Name <span className="text-destructive">*</span></Label>
+              <Input value={form.name || ''} onChange={(e) => set('name', e.target.value)} placeholder="e.g. University of Lagos, MTN Nigeria, Red Cross Nigeria" />
+              <p className="text-xs text-muted-foreground">This is your organization&apos;s public name on VoteWise.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Description (optional)</Label>
+              <Input value={form.description || ''} onChange={(e) => set('description', e.target.value)} placeholder="A short description of your organization" />
+            </div>
+
+            {/* Organization category selector */}
             <div>
-              <Label className="mb-2 block">Organization Type</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  { type: 'UNIVERSITY', icon: Building2, label: 'University', desc: 'Full SUG election' },
-                  { type: 'FACULTY', icon: GraduationCap, label: 'Faculty', desc: 'Faculty-level election' },
-                  { type: 'DEPARTMENT', icon: Users, label: 'Department', desc: 'Dept-level election' },
-                ] as const).map((o) => (
-                  <button key={o.type} onClick={() => setOrgType(o.type)}
-                    className={cn('flex flex-col items-center gap-2 rounded-lg border p-4 text-center transition-all', orgType === o.type ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-muted/50')}>
-                    <o.icon className={cn('h-6 w-6', orgType === o.type ? 'text-primary' : 'text-muted-foreground')} />
-                    <div>
-                      <div className="text-sm font-medium">{o.label}</div>
-                      <div className="text-[10px] text-muted-foreground">{o.desc}</div>
-                    </div>
+              <Label className="mb-2 block">Organization Category</Label>
+              <p className="mb-2 text-xs text-muted-foreground">
+                Purely informational — VoteWise treats every organization the same regardless of category. This just helps us suggest the right terminology.
+              </p>
+              <div className="votewise-scroll grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                {ORG_CATEGORIES.map((c) => (
+                  <button key={c.value} onClick={() => selectCategory(c.value)}
+                    className={cn('flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-all', category === c.value ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-muted/50')}>
+                    <c.icon className={cn('h-5 w-5', category === c.value ? 'text-primary' : 'text-muted-foreground')} />
+                    <span className="text-[11px] font-medium leading-tight">{c.label}</span>
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Institution type selector */}
-            <div className="space-y-1.5">
-              <Label>Institution Type</Label>
-              <div className="flex flex-wrap gap-2">
-                {(['FEDERAL', 'STATE', 'PRIVATE', 'POLYTECHNIC', 'COLLEGE_OF_EDUCATION'] as const).map((t) => (
-                  <button key={t} onClick={() => set('institutionType', t)}
-                    className={cn('rounded-full border px-3 py-1 text-xs transition-all', (form.institutionType || 'FEDERAL') === t ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted/50')}>
-                    {t.replace(/_/g, ' ')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* University name — always required */}
-            <div className="space-y-1.5">
-              <Label>University Name <span className="text-destructive">*</span></Label>
-              <Input value={form.universityName || ''} onChange={(e) => set('universityName', e.target.value)} placeholder="e.g. University of Lagos" />
-            </div>
-
-            {/* Faculty name — required for FACULTY and DEPARTMENT */}
-            {orgType !== 'UNIVERSITY' && (
-              <div className="space-y-1.5">
-                <Label>Faculty Name <span className="text-destructive">*</span></Label>
-                <Input value={form.facultyName || ''} onChange={(e) => set('facultyName', e.target.value)} placeholder="e.g. Faculty of Engineering" />
-              </div>
-            )}
-
-            {/* Department name — required for DEPARTMENT */}
-            {orgType === 'DEPARTMENT' && (
-              <div className="space-y-1.5">
-                <Label>Department Name <span className="text-destructive">*</span></Label>
-                <Input value={form.departmentName || ''} onChange={(e) => set('departmentName', e.target.value)} placeholder="e.g. Computer Science" />
-              </div>
-            )}
-
-            {/* Display name */}
-            <div className="space-y-1.5">
-              <Label>Display Name (optional)</Label>
-              <Input value={form.displayName || ''} onChange={(e) => set('displayName', e.target.value)} placeholder={generateDisplayName()} />
-              <p className="text-xs text-muted-foreground">This is how your election will appear across the platform.</p>
             </div>
 
             <Button onClick={() => setStep(2)} disabled={!canProceedStep1} className="w-full gap-2">Continue <Shield className="h-4 w-4" /></Button>
@@ -180,28 +200,32 @@ export function SignupView() {
         </Card>
       )}
 
-      {/* Step 2: Admin account */}
+      {/* Step 2: Owner account */}
       {step === 2 && (
         <Card className="votewise-card-glow">
-          <CardHeader><CardTitle className="font-display">Admin Account</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display">Owner Account</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">This account will be the Super Admin for your organization's election platform.</p>
+            <p className="text-sm text-muted-foreground">
+              You will be the <strong className="text-foreground">Organization Owner</strong> with full control: create elections, invite admins, manage billing, configure branding, and connect a custom domain.
+            </p>
             <div className="space-y-1.5">
-              <Label>Full Name <span className="text-destructive">*</span></Label>
-              <Input value={form.adminName || ''} onChange={(e) => set('adminName', e.target.value)} placeholder="e.g. Dr. Okon Edu" />
+              <Label>Your Full Name <span className="text-destructive">*</span></Label>
+              <Input value={form.ownerName || ''} onChange={(e) => set('ownerName', e.target.value)} placeholder="e.g. Dr. Okon Edu" />
             </div>
             <div className="space-y-1.5">
               <Label>Email <span className="text-destructive">*</span></Label>
-              <Input type="email" value={form.adminEmail || ''} onChange={(e) => set('adminEmail', e.target.value.toLowerCase())} placeholder="admin@university.edu.ng" />
+              <Input type="email" value={form.ownerEmail || ''} onChange={(e) => set('ownerEmail', e.target.value.toLowerCase())} placeholder="you@yourorganization.org" />
             </div>
             <div className="space-y-1.5">
               <Label>Password <span className="text-destructive">*</span></Label>
-              <Input type="password" value={form.adminPassword || ''} onChange={(e) => set('adminPassword', e.target.value)} placeholder="At least 8 characters" />
+              <Input type="password" value={form.ownerPassword || ''} onChange={(e) => set('ownerPassword', e.target.value)} placeholder="At least 8 characters" />
             </div>
             <Alert>
               <Shield className="h-4 w-4" />
-              <AlertTitle>Admin privileges</AlertTitle>
-              <AlertDescription>You'll be able to manage candidates, voters, officials, election settings, and certify results. You can enable 2FA from your account settings after sign-up.</AlertDescription>
+              <AlertTitle>Owner privileges</AlertTitle>
+              <AlertDescription>
+                Full control of your organization. You can enable 2FA from your account settings after sign-up. Ownership can be transferred later.
+              </AlertDescription>
             </Alert>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Back</Button>
@@ -211,43 +235,30 @@ export function SignupView() {
         </Card>
       )}
 
-      {/* Step 3: Branding */}
+      {/* Step 3: Branding + terminology */}
       {step === 3 && (
         <Card className="votewise-card-glow">
-          <CardHeader><CardTitle className="font-display">Branding & Logo</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display">Branding &amp; Terminology</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {/* Logo upload */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Organization Logo</Label>
-                <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-4">
-                  {form.logoUrl ? (
-                    <img src={form.logoUrl} alt="Logo" className="h-16 w-16 rounded-lg object-contain" />
-                  ) : (
-                    <Building2 className="h-12 w-12 text-muted-foreground/40" />
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => document.getElementById('logo-upload')?.click()} className="gap-1.5">
-                    <Upload className="h-3.5 w-3.5" /> Upload
+            <div className="space-y-1.5">
+              <Label>Organization Logo</Label>
+              <div className="flex items-center gap-4 rounded-lg border-2 border-dashed border-border p-4">
+                {form.logoUrl ? (
+                  <img src={form.logoUrl} alt="Logo" className="h-16 w-16 rounded-lg object-contain" />
+                ) : (
+                  <div className="grid h-16 w-16 place-items-center rounded-lg text-white" style={{ backgroundColor: form.primaryColour }}>
+                    <Building2 className="h-8 w-8" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Upload your organization&apos;s logo (optional, under 1MB).</p>
+                  <Button size="sm" variant="outline" onClick={() => document.getElementById('logo-upload')?.click()} className="mt-2 gap-1.5">
+                    <Upload className="h-3.5 w-3.5" /> Upload Logo
                   </Button>
-                  <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={(e) => onLogoUpload(e, 'logoUrl')} />
+                  <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={onLogoUpload} />
                 </div>
               </div>
-              {orgType !== 'UNIVERSITY' && (
-                <div className="space-y-1.5">
-                  <Label>University Logo</Label>
-                  <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-4">
-                    {form.universityLogoUrl ? (
-                      <img src={form.universityLogoUrl} alt="University logo" className="h-16 w-16 rounded-lg object-contain" />
-                    ) : (
-                      <GraduationCap className="h-12 w-12 text-muted-foreground/40" />
-                    )}
-                    <Button size="sm" variant="outline" onClick={() => document.getElementById('uni-logo-upload')?.click()} className="gap-1.5">
-                      <Upload className="h-3.5 w-3.5" /> Upload
-                    </Button>
-                    <input id="uni-logo-upload" type="file" accept="image/*" className="hidden" onChange={(e) => onLogoUpload(e, 'universityLogoUrl')} />
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Colour pickers */}
@@ -268,6 +279,40 @@ export function SignupView() {
               </div>
             </div>
 
+            {/* Terminology configuration (Principle 4) */}
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+              <div className="mb-2 flex items-center gap-1.5">
+                <Zap className="h-4 w-4 text-primary" />
+                <h4 className="font-display text-sm font-semibold">Your Terminology</h4>
+                <Badge variant="secondary" className="ml-auto text-[10px]">Principle 4</Badge>
+              </div>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Configure your own terms instead of VoteWise hardcoding &ldquo;University&rdquo;, &ldquo;Faculty&rdquo;, &ldquo;Department&rdquo;. Pre-filled based on your category — override as needed.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Organization →</Label>
+                  <Input value={form.organizationLabel || 'Organization'} onChange={(e) => set('organizationLabel', e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Workspace →</Label>
+                  <Input value={form.workspaceLabel || 'Workspace'} onChange={(e) => set('workspaceLabel', e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Voter Group →</Label>
+                  <Input value={form.voterGroupLabel || 'Voter Group'} onChange={(e) => set('voterGroupLabel', e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Voter →</Label>
+                  <Input value={form.voterLabel || 'Voter'} onChange={(e) => set('voterLabel', e.target.value)} className="h-8 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Candidate →</Label>
+                  <Input value={form.candidateLabel || 'Candidate'} onChange={(e) => set('candidateLabel', e.target.value)} className="h-8 text-sm" />
+                </div>
+              </div>
+            </div>
+
             {/* Preview */}
             <div className="rounded-lg border border-border p-4">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Preview</div>
@@ -279,11 +324,19 @@ export function SignupView() {
                     <Building2 className="h-6 w-6" />
                   </div>
                 )}
-                <div>
-                  <div className="font-display text-lg font-bold">{form.displayName || generateDisplayName()}</div>
-                  <div className="text-xs text-muted-foreground">{form.universityName}{form.facultyName && ` · ${form.facultyName}`}{form.departmentName && ` · ${form.departmentName}`}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-lg font-bold truncate">{form.name || 'Your Organization'}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {form.organizationLabel || 'Organization'} · {form.workspaceLabel || 'Workspace'} · {form.voterGroupLabel || 'Voter Group'}
+                  </div>
                 </div>
-                <Badge className="ml-auto" style={{ backgroundColor: form.accentColour, color: '#fff' }}>SUG Election</Badge>
+                <Badge className="ml-auto shrink-0" style={{ backgroundColor: form.accentColour, color: '#fff' }}>
+                  {form.voterLabel || 'Voter'} Election
+                </Badge>
+              </div>
+              <div className="mt-2 flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+                <Globe className="h-3 w-3" />
+                {form.name ? form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) : 'your-org'}.votewise.ng
               </div>
             </div>
 
@@ -291,7 +344,7 @@ export function SignupView() {
               <Button variant="outline" onClick={() => setStep(2)} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Back</Button>
               <Button onClick={submit} disabled={busy} className="flex-1 gap-2">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {busy ? 'Creating...' : 'Create Organization'}
+                {busy ? 'Creating…' : 'Create Organization'}
               </Button>
             </div>
           </CardContent>

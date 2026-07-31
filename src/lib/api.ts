@@ -32,10 +32,20 @@ async function req<T = any>(path: string, opts: RequestInit = {}, voterToken?: s
 export const api = {
   // Public
   getElection: () => req('/api/election'),
-  // Tenant (multi-organization)
+  // Tenant (multi-organization) — LEGACY (Chapter 1 retention)
   registerTenant: (data: any) => req('/api/tenant/register', { method: 'POST', body: JSON.stringify(data) }),
   getCurrentTenant: () => req('/api/tenant/current'),
   listTenants: () => req('/api/tenant/list'),
+
+  // Organizations (Chapter 1 — generic hierarchy)
+  listOrganizations: () => req('/api/organizations'),
+  getOrganization: (slug: string) => req(`/api/organizations/${slug}`),
+  registerOrganization: (data: any) => req('/api/organizations/register', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Platform (super-admin)
+  platformGetOrganizations: () => req('/api/platform/organizations'),
+  platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),
+  platformGetOrganizationDetail: (id: string) => req(`/api/platform/organizations/${id}`),
   getPositions: () => req('/api/positions'),
   getResults: () => req('/api/results'),
   getCandidates: () => req('/api/candidates'),

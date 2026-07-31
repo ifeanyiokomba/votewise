@@ -1442,3 +1442,131 @@ public/favicon.png:       PNG image data, 64 x 64, 8-bit/color RGBA, non-interla
   replaced by an `<Image src="/logo-afrivote.png">` reference in the header/footer.
 - The 512×512 logo can also serve as an OG/social preview image and PWA icon (192/512
   maskable variants can be derived from it).
+
+---
+Task ID: CHAPTER-1
+Agent: Lead Architect (main)
+Task: Chapter 1 — Product Vision & Platform Foundation. Refactor VoteWise from a
+university-specific SUG voting app into a generic multi-tenant Election Management
+Platform for ANY organization.
+
+Work Log:
+- **Schema refactor (foundation):** Added 5 new generic models to `prisma/schema.prisma`:
+  - `Organization` — any entity that runs elections. Fields: name, slug, subdomain,
+    customDomain (+ 48h auto-expiry), branding, owner, status (TRIAL|ACTIVE|SUSPENDED|EXPIRED),
+    plan (FREE|PAYG|ENTERPRISE), voterQuota, paidUntil, category (20+ org types),
+    description. Links to workspaces, voterGroups, members, terminology, elections.
+  - `Workspace` — sub-division within an org (Faculty / Branch / Parish / Division).
+    Nested via parentWorkspaceId for arbitrary depth. Has code + metadata JSON.
+  - `VoterGroup` — flexible voter grouping (replaces hardcoded Faculty/Department scoping).
+    Belongs to an org + optional workspace. Has code + metadata JSON for flexible attributes.
+  - `OrganizationMember` — the SIX user roles: PLATFORM_SUPER_ADMIN, ORG_OWNER, ORG_ADMIN,
+    OBSERVER, VOTER, GUEST. Includes 2FA, email verification, password reset, lockout,
+    profile (phone, avatar, title).
+  - `OrganizationTerminology` — Principle 4 (Everything configurable). Per-org term
+    overrides: organizationLabel, workspaceLabel, voterGroupLabel, voterLabel,
+    candidateLabel, electionLabel, positionLabel, officialLabel, observerLabel, etc.
+  - Linked `ElectionSession` to Organization + Workspace (optional, for new elections).
+  - Marked legacy `Tenant`/`Faculty`/`Department`/`Programme`/`Level`/`StudentCollation`
+    as DEPRECATED with clear comments. All NEW features MUST use the generic hierarchy.
+- **Seed extended:** `scripts/seed.ts` now creates:
+  - Platform Super Admin (admin@votewise.ng / admin123) as OrganizationMember
+  - Organization #1: "Demo University" (category UNIVERSITY) with 3 workspaces (Faculties)
+    + 9 voter groups (Departments) + terminology (University/Faculty/Department/Student)
+    + 3 members (ORG_OWNER, ORG_ADMIN, OBSERVER)
+  - Organization #2: "Nigeria Medical Association" (category PROFESSIONAL_BODY — NON-academic,
+    proves genericity) with 3 workspaces (State Chapters) + 9 voter groups (Branches) +
+    terminology (Association/State Chapter/Branch/Member) + 2 members
+  - Organization #3: "Lagos Staff Cooperative Society" (category COOPERATIVE — NON-academic)
+    with 2 workspaces (Branches) + terminology (Cooperative/Branch/Unit/Member)
+- **Backend APIs (new generic hierarchy):**
+  - `GET /api/organizations` — public list of active organizations (for directory)
+  - `POST /api/organizations/register` — generic org onboarding (any org type). Creates
+    Organization + OrganizationMember (ORG_OWNER) + OrganizationTerminology + bridging
+    ElectionOfficial (so existing cookie auth works). Principle 5: under 5 minutes.
+  - `GET /api/organizations/[slug]` — public org detail with workspaces, voter groups,
+    terminology, counts
+  - `GET /api/platform/organizations` — super-admin: ALL orgs with full metrics
+  - `PATCH /api/platform/organizations` — super-admin: suspend/activate org
+  - `GET /api/platform/organizations/[id]` — super-admin: full org detail (members,
+    workspaces, voter groups, terminology)
+  - Added `getCurrentOfficial(req)` helper to guards.ts (lightweight, no capability check)
+- **Brand assets:** Generated new VoteWise logo (`public/logo-votewise.png`, 1024x1024
+  PNG) + favicon (`public/favicon.png`, 64x64) via image-generation skill. Ballot box +
+  checkmark + shield silhouette, emerald + gold, NO university/graduation imagery —
+  generic for any organization. Also generated generic hero image
+  (`public/hero-platform.png`) — diverse people icons around a ballot box.
+- **Layout rebrand:** `src/app/layout.tsx` metadata updated — removed "SUG" / "University"
+  from title/description/keywords. Now "VoteWise — Africa's Most Trusted Election
+  Management Platform".
+- **Homepage rewrite (centerpiece):** Complete rewrite of `src/components/votewise/home.tsx`
+  as a true VoteWise platform marketing site:
+  - Hero: "We're not building a voting app. We're building a platform that conducts
+    elections." Generic platform pitch, not university-specific.
+  - "Built for ANY Organization" section: 22 org type cards (Universities, Polytechnics,
+    Colleges, Student Unions, Churches, Mosques, NGOs, Political Parties, Government,
+    Companies, Cooperatives, Professional Bodies, Communities, Clubs, Associations, Trade
+    Unions, Market Associations, Resident Associations, Sports Clubs, etc.)
+  - Three Products section: Public Website, Organization Portal, Platform Dashboard
+  - "The Biggest Architectural Shift" — the new universal hierarchy visualization:
+    Organization → Workspace → Election → Voter Groups → Voters → Candidates → Voting → Results
+  - Six User Roles section: Platform Super Admin, Org Owner, Org Admin, Observer, Voter,
+    Guest — each with Can/Cannot lists and notes
+  - Six Platform Principles section: org data ownership, tenant isolation, security first,
+    everything configurable, simple onboarding, no hidden complexity
+  - Security Features section: AES-256-GCM, hash-chained audit, receipt-anchored,
+    vote-buying detection, OTP+2FA, HMAC-signed results
+  - Pricing section: PAYG (₦500/voter) + Enterprise
+  - Organizations Directory: live list from /api/organizations
+  - Platform Dashboard preview CTA
+  - Demo election CTA (links to existing voter flow)
+  - Org signup CTA
+- **NavBar/Footer rebrand:** `src/components/votewise/shared.tsx`:
+  - Nav: Platform / Organizations / Roles / Principles / Security / Pricing + Org Login +
+    Register Org + Platform Dashboard links
+  - Footer: 3-product links (Public Website, Org Portal, Platform Dashboard) + 6 principles
+- **Signup rewrite (generic onboarding):** `src/components/votewise/signup.tsx`:
+  - 3-step flow: Organization Details → Owner Account → Branding & Terminology
+  - 21 organization categories to choose from (purely informational, never gates features)
+  - Auto-applies terminology presets based on category (e.g. Church → Parish/Fellowship,
+    Company → Division/Department/Employee) — user can override
+  - Configurable terminology (Principle 4): organizationLabel, workspaceLabel,
+    voterGroupLabel, voterLabel, candidateLabel
+  - Live preview with subdomain + branding
+- **Organizations directory + Platform login views:** New `organizations.tsx`:
+  - `OrganizationsView` — searchable public directory of all orgs on VoteWise
+  - `PlatformLoginView` — styled gateway to /admin (platform super admin login)
+- **Store + page router:** Added `platform-login` and `organizations` views to store.ts
+  and wired into page.tsx.
+- **Platform Dashboard enhancement:** Rewrote `src/app/admin/page.tsx`:
+  - 7 tabs: Overview, Organizations, Revenue, Paystack, Security, Audit Log, Settings
+  - Overview: 8 stat cards (orgs, members, active, trial, workspaces, voter groups, health,
+    status) + recent orgs list
+  - Organizations: full table with category/members/plan/status + View (detail dialog showing
+    terminology + members + workspaces) + Suspend/Activate actions
+  - Revenue: est. revenue (₦500/voter), paid orgs, voter quota, avg per org, revenue by org
+  - Uses new platform APIs (platformGetOrganizations, platformUpdateOrganization,
+    platformGetOrganizationDetail)
+- **Verification:** `bun run lint` → 0 errors. Prisma client regenerated. Dev server
+  restarted. `/api/organizations` returns 3 seeded orgs. Homepage loads (200).
+
+Stage Summary:
+- ✅ Schema refactored: Organization → Workspace → Voter Group → Voter → Candidate generic
+  hierarchy established alongside (deprecated) legacy academic models.
+- ✅ Six user roles formally established in OrganizationMember model + rbac.ts (already had
+  the matrix).
+- ✅ Three products clearly separated: Public Website (home), Organization Portal
+  (official.tsx — existing, rebranded nav), Platform Dashboard (/admin — enhanced).
+- ✅ Generic org onboarding (any org type, under 5 minutes, configurable terminology).
+- ✅ Platform principles documented in UI (homepage section) + schema comments.
+- ✅ Remaining university-specific code (Faculty, Department, Programme, Level,
+  StudentCollation, matric numbers, ElectionOfficial legacy auth) DOCUMENTED as deprecated
+  in schema comments — to be migrated in later chapters.
+- **Current state:** VoteWise is now positioned as a generic multi-tenant Election
+  Management Platform. The homepage pitches the platform vision. 3 demo organizations
+  (university + professional body + cooperative) prove genericity. Platform super admin
+  can manage all orgs. New orgs can register generically.
+- **Unresolved / next-phase (Chapter 2+):** Migrate auth from ElectionOfficial to
+  OrganizationMember. Migrate Voter/Candidate/Position to use VoterGroup instead of
+  Faculty/Department. Build organization portal election creation flow using the new
+  hierarchy. Custom domain connection flow. Real OTP delivery. Biometric accreditation.

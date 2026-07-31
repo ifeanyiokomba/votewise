@@ -1,6 +1,14 @@
-// VoteWise SUG v2 — Enterprise Prisma schema.
-// Normalized, indexed, constraint-rich. SQLite in sandbox; swap `provider` to
-// `postgresql` + `DATABASE_URL` for production (no other changes needed).
+// VoteWise — Africa's most trusted Election Management Platform.
+// Generic multi-tenant schema: Organization → Workspace → Election → Voter Groups
+//                                  → Voters → Candidates → Voting → Results
+// Works for ANY organization (universities, companies, churches, NGOs, clubs, etc.)
+// SQLite in sandbox; swap `provider` to `postgresql` + `DATABASE_URL` for production.
+//
+// CHAPTER 1 NOTE: The legacy `Tenant` / `Faculty` / `Department` / `Programme` /
+// `Level` / `StudentCollation` models below are RETAINED for backwards
+// compatibility with the existing seeded demo election. They are DEPRECATED and
+// will be removed in a later chapter once the new `Organization` hierarchy fully
+// replaces them. All NEW features must use the generic `Organization` hierarchy.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,8 +19,172 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===========================================================================
+// CHAPTER 1 — GENERIC ORGANIZATION HIERARCHY (NEW)
+// Organization → Workspace → Election → Voter Groups → Voters → Candidates
+// ===========================================================================
+
+/// An Organization is any entity that runs elections on VoteWise.
+/// Universities, polytechnics, colleges, student unions, churches, mosques,
+/// NGOs, political parties, government agencies, companies, cooperatives,
+/// professional bodies, communities, clubs, associations, trade unions,
+/// market associations, resident associations, sports clubs — ALL are simply
+/// Organizations. The system never knows or cares which one it is.
+model Organization {
+  id              String   @id @default(cuid())
+  name            String   // "University of Lagos" / "MTN Nigeria" / "Red Cross Nigeria"
+  slug            String   @unique
+  subdomain       String?  @unique // e.g. "unilag" → unilag.votewise.ng
+  customDomain    String?  @unique // e.g. "vote.unilag.edu.ng" (48h auto-expiry)
+  customDomainExpiresAt DateTime? // auto-reverts to subdomain after 48h
+  logoUrl         String?
+  primaryColour   String   @default("#15803d")
+  accentColour    String   @default("#b45309")
+  // Owner (the person who registered — Organization Owner role)
+  ownerEmail      String
+  ownerName       String
+  // Lifecycle & billing
+  status          String   @default("TRIAL") // TRIAL | ACTIVE | SUSPENDED | EXPIRED
+  plan            String   @default("PAYG")  // FREE | PAYG | ENTERPRISE
+  voterQuota      Int      @default(0)       // voters paid for
+  paidUntil       DateTime?
+  // Optional categorization (purely informational — never gates features)
+  category        String?  // UNIVERSITY | POLYTECHNIC | COLLEGE | STUDENT_UNION | CHURCH | MOSQUE | NGO | POLITICAL_PARTY | GOVERNMENT | COMPANY | COOPERATIVE | PROFESSIONAL_BODY | COMMUNITY | CLUB | ASSOCIATION | TRADE_UNION | MARKET_ASSOCIATION | RESIDENT_ASSOCIATION | SPORTS_CLUB | OTHER
+  // Free-form descriptor the org sets for itself
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspaces      Workspace[]
+  voterGroups     VoterGroup[]
+  members         OrganizationMember[]
+  terminology     OrganizationTerminology?
+  elections       ElectionSession[]
+}
+
+/// A Workspace is a sub-division within an Organization.
+/// For a university: Faculty / Department / Hall of Residence.
+/// For a company: Division / Branch / Department.
+/// For a church: Diocese / Parish / Fellowship.
+/// Workspaces can be nested (parentWorkspaceId) to model arbitrary depth.
+model Workspace {
+  id              String   @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentWorkspaceId String? // nested workspaces (e.g. Department under Faculty)
+  parent          Workspace?  @relation("WorkspaceHierarchy", fields: [parentWorkspaceId], references: [id], onDelete: SetNull)
+  children        Workspace[] @relation("WorkspaceHierarchy")
+  name            String   // "Faculty of Engineering" / "Lagos Branch" / "Finance Dept"
+  slug            String
+  code            String?  // "ENG" / "LOS" / "FIN"
+  description     String?
+  metadata        String?  // JSON for flexible extra attributes
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  voterGroups     VoterGroup[]
+  elections       ElectionSession[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([parentWorkspaceId])
+}
+
+/// A Voter Group is a flexible grouping of voters within an Organization.
+/// This replaces the hardcoded Faculty/Department scoping. An org can define
+/// arbitrary voter groups: "300-Level Engineering", "Lagos Members", "Board
+/// Members", "Paid-up Members 2024", etc. Elections/positions can be scoped
+/// to one or more voter groups.
+model VoterGroup {
+  id              String   @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspaceId     String?  // optional workspace this group belongs to
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  name            String   // "300-Level Computer Science" / "Lagos Branch Members"
+  slug            String
+  code            String?  // "CSC300" / "LOS"
+  description     String?
+  metadata        String?  // JSON: { level: "300", branch: "Lagos", ... }
+  voterCount      Int      @default(0) // cached count for billing/display
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([workspaceId])
+}
+
+/// Organization Member — the six user roles (Chapter 1 product vision).
+/// PLATFORM_SUPER_ADMIN | ORG_OWNER | ORG_ADMIN | OBSERVER | VOTER | GUEST
+/// GUEST is implicit (not logged in) and rarely stored; included for completeness.
+/// This model is the NEW RBAC identity. The legacy `ElectionOfficial` model
+/// is retained for the seeded demo and will be migrated in a later chapter.
+model OrganizationMember {
+  id              String   @id @default(cuid())
+  organizationId  String?  // null for PLATFORM_SUPER_ADMIN (platform-wide)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email           String   @unique
+  name            String
+  role            String   // PLATFORM_SUPER_ADMIN | ORG_OWNER | ORG_ADMIN | OBSERVER | VOTER | GUEST
+  passwordHash    String
+  // 2FA (required for PLATFORM_SUPER_ADMIN and ORG_OWNER per RBAC policy)
+  totpSecret      String?
+  totpEnabled     Boolean  @default(false)
+  backupCodes     String?  // JSON array of hashed codes
+  // Email verification + password reset + lockout
+  emailVerified   Boolean  @default(false)
+  emailVerifyToken String?
+  passwordResetToken String?
+  passwordResetExpiresAt DateTime?
+  failedAttempts  Int      @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  // Profile
+  phone           String?
+  avatarUrl       String?
+  title           String?  // "Electoral Chairman" / "Returning Officer"
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([role])
+  @@index([email])
+}
+
+/// Organization Terminology — Principle 4: Everything configurable.
+/// Organizations configure their own terminology instead of VoteWise hardcoding
+/// "University", "Faculty", "Department", "Church", "Market", "Company".
+/// Each label has a sensible default; orgs override per their domain.
+model OrganizationTerminology {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationLabel String @default("Organization")  // "University" / "Company" / "Church"
+  workspaceLabel  String   @default("Workspace")      // "Faculty" / "Branch" / "Parish"
+  voterGroupLabel String   @default("Voter Group")    // "Department" / "Unit" / "Cell"
+  voterLabel      String   @default("Voter")          // "Student" / "Member" / "Employee"
+  candidateLabel  String   @default("Candidate")      // "Aspirant" / "Nominee"
+  electionLabel   String   @default("Election")       // "Poll" / "Vote"
+  positionLabel   String   @default("Position")       // "Office" / "Role"
+  ballotLabel     String   @default("Ballot")
+  receiptLabel    String   @default("Receipt")
+  officialLabel   String   @default("Electoral Officer") // "Returning Officer" / "Committee Member"
+  observerLabel   String   @default("Observer")
+  updatedAt       DateTime @updatedAt
+}
+
+// ===========================================================================
+// LEGACY MODELS (DEPRECATED — Chapter 1 retention)
+// The following Tenant/Faculty/Department/Programme/Level/StudentCollation
+// models are university-specific and will be removed once the new
+// Organization/Workspace/VoterGroup hierarchy fully replaces them.
+// All NEW features MUST use the generic hierarchy above.
+// ===========================================================================
+
 // ---------------------------------------------------------------------------
-// Multi-tenant: Organizations (University / Faculty / Department)
+// Multi-tenant: Organizations (University / Faculty / Department) — LEGACY
 // ---------------------------------------------------------------------------
 model Tenant {
   id              String   @id @default(cuid())
@@ -91,9 +263,15 @@ model ElectionSession {
   id              String   @id @default(cuid())
   tenantId        String?
   tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String   // e.g. "SUG General Elections 2024/2025"
-  university      String   @default("University of Lagos")
-  academicSession String   // e.g. "2024/2025"
+  // Chapter 1: generic Organization hierarchy links (optional for now; new
+  // elections created through the new portal will set these).
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspaceId     String?
+  workspace       Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  name            String   // e.g. "SUG General Elections 2024/2025" or "2024 Board Election"
+  university      String   @default("University of Lagos") // LEGACY display field
+  academicSession String   // e.g. "2024/2025" — free-form period label
   startTime       DateTime
   endTime         DateTime
   accreditationStart DateTime?
@@ -112,6 +290,7 @@ model ElectionSession {
   notifications   Notification[]
 
   @@index([status])
+  @@index([organizationId])
 }
 
 model ElectionSetting {

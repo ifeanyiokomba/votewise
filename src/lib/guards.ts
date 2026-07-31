@@ -101,6 +101,28 @@ export async function requireScopedOfficial(
   return res
 }
 
+// Lightweight helper: returns the current official from the access token in
+// the request, WITHOUT requiring a specific capability. Use this when you need
+// to do custom role checks (e.g. platform super admin only). Returns null if
+// not authenticated.
+export async function getCurrentOfficial(req: NextRequest) {
+  const token = readAccessToken(req)
+  if (!token) return null
+  const payload = await verifyAccessToken(token)
+  if (!payload) return null
+  const official = await db.electionOfficial.findUnique({
+    where: { id: payload.sub },
+    select: {
+      id: true, email: true, name: true, role: true,
+      scopeFacultyId: true, scopeDepartmentId: true, totpEnabled: true,
+      lockedUntil: true,
+    },
+  })
+  if (!official) return null
+  if (official.lockedUntil && official.lockedUntil > new Date()) return null
+  return official
+}
+
 // Voter session guard (DB-backed session token on Voter row, device-bound).
 export async function requireVoter(req: NextRequest) {
   const token =

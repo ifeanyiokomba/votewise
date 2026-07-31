@@ -22,14 +22,16 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "VoteWise SUG — Secure University SUG Election Platform",
+  title: "VoteWise — Africa's Most Trusted Election Management Platform",
   description:
-    "VoteWise SUG is the trusted electronic voting platform for Students' Union Government (SUG) elections at any Nigerian tertiary institution — universities, polytechnics, and colleges of education. Sign up your institution, set up your election, and vote securely.",
+    "VoteWise is a cloud platform that enables ANY organization — universities, companies, churches, NGOs, cooperatives, associations, trade unions, clubs — to create, manage, conduct, and monitor secure elections from a single trusted control room. Encrypted voting, audit trails, live results.",
   keywords: [
-    "SUG elections", "Nigeria university voting", "student union government",
-    "electronic voting", "VoteWise", "campus election", "tertiary institution voting",
+    "election platform", "election management", "electronic voting", "VoteWise",
+    "secure voting", "organization elections", "Africa elections",
+    "association voting", "cooperative elections", "church elections",
+    "university elections", "company elections", "NGO elections",
   ],
-  authors: [{ name: "VoteWise Electoral Tech" }],
+  authors: [{ name: "VoteWise" }],
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png", sizes: "64x64" },

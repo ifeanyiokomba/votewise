@@ -28,10 +28,12 @@ export function Logo({ className }: { className?: string }) {
 }
 
 const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
-  { label: 'Features', target: 'features' },
-  { label: 'How It Works', target: 'how' },
+  { label: 'Platform', target: 'products' },
+  { label: 'Organizations', target: 'organizations' },
+  { label: 'Roles', target: 'roles' },
+  { label: 'Principles', target: 'principles' },
   { label: 'Security', target: 'security' },
-  { label: 'FAQ', target: 'faq' },
+  { label: 'Pricing', target: 'pricing' },
 ]
 
 export function NavBar() {
@@ -55,7 +57,7 @@ export function NavBar() {
           <Logo />
         </button>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {NAV_ITEMS.map((n) => (
             <Button key={n.label} variant="ghost" size="sm" onClick={() => scrollTo(n.target)} className="text-sm">
               {n.label}
@@ -71,12 +73,12 @@ export function NavBar() {
           )}
           {!official && (
             <Button variant="outline" size="sm" onClick={() => setView('official-login')} className="gap-1.5">
-              <Lock className="h-4 w-4" /> Login
+              <Lock className="h-4 w-4" /> Org Login
             </Button>
           )}
           {!official && (
             <Button size="sm" onClick={() => setView('signup')} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
-              <Sparkles className="h-4 w-4" /> Sign Up
+              <Sparkles className="h-4 w-4" /> Register Org
             </Button>
           )}
           {official && (
@@ -84,6 +86,9 @@ export function NavBar() {
               <BarChart3 className="h-4 w-4" /> Dashboard
             </Button>
           )}
+          <Button variant="ghost" size="sm" onClick={() => setView('platform-login')} className="gap-1.5 text-muted-foreground" title="Platform Super Admin login">
+            <Shield className="h-4 w-4" /> Platform
+          </Button>
           {voterProfile && <VoterNotifications />}
           <ThemeToggle />
         </div>
@@ -109,19 +114,22 @@ export function NavBar() {
             )}
             {!official && (
               <Button variant="outline" size="sm" onClick={() => { setView('official-login'); setOpen(false) }} className="gap-1.5">
-                <Lock className="h-4 w-4" /> Login
+                <Lock className="h-4 w-4" /> Organization Login
               </Button>
             )}
             {!official && (
               <Button size="sm" onClick={() => { setView('signup'); setOpen(false) }} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Sparkles className="h-4 w-4" /> Sign Up Your Organization
+                <Sparkles className="h-4 w-4" /> Register Your Organization
               </Button>
             )}
             {official && (
               <Button variant="outline" size="sm" onClick={() => { setView('official'); setOpen(false) }} className="gap-1.5">
-                <BarChart3 className="h-4 w-4" /> Dashboard
+                <BarChart3 className="h-4 w-4" /> Organization Portal
               </Button>
             )}
+            <Button variant="ghost" size="sm" onClick={() => { setView('platform-login'); setOpen(false) }} className="gap-1.5 text-muted-foreground">
+              <Shield className="h-4 w-4" /> Platform Dashboard
+            </Button>
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-muted-foreground">Theme</span>
               <ThemeToggle />
@@ -134,6 +142,7 @@ export function NavBar() {
 }
 
 export function Footer() {
+  const { setView } = useApp()
   return (
     <footer className="mt-auto border-t border-border/60 bg-secondary/40">
       {/* Trust bar */}
@@ -161,42 +170,43 @@ export function Footer() {
         <div className="md:col-span-2">
           <Logo />
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-            A secure, transparent, and high-capacity electronic voting platform built for the
-            Elections for any organization.
-            Every vote is verifiable. Every action is audited.
+            Africa&apos;s most trusted Election Management Platform. We&apos;re not building a voting app —
+            we&apos;re building a platform that happens to conduct elections. For any organization.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> Voter ID + OTP Verified</Badge>
+            <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> Encrypted Voting</Badge>
             <Badge variant="secondary" className="gap-1"><Lock className="h-3 w-3" /> Ballot Secrecy</Badge>
             <Badge variant="secondary" className="gap-1"><BadgeCheck className="h-3 w-3" /> Receipt-Anchored</Badge>
+            <Badge variant="secondary" className="gap-1"><ScrollText className="h-3 w-3" /> Audit Trail</Badge>
           </div>
         </div>
         <div>
-          <h4 className="font-display text-sm font-semibold">Election</h4>
+          <h4 className="font-display text-sm font-semibold">Platform</h4>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li>Live Results</li>
-            <li>Candidates</li>
-            <li>Timetable</li>
-            <li>How It Works</li>
-            <li>Verify Your Vote</li>
+            <li><button onClick={() => setView('home')} className="hover:text-foreground">Public Website</button></li>
+            <li><button onClick={() => setView('official-login')} className="hover:text-foreground">Organization Portal</button></li>
+            <li><button onClick={() => setView('platform-login')} className="hover:text-foreground">Platform Dashboard</button></li>
+            <li><button onClick={() => setView('signup')} className="hover:text-foreground">Register Organization</button></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-display text-sm font-semibold">Electoral Committee</h4>
+          <h4 className="font-display text-sm font-semibold">Principles</h4>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li>Admin Portal</li>
-            <li>Observer Desk</li>
-            <li>Audit Logs</li>
-            <li>Support &amp; Help</li>
+            <li>Organizations own their data</li>
+            <li>Tenant isolation</li>
+            <li>Security first</li>
+            <li>Everything configurable</li>
+            <li>Simple onboarding</li>
+            <li>No hidden complexity</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-border/60">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
-          <p>© {new Date().getFullYear()} VoteWise. Built for transparent organizational democracy.</p>
+          <p>© {new Date().getFullYear()} VoteWise. Built for transparent organizational democracy — for any organization.</p>
           <p className="flex items-center gap-1.5">
             <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
-            Results stream live via secure WebSocket
+            Africa&apos;s Election Management Platform
           </p>
         </div>
       </div>
