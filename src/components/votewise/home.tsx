@@ -15,14 +15,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
-import { StatusBadge, Countdown } from '@/components/afrivote/shared'
-import { LiveResultsPanel } from '@/components/afrivote/live-results'
-import { ElectionTimetable, LiveActivityFeed, ResultsSkeleton } from '@/components/afrivote/timetable'
-import { FaqSection, Reveal } from '@/components/afrivote/faq'
-import { FacultyTurnoutMap } from '@/components/afrivote/faculty-turnout'
+import { StatusBadge, Countdown } from '@/components/votewise/shared'
+import { LiveResultsPanel } from '@/components/votewise/live-results'
+import { ElectionTimetable, LiveActivityFeed, ResultsSkeleton } from '@/components/votewise/timetable'
+import { FaqSection, Reveal } from '@/components/votewise/faq'
+import { FacultyTurnoutMap } from '@/components/votewise/faculty-turnout'
 
 const HOW_STEPS = [
-  { icon: KeyRound, title: '1. Verify Matric', desc: 'Enter your matriculation number. We check it against the official student register before anything else.' },
+  { icon: KeyRound, title: '1. Verify Voter ID', desc: 'Enter your voterIdulation number. We check it against the official voter register before anything else.' },
   { icon: Shield, title: '2. Receive OTP', desc: 'A one-time verification PIN is sent to your registered email, SMS, or WhatsApp. Enter it to unlock your ballot.' },
   { icon: Vote, title: '3. Cast Your Ballot', desc: 'Vote for each position you are eligible for. Candidate order is shuffled per voter — no positional bias.' },
   { icon: BadgeCheck, title: '4. Get Your Receipt', desc: 'You receive a unique receipt code. Use it on the homepage to confirm your vote was counted — without revealing who you voted for.' },
@@ -44,17 +44,17 @@ export function HomeView() {
   return (
     <div className="flex flex-col">
       {/* HERO */}
-      <section className="afrivote-hero-bg relative overflow-hidden border-b border-border/60">
+      <section className="votewise-hero-bg relative overflow-hidden border-b border-border/60">
         {/* Animated background orbs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="afrivote-orb absolute -left-20 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="afrivote-orb afrivote-orb-delay absolute -right-20 top-20 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+          <div className="votewise-orb absolute -left-20 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="votewise-orb votewise-orb-delay absolute -right-20 top-20 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
         </div>
         <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-2 md:py-16">
           <div className="flex flex-col justify-center">
             <Badge variant="secondary" className="mb-4 w-fit gap-1.5">
-              <span className="afrivote-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              {election?.university || 'University of Lagos'} · SUG Elections
+              <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              
             </Badge>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
               Your vote.<br />
@@ -63,13 +63,13 @@ export function HomeView() {
               <span className="text-foreground">Secure.</span>
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              The official electronic voting platform for the {election?.name || 'SUG General Elections'}.
-              Verify your matric, receive a one-time PIN, cast your ballot, and prove your vote was counted —
+              The official electronic voting platform for the Your Organization's Election.
+              Verify your voterId, receive a one-time PIN, cast your ballot, and prove your vote was counted —
               all in under two minutes.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={() => setView('verify')} className="gap-2">
-                <Shield className="h-5 w-5" /> Cast Your Vote Now
+                <Shield className="h-5 w-5" /> Sign Up Now
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="gap-2">
                 <Eye className="h-5 w-5" /> View Live Results
@@ -107,7 +107,7 @@ export function HomeView() {
             </div>
             {/* Floating status card */}
             {election && (
-              <Card className="afrivote-card-glow absolute -bottom-6 -left-2 w-64 max-w-[80%] sm:-left-6">
+              <Card className="votewise-card-glow absolute -bottom-6 -left-2 w-64 max-w-[80%] sm:-left-6">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs uppercase tracking-wider text-muted-foreground">Election Status</span>
@@ -126,7 +126,7 @@ export function HomeView() {
         <div className="mb-8 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <Badge variant="secondary" className="mb-2 gap-1.5">
-              <span className="afrivote-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" /> Live
+              <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" /> Live
             </Badge>
             <h2 className="font-display text-3xl font-bold sm:text-4xl">Real-time Results</h2>
             <p className="mt-2 max-w-2xl text-muted-foreground">
@@ -160,7 +160,7 @@ export function HomeView() {
             <Badge variant="secondary" className="mb-2 gap-1"><Calendar className="h-3.5 w-3.5" /> Full Cycle</Badge>
             <h2 className="font-display text-3xl font-bold sm:text-4xl">Election Timetable</h2>
             <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-              From nomination to appeal — the complete SUG election lifecycle, following Nigerian federal university electoral practice.
+              From nomination to appeal — the complete election lifecycle, for any organization.
             </p>
           </div>
           <div className="mx-auto max-w-2xl">
@@ -190,7 +190,7 @@ export function HomeView() {
             <p className="text-muted-foreground">Loading candidates…</p>
           ) : (
             <Tabs defaultValue={positions[0]?.slug}>
-              <TabsList className="afrivote-scroll mb-6 flex h-auto w-full max-w-full overflow-x-auto py-1">
+              <TabsList className="votewise-scroll mb-6 flex h-auto w-full max-w-full overflow-x-auto py-1">
                 {positions.map((p: any) => (
                   <TabsTrigger key={p.slug} value={p.slug} className="whitespace-nowrap text-xs">
                     {p.title}
@@ -231,7 +231,7 @@ export function HomeView() {
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {HOW_STEPS.map((s, i) => (
             <Reveal key={s.title} delay={i * 100}>
-              <Card className="afrivote-card-glow relative h-full overflow-hidden">
+              <Card className="votewise-card-glow relative h-full overflow-hidden">
                 <CardHeader>
                   <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
                     <s.icon className="h-6 w-6" />
@@ -277,7 +277,7 @@ export function HomeView() {
       {/* VERIFY RECEIPT + CERTIFICATE CTA */}
       <section id="receipt" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="afrivote-card-glow overflow-hidden">
+          <Card className="votewise-card-glow overflow-hidden">
             <CardContent className="p-6">
               <Badge variant="secondary" className="mb-2 gap-1"><BadgeCheck className="h-3.5 w-3.5" /> Voter-verifiable</Badge>
               <h3 className="font-display text-xl font-bold">Verify Your Receipt</h3>
@@ -289,7 +289,7 @@ export function HomeView() {
               </Button>
             </CardContent>
           </Card>
-          <Card className="afrivote-card-glow overflow-hidden">
+          <Card className="votewise-card-glow overflow-hidden">
             <CardContent className="p-6">
               <Badge variant="secondary" className="mb-2 gap-1"><Award className="h-3.5 w-3.5" /> Certified</Badge>
               <h3 className="font-display text-xl font-bold">Official Results Certificate</h3>
@@ -314,11 +314,11 @@ export function HomeView() {
             <Badge variant="secondary" className="mb-2 gap-1"><Building2 className="h-3.5 w-3.5" /> For Any Institution</Badge>
             <h2 className="font-display text-3xl font-bold sm:text-4xl">Run Your Own Election</h2>
             <p className="mt-2 max-w-lg text-muted-foreground">
-              AfriVote SUG works for any Nigerian university, faculty, or department. Sign up with your
+              VoteWise works for any Nigerian any organization. Sign up with your
               organization name and logo, and we&apos;ll set up a fully branded, secure voting platform in minutes.
             </p>
             <div className="mt-4 space-y-1.5">
-              {['University-wide SUG elections', 'Faculty representative elections', 'Departmental senator elections', 'Custom branding with your logo & colours'].map((f) => (
+              {['University elections', 'Faculty representative elections', 'Departmental senator elections', 'Custom branding with your logo & colours'].map((f) => (
                 <div key={f} className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
                 </div>
@@ -330,7 +330,7 @@ export function HomeView() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Building2, label: 'University', desc: 'Full SUG election' },
+              { icon: Building2, label: 'University', desc: 'Full election' },
               { icon: GraduationCap, label: 'Faculty', desc: 'Faculty rep election' },
               { icon: Users, label: 'Department', desc: 'Dept senator election' },
             ].map((o, i) => (
@@ -423,7 +423,7 @@ function CandidateDetailDialog({ candidate, positionTitle, open, onOpenChange, p
           </div>
         </div>
         {/* Body */}
-        <div className="afrivote-scroll max-h-[50vh] overflow-y-auto p-6">
+        <div className="votewise-scroll max-h-[50vh] overflow-y-auto p-6">
           {c?.campaignVideoUrl && (
             <div className="mb-4">
               <h3 className="mb-2 flex items-center gap-1.5 font-display text-sm font-semibold"><Play className="h-4 w-4 text-primary" /> Campaign Video</h3>

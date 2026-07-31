@@ -44,14 +44,14 @@ export function LiveVoteFeed() {
   }
 
   return (
-    <Card className="afrivote-card-glow">
+    <Card className="votewise-card-glow">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="font-display text-base flex items-center gap-2">
             <Activity className="h-4 w-4 text-primary" /> Live Vote Feed
           </CardTitle>
           <Badge className="gap-1 bg-emerald-100 text-emerald-700">
-            <span className="afrivote-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             {feed.length} recent
           </Badge>
         </div>
@@ -65,7 +65,7 @@ export function LiveVoteFeed() {
             <p className="mt-2">No votes cast yet</p>
           </div>
         ) : (
-          <div className="afrivote-scroll max-h-80 space-y-1 overflow-y-auto">
+          <div className="votewise-scroll max-h-80 space-y-1 overflow-y-auto">
             {feed.map((item) => (
               <div
                 key={item.id}

@@ -60,7 +60,7 @@ export function CompareCandidatesView() {
       </div>
 
       {selectedPos && selectedPos.candidates.length > 0 ? (
-        <div className="afrivote-scroll overflow-x-auto pb-4">
+        <div className="votewise-scroll overflow-x-auto pb-4">
           <div className="flex gap-4" style={{ minWidth: `${selectedPos.candidates.length * 280}px` }}>
             {selectedPos.candidates.map((c: any, i: number) => (
               <CandidateCompareCard key={c.id} c={c} position={selectedPos} rank={i + 1} />
@@ -152,7 +152,7 @@ function CandidateCompareCard({ c, position, rank }: { c: any; position: any; ra
               </div>
             </div>
           </div>
-          <div className="afrivote-scroll max-h-[50vh] overflow-y-auto p-6">
+          <div className="votewise-scroll max-h-[50vh] overflow-y-auto p-6">
             {c.campaignVideoUrl && (
               <div className="mb-4">
                 <h3 className="mb-2 flex items-center gap-1.5 font-display text-sm font-semibold"><Play className="h-4 w-4 text-primary" /> Campaign Video</h3>

@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
-import { StatusBadge, Countdown } from '@/components/afrivote/shared'
-import { Reveal } from '@/components/afrivote/faq'
+import { StatusBadge, Countdown } from '@/components/votewise/shared'
+import { Reveal } from '@/components/votewise/faq'
 
 export function AboutView() {
   const { setView } = useApp()
@@ -53,7 +53,7 @@ export function AboutView() {
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
             <Building2 className="h-3.5 w-3.5" /> About the Election
           </div>
-          <h1 className="font-display text-3xl font-bold sm:text-4xl">{election?.name || 'SUG General Elections'}</h1>
+          <h1 className="font-display text-3xl font-bold sm:text-4xl">{election?.name || 'General Elections'}</h1>
           <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
             {election?.university} · {election?.academicSession} Academic Session
           </p>
@@ -104,7 +104,7 @@ export function AboutView() {
       {/* Countdown */}
       {election && (
         <Reveal>
-          <Card className="afrivote-card-glow mb-8">
+          <Card className="votewise-card-glow mb-8">
             <CardContent className="p-6">
               <Countdown start={election.startTime} end={election.endTime} status={election.status} />
             </CardContent>

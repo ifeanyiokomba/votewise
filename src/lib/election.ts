@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — Election helpers: lifecycle, encrypted-vote collation,
+// VoteWise SUG v2 — Election helpers: lifecycle, encrypted-vote collation,
 // hash-chained audit log, security events, result aggregation with caching.
 
 import { db } from '@/lib/db'

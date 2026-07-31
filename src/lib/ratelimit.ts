@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — In-memory token-bucket rate limiter.
+// VoteWise SUG v2 — In-memory token-bucket rate limiter.
 // Production: swap for Redis (same interface). Bucketed per key (IP or userId).
 
 interface Bucket { tokens: number; lastRefill: number }

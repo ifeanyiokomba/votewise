@@ -32,7 +32,7 @@ export function ChatbotWidget() {
   const [open, setOpen] = useState(false)
   const [ticketOpen, setTicketOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { sender: 'BOT', content: "Hello! I'm AfriBot 🤖, your voting assistant. Ask me how to vote, eligibility, OTP issues, or anything about the SUG election. You can also send photos or files, or tap 'Talk to an Officer' to speak with a human." },
+    { sender: 'BOT', content: "Hello! I'm VoteWise Bot 🤖, your voting assistant. Ask me how to vote, eligibility, OTP issues, or anything about the election. You can also send photos or files, or tap 'Talk to an Officer' to speak with a human." },
   ])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -182,7 +182,7 @@ export function ChatbotWidget() {
   function senderLabel(sender: string) {
     if (sender === 'VOTER') return 'You'
     if (sender === 'OFFICIAL') return 'Officer'
-    return 'AfriBot'
+    return 'VoteWise Bot'
   }
 
   return (
@@ -200,15 +200,15 @@ export function ChatbotWidget() {
       {/* Chat panel */}
       {open && (
         <div className="fixed bottom-5 right-5 z-[100] w-[calc(100vw-2.5rem)] max-w-sm sm:max-w-md print:hidden">
-          <Card className="afrivote-card-glow flex h-[34rem] flex-col overflow-hidden">
+          <Card className="votewise-card-glow flex h-[34rem] flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between bg-primary p-3 text-primary-foreground">
               <div className="flex items-center gap-2">
                 <div className="grid h-8 w-8 place-items-center rounded-full bg-primary-foreground/15"><Bot className="h-5 w-5" /></div>
                 <div>
-                  <div className="text-sm font-semibold">AfriVote Support</div>
+                  <div className="text-sm font-semibold">VoteWise Support</div>
                   <div className="flex items-center gap-1 text-[10px] text-primary-foreground/80">
-                    <span className="afrivote-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-300" />
                     {escalated ? 'Connected to an officer' : 'Online · AI assistant'}
                   </div>
                 </div>
@@ -217,7 +217,7 @@ export function ChatbotWidget() {
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="afrivote-scroll flex-1 space-y-3 overflow-y-auto bg-secondary/30 p-3">
+            <div ref={scrollRef} className="votewise-scroll flex-1 space-y-3 overflow-y-auto bg-secondary/30 p-3">
               {messages.map((m, i) => (
                 <div key={m.id || i} className={cn('flex gap-2', m.sender === 'VOTER' && 'flex-row-reverse')}>
                   <div className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full', m.sender === 'VOTER' ? 'bg-accent text-accent-foreground' : m.sender === 'OFFICIAL' ? 'bg-blue-600 text-white' : 'bg-primary text-primary-foreground')}>
@@ -301,7 +301,7 @@ export function ChatbotWidget() {
                   </button>
                 ) : (
                   <span className="flex items-center gap-1 text-[10px] text-blue-600">
-                    <span className="afrivote-live-dot inline-block h-1.5 w-1.5 rounded-full bg-blue-500" /> Waiting for officer reply…
+                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-blue-500" /> Waiting for officer reply…
                   </span>
                 )}
                 <button onClick={() => { setTicketOpen(true); setOpen(false) }} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground">
@@ -370,7 +370,7 @@ export function SupportTicketDialog({ open, onOpenChange }: { open: boolean; onO
         ) : (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Matric Number</Label><Input value={form.matric || ''} onChange={(e) => set('matric', e.target.value.toUpperCase())} className="font-mono" /></div>
+              <div className="space-y-1.5"><Label>Voter ID Number</Label><Input value={form.voterId || ''} onChange={(e) => set('voterId', e.target.value.toUpperCase())} className="font-mono" /></div>
               <div className="space-y-1.5"><Label>Full Name</Label><Input value={form.fullName || ''} onChange={(e) => set('fullName', e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -394,7 +394,7 @@ export function SupportTicketDialog({ open, onOpenChange }: { open: boolean; onO
         {!done && (
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={submit} disabled={busy || !form.matric || !form.fullName || !form.description} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LifeBuoy className="h-4 w-4" />} Submit Ticket</Button>
+            <Button onClick={submit} disabled={busy || !form.voterId || !form.fullName || !form.description} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LifeBuoy className="h-4 w-4" />} Submit Ticket</Button>
           </DialogFooter>
         )}
       </DialogContent>

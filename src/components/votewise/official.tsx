@@ -22,20 +22,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
-import { StatusBadge } from '@/components/afrivote/shared'
+import { StatusBadge } from '@/components/votewise/shared'
 import { cn } from '@/lib/utils'
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   ELECTORAL_COMMITTEE: 'Electoral Committee',
-  FACULTY_OFFICER: 'Faculty Officer',
-  DEPARTMENT_OFFICER: 'Department Officer',
+  FACULTY_OFFICER: 'Committee Officer',
+  DEPARTMENT_OFFICER: 'Committee Officer',
   OBSERVER: 'Observer',
 }
 
 export function OfficialLoginView() {
   const { setView, setOfficial } = useApp()
-  const [email, setEmail] = useState('admin@afrivote.ng')
+  const [email, setEmail] = useState('admin@votewise.ng')
   const [password, setPassword] = useState('admin123')
   const [totp, setTotp] = useState('')
   const [needs2fa, setNeeds2fa] = useState(false)
@@ -57,7 +57,7 @@ export function OfficialLoginView() {
       <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 self-start gap-1.5">
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
-      <Card className="afrivote-card-glow w-full">
+      <Card className="votewise-card-glow w-full">
         <CardHeader className="text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground"><Lock className="h-7 w-7" /></div>
           <CardTitle className="mt-3 font-display">Official Portal</CardTitle>
@@ -80,11 +80,11 @@ export function OfficialLoginView() {
           <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">Demo credentials</p>
             <div className="mt-1 space-y-0.5 font-mono">
-              <div>admin@afrivote.ng / admin123 (Super Admin)</div>
-              <div>elcom@afrivote.ng / elcom123 (ELCOM)</div>
-              <div>eng.faculty@afrivote.ng / faculty123 (Faculty)</div>
-              <div>csc.dept@afrivote.ng / dept123 (Department)</div>
-              <div>observer@afrivote.ng / observer123 (Observer)</div>
+              <div>admin@votewise.ng / admin123 (Super Admin)</div>
+              <div>elcom@votewise.ng / elcom123 (ELCOM)</div>
+              <div>eng.faculty@votewise.ng / faculty123 (Faculty)</div>
+              <div>csc.dept@votewise.ng / dept123 (Department)</div>
+              <div>observer@votewise.ng / observer123 (Observer)</div>
             </div>
           </div>
         </CardContent>
@@ -126,7 +126,7 @@ export function OfficialDashboard() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="afrivote-scroll mb-6 flex w-full max-w-full overflow-x-auto">
+        <TabsList className="votewise-scroll mb-6 flex w-full max-w-full overflow-x-auto">
           <TabsTrigger value="overview" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Overview</TabsTrigger>
           <TabsTrigger value="candidates" className="gap-1.5"><Trophy className="h-4 w-4" /> Candidates</TabsTrigger>
           {canManageElection && <TabsTrigger value="positions" className="gap-1.5"><Building2 className="h-4 w-4" /> Positions</TabsTrigger>}
@@ -183,7 +183,7 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
   return (
     <div className="space-y-6">
       {canManage && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="font-display">Election Lifecycle</CardTitle>
@@ -334,9 +334,9 @@ function CollationTab({ role }: { role: string }) {
     const lines = collationText.split('\n').map((l) => l.trim()).filter(Boolean)
     const students = lines.map((line) => {
       const p = line.split(',').map((x) => x.trim())
-      return { matric: p[0], fullName: p[1], email: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' }
-    }).filter((s) => s.matric && s.fullName)
-    if (students.length === 0) { toast.error('No valid student data'); return }
+      return { voterId: p[0], fullName: p[1], email: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' }
+    }).filter((s) => s.voterId && s.fullName)
+    if (students.length === 0) { toast.error('No valid voter data'); return }
     setBusy(true)
     try {
       const fac = faculties.find((f) => f.id === selectedFaculty)
@@ -372,13 +372,13 @@ function CollationTab({ role }: { role: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-muted-foreground">Department officers collect student data → Faculty reviews → Electoral Committee uploads as voters</p>
+          <p className="text-sm text-muted-foreground">Officers collect voter data → Committee reviews → Electoral Committee uploads as voters</p>
         </div>
-        <Button onClick={() => setSubmitOpen(true)} className="gap-1.5"><Upload className="h-4 w-4" /> Submit Student Data</Button>
+        <Button onClick={() => setSubmitOpen(true)} className="gap-1.5"><Upload className="h-4 w-4" /> Submit Voter Data</Button>
       </div>
 
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left">
               <th className="p-3 font-medium">Source</th><th className="p-3 font-medium">Students</th>
@@ -414,10 +414,10 @@ function CollationTab({ role }: { role: string }) {
       {/* Submit dialog */}
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Submit Student Data</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Submit Voter Data</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Paste student data (one per line, comma-separated). This follows the Nigerian SUG practice of departments collating student data before submission to the electoral committee.</p>
-            <pre className="rounded bg-muted p-3 text-xs">matric,fullName,email,phone,facultyCode,departmentCode,level</pre>
+            <p className="text-sm text-muted-foreground">Paste voter data (one per line, comma-separated). This follows the Nigerian election practice of departments collating voter data before submission to the electoral committee.</p>
+            <pre className="rounded bg-muted p-3 text-xs">voterId,fullName,email,phone,facultyCode,departmentCode,level</pre>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Faculty (optional)</Label>
                 <Select value={selectedFaculty} onValueChange={(v) => { setSelectedFaculty(v); setSelectedDept('') }}>
@@ -432,7 +432,7 @@ function CollationTab({ role }: { role: string }) {
                 </Select>
               </div>
             </div>
-            <Textarea rows={8} value={collationText} onChange={(e) => setCollationText(e.target.value)} placeholder="CSC/2022/001,Demo One,demo1@afrivote.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
+            <Textarea rows={8} value={collationText} onChange={(e) => setCollationText(e.target.value)} placeholder="CSC/2022/001,Demo One,demo1@votewise.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setSubmitOpen(false)}>Cancel</Button><Button onClick={submitCollation} disabled={busy || !collationText.trim()} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Submit</Button></DialogFooter>
         </DialogContent>
@@ -474,7 +474,7 @@ function ActivityTab() {
 
   const actionLabel = (action: string) => {
     const map: Record<string, string> = {
-      LOGIN: 'Logged in', VERIFY_MATRIC: 'Verified matric', SEND_OTP: 'Requested OTP',
+      LOGIN: 'Logged in', VERIFY_MATRIC: 'Verified voterId', SEND_OTP: 'Requested OTP',
       VERIFY_OTP: 'OTP verified', ACCREDIT: 'Accredited', VOTE_CAST: 'Cast vote',
       FLAG: 'Flagged', UNFLAG: 'Unflagged', OTP_RESEND_BY_ADMIN: 'Admin resent OTP',
       CHAT_MESSAGE: 'Sent chat message', LOGOUT: 'Logged out',
@@ -489,7 +489,7 @@ function ActivityTab() {
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
           {[
             { label: 'Logins', value: summary.login, cls: 'bg-blue-100 text-blue-700' },
-            { label: 'Matric', value: summary.verify_matric, cls: 'bg-purple-100 text-purple-700' },
+            { label: 'Voter ID', value: summary.verify_voterId, cls: 'bg-purple-100 text-purple-700' },
             { label: 'OTPs', value: summary.send_otp, cls: 'bg-amber-100 text-amber-700' },
             { label: 'Verified', value: summary.verify_otp, cls: 'bg-emerald-100 text-emerald-700' },
             { label: 'Accredited', value: summary.accredit, cls: 'bg-primary/10 text-primary' },
@@ -513,7 +513,7 @@ function ActivityTab() {
           <SelectContent>
             <SelectItem value="all">All Actions</SelectItem>
             <SelectItem value="LOGIN">Logins</SelectItem>
-            <SelectItem value="VERIFY_MATRIC">Matric Verifications</SelectItem>
+            <SelectItem value="VERIFY_MATRIC">Voter ID Verifications</SelectItem>
             <SelectItem value="SEND_OTP">OTP Requests</SelectItem>
             <SelectItem value="VERIFY_OTP">OTP Verifications</SelectItem>
             <SelectItem value="ACCREDIT">Accreditations</SelectItem>
@@ -522,12 +522,12 @@ function ActivityTab() {
             <SelectItem value="OTP_RESEND_BY_ADMIN">Admin OTP Resends</SelectItem>
           </SelectContent>
         </Select>
-        <Badge className="afrivote-live-dot gap-1 bg-emerald-100 text-emerald-700"><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live</Badge>
+        <Badge className="votewise-live-dot gap-1 bg-emerald-100 text-emerald-700"><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live</Badge>
       </div>
 
       {/* Activity feed */}
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left">
               <th className="p-3 font-medium">Time</th>
@@ -546,7 +546,7 @@ function ActivityTab() {
                     {l.voter ? (
                       <div>
                         <div className="font-medium">{l.voter.fullName}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{l.voter.matric}</div>
+                        <div className="font-mono text-xs text-muted-foreground">{l.voter.voterId}</div>
                         {l.voter.flagged && <Badge className="mt-0.5 bg-red-100 text-red-700 text-[9px]">Flagged</Badge>}
                       </div>
                     ) : <span className="text-muted-foreground">—</span>}
@@ -588,8 +588,8 @@ function TurnoutByFacultyChart() {
               <span className="font-mono text-xs">{f.voted}/{f.total} <span className="text-muted-foreground">({f.pct}%)</span></span>
             </div>
             <div className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-muted">
-              <div className="afrivote-bar-anim rounded-l-full bg-primary transition-all" style={{ width: `${(f.voted / max) * 100}%` }} />
-              <div className="afrivote-bar-anim rounded-r-full bg-muted-foreground/30 transition-all" style={{ width: `${((f.total - f.voted) / max) * 100}%` }} />
+              <div className="votewise-bar-anim rounded-l-full bg-primary transition-all" style={{ width: `${(f.voted / max) * 100}%` }} />
+              <div className="votewise-bar-anim rounded-r-full bg-muted-foreground/30 transition-all" style={{ width: `${((f.total - f.voted) / max) * 100}%` }} />
             </div>
           </div>
         ))}
@@ -766,7 +766,7 @@ function CandidatesTab() {
         <Button onClick={() => { setEditing({}); setOpen(true) }} className="gap-1.5"><Plus className="h-4 w-4" /> Add Candidate</Button>
       </div>
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left">
               <th className="p-3 font-medium">Candidate</th><th className="p-3 font-medium">Position</th>
@@ -865,7 +865,7 @@ function CandidateDialog({ open, onOpenChange, candidate, positions, faculties, 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto afrivote-scroll">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto votewise-scroll">
         <DialogHeader><DialogTitle>{candidate?.id ? 'Edit Candidate' : 'Add Candidate'}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5"><Label>Full Name</Label><Input value={form.fullName || ''} onChange={(e) => set('fullName', e.target.value)} /></div>
@@ -1033,7 +1033,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-xs"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search matric, name, email…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" /></div>
+          <div className="relative flex-1 max-w-xs"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search voterId, name, email…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" /></div>
           <Select value={status || 'all'} onValueChange={(v) => { setStatus(v === 'all' ? '' : v); setPage(1) }}>
             <SelectTrigger className="w-32"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="voted">Voted</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
@@ -1046,7 +1046,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
       </div>
       {scoped && <Alert><AlertDescription>You are viewing voters within your {role === 'FACULTY_OFFICER' ? 'faculty' : 'department'} scope only.</AlertDescription></Alert>}
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Voter</th><th className="hidden p-3 font-medium md:table-cell">Faculty / Dept</th><th className="hidden p-3 font-medium sm:table-cell">Level</th><th className="p-3 font-medium">Status</th><th className="p-3 text-right font-medium">Actions</th></tr></thead>
             <tbody>
@@ -1059,7 +1059,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
                       {v.flagged && <Flag className="h-3.5 w-3.5 text-destructive" />}
                       <div className="font-medium">{v.fullName}</div>
                     </div>
-                    <div className="font-mono text-xs text-muted-foreground">{v.matric}</div>
+                    <div className="font-mono text-xs text-muted-foreground">{v.voterId}</div>
                   </td>
                   <td className="hidden p-3 text-xs md:table-cell"><div>{v.faculty?.name}</div><div className="text-muted-foreground">{v.department?.name}</div></td>
                   <td className="hidden p-3 sm:table-cell">{v.level}</td>
@@ -1095,7 +1095,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
         <DialogContent>
           <DialogHeader><DialogTitle>Add Voter</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Matric</Label><Input value={form.matric || ''} onChange={(e) => setForm((f: any) => ({ ...f, matric: e.target.value.toUpperCase() }))} /></div><div className="space-y-1.5"><Label>Full Name</Label><Input value={form.fullName || ''} onChange={(e) => setForm((f: any) => ({ ...f, fullName: e.target.value }))} /></div></div>
+            <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Voter ID</Label><Input value={form.voterId || ''} onChange={(e) => setForm((f: any) => ({ ...f, voterId: e.target.value.toUpperCase() }))} /></div><div className="space-y-1.5"><Label>Full Name</Label><Input value={form.fullName || ''} onChange={(e) => setForm((f: any) => ({ ...f, fullName: e.target.value }))} /></div></div>
             <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Institutional Email</Label><Input value={form.institutionEmail || ''} onChange={(e) => setForm((f: any) => ({ ...f, institutionEmail: e.target.value }))} /></div><div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone || ''} onChange={(e) => setForm((f: any) => ({ ...f, phone: e.target.value }))} /></div></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Faculty</Label><Select value={form.facultyId} onValueChange={(v) => setForm((f: any) => ({ ...f, facultyId: v, departmentId: undefined }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select></div>
@@ -1117,7 +1117,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
             <div className="space-y-3">
               <div className="rounded-lg bg-destructive/5 p-3 text-sm">
                 <div className="font-medium">{flagVoter.fullName}</div>
-                <div className="font-mono text-xs text-muted-foreground">{flagVoter.matric}</div>
+                <div className="font-mono text-xs text-muted-foreground">{flagVoter.voterId}</div>
                 <p className="mt-2 text-xs text-destructive">Flagging this voter will prevent their vote from counting. This action is logged in the audit trail.</p>
               </div>
               <div className="space-y-1.5">
@@ -1138,7 +1138,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
             <div className="space-y-3">
               <div className="rounded-lg bg-muted/50 p-3 text-sm">
                 <div className="font-medium">{otpVoter.fullName}</div>
-                <div className="font-mono text-xs text-muted-foreground">{otpVoter.matric}</div>
+                <div className="font-mono text-xs text-muted-foreground">{otpVoter.voterId}</div>
               </div>
               {!otpResult ? (
                 <>
@@ -1192,7 +1192,7 @@ function VoterDetailDrawer({ voter, open, onOpenChange }: { voter: any; open: bo
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="font-display text-xl font-bold">{v.fullName}</h2>
-              <p className="font-mono text-sm text-primary-foreground/85">{v.matric}</p>
+              <p className="font-mono text-sm text-primary-foreground/85">{v.voterId}</p>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {v.hasVoted ? <Badge className="bg-emerald-500/30 text-white">Voted</Badge> : <Badge className="bg-amber-500/30 text-white">Pending</Badge>}
                 <Badge className="bg-white/20 text-white">{v.faculty?.name || v.faculty}</Badge>
@@ -1202,7 +1202,7 @@ function VoterDetailDrawer({ voter, open, onOpenChange }: { voter: any; open: bo
           </div>
         </div>
         {/* Body */}
-        <div className="afrivote-scroll max-h-[55vh] overflow-y-auto p-6">
+        <div className="votewise-scroll max-h-[55vh] overflow-y-auto p-6">
           {loading ? (
             <div className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (
@@ -1312,10 +1312,10 @@ function VoterImportDialog({ open, onOpenChange, onDone }: any) {
   function parseCsv(csvText: string): any[] {
     const lines = csvText.split('\n').map((l) => l.trim()).filter(Boolean)
     // Skip header row if it looks like one
-    const startIdx = lines[0]?.toLowerCase().includes('matric') ? 1 : 0
+    const startIdx = lines[0]?.toLowerCase().includes('voterId') ? 1 : 0
     return lines.slice(startIdx).map((line) => {
       const p = line.split(',').map((x) => x.trim())
-      return { matric: p[0], fullName: p[1], institutionEmail: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' }
+      return { voterId: p[0], fullName: p[1], institutionEmail: p[2], phone: p[3], facultyCode: p[4], departmentCode: p[5], level: p[6] || '100' }
     })
   }
 
@@ -1366,7 +1366,7 @@ function VoterImportDialog({ open, onOpenChange, onDone }: any) {
               <div className="rounded-lg bg-amber-50 p-2"><div className="font-bold text-amber-700">{result.skipped}</div><div className="text-xs text-muted-foreground">Skipped</div></div>
             </div>
             {result.errors?.length > 0 && (
-              <div className="mt-3 max-h-32 overflow-y-auto afrivote-scroll rounded-lg bg-destructive/5 p-3 text-left text-xs text-destructive">
+              <div className="mt-3 max-h-32 overflow-y-auto votewise-scroll rounded-lg bg-destructive/5 p-3 text-left text-xs text-destructive">
                 {result.errors.slice(0, 10).map((err: string, i: number) => <div key={i}>{err}</div>)}
               </div>
             )}
@@ -1385,8 +1385,8 @@ function VoterImportDialog({ open, onOpenChange, onDone }: any) {
               <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={onFileUpload} className="hidden" />
             </div>
             <p className="text-sm text-muted-foreground">Format: one voter per line, comma-separated:</p>
-            <pre className="rounded bg-muted p-3 text-xs">matric,fullName,email,phone,facultyCode,departmentCode,level</pre>
-            <Textarea rows={6} value={text} onChange={(e) => { setText(e.target.value); setPreview(null) }} placeholder="CSC/2022/001,Demo One,demo1@afrivote.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
+            <pre className="rounded bg-muted p-3 text-xs">voterId,fullName,email,phone,facultyCode,departmentCode,level</pre>
+            <Textarea rows={6} value={text} onChange={(e) => { setText(e.target.value); setPreview(null) }} placeholder="CSC/2022/001,Demo One,demo1@votewise.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
             {preview && preview.length > 0 && (
               <div className="rounded-lg border border-border p-3">
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -1395,7 +1395,7 @@ function VoterImportDialog({ open, onOpenChange, onDone }: any) {
                 <div className="space-y-1">
                   {preview.map((v, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline" className="font-mono text-[10px]">{v.matric}</Badge>
+                      <Badge variant="outline" className="font-mono text-[10px]">{v.voterId}</Badge>
                       <span className="font-medium">{v.fullName}</span>
                       <span className="text-muted-foreground">{v.facultyCode}/{v.departmentCode}</span>
                     </div>
@@ -1433,7 +1433,7 @@ function OfficialsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between"><p className="text-sm text-muted-foreground">{officials.length} officials</p><Button onClick={() => setOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add Official</Button></div>
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Official</th><th className="p-3 font-medium">Role</th><th className="hidden p-3 font-medium md:table-cell">2FA</th><th className="hidden p-3 font-medium sm:table-cell">Last login</th></tr></thead>
             <tbody>
@@ -1458,7 +1458,7 @@ function OfficialsTab() {
             <div className="space-y-1.5"><Label>Role</Label>
               <Select value={form.role} onValueChange={(v) => setForm((f: any) => ({ ...f, role: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="ELECTORAL_COMMITTEE">Electoral Committee</SelectItem><SelectItem value="FACULTY_OFFICER">Faculty Officer</SelectItem><SelectItem value="DEPARTMENT_OFFICER">Department Officer</SelectItem><SelectItem value="OBSERVER">Observer</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="ELECTORAL_COMMITTEE">Electoral Committee</SelectItem><SelectItem value="FACULTY_OFFICER">Committee Officer</SelectItem><SelectItem value="DEPARTMENT_OFFICER">Committee Officer</SelectItem><SelectItem value="OBSERVER">Observer</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5"><Label>Temporary Password</Label><Input value={form.password || ''} onChange={(e) => setForm((f: any) => ({ ...f, password: e.target.value }))} /></div>
@@ -1514,7 +1514,7 @@ function AuditTab() {
         </CardContent>
       </Card>
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[70vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[70vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Time</th><th className="p-3 font-medium">Actor</th><th className="p-3 font-medium">Action</th><th className="hidden p-3 font-medium md:table-cell">Details</th></tr></thead>
             <tbody>
@@ -1554,7 +1554,7 @@ function SecurityTab() {
         <StatCard icon={AlertCircle} label="Low" value={summary?.low ?? 0} />
       </div>
       <Card><CardContent className="p-0">
-        <div className="afrivote-scroll max-h-[60vh] overflow-y-auto">
+        <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Time</th><th className="p-3 font-medium">Severity</th><th className="p-3 font-medium">Category</th><th className="p-3 font-medium">Message</th><th className="p-3 text-right font-medium">Action</th></tr></thead>
             <tbody>

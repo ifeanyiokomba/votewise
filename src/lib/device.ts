@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — Device fingerprinting.
+// VoteWise SUG v2 — Device fingerprinting.
 // Combines User-Agent + screen + timezone + a salt into an opaque hash.
 // Used for session binding, anomaly detection, and single-device enforcement.
 
@@ -11,7 +11,7 @@ export interface DeviceInfo {
   ipAddress: string
 }
 
-const SALT = process.env.DEVICE_SALT || 'afrivote-device-salt-v2'
+const SALT = process.env.DEVICE_SALT || 'votewise-device-salt-v2'
 
 // Server-side: build from request headers. The browser can additionally send
 // `x-device-fp` (a client-computed hash including screen/timezone) for stronger

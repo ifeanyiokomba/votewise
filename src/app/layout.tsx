@@ -22,20 +22,20 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "AfriVote SUG — Secure University SUG Election Platform",
+  title: "VoteWise SUG — Secure University SUG Election Platform",
   description:
-    "AfriVote SUG is the trusted electronic voting platform for Students' Union Government (SUG) elections at any Nigerian tertiary institution — universities, polytechnics, and colleges of education. Sign up your institution, set up your election, and vote securely.",
+    "VoteWise SUG is the trusted electronic voting platform for Students' Union Government (SUG) elections at any Nigerian tertiary institution — universities, polytechnics, and colleges of education. Sign up your institution, set up your election, and vote securely.",
   keywords: [
     "SUG elections", "Nigeria university voting", "student union government",
-    "electronic voting", "AfriVote", "campus election", "tertiary institution voting",
+    "electronic voting", "VoteWise", "campus election", "tertiary institution voting",
   ],
-  authors: [{ name: "AfriVote Electoral Tech" }],
+  authors: [{ name: "VoteWise Electoral Tech" }],
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png", sizes: "64x64" },
-      { url: "/logo-afrivote.png", type: "image/png", sizes: "512x512" },
+      { url: "/logo-votewise.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: [{ url: "/logo-afrivote.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/logo-votewise.png", sizes: "512x512", type: "image/png" }],
   },
 };
 

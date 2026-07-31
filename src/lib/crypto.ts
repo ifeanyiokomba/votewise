@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — Cryptographic primitives.
+// VoteWise SUG v2 — Cryptographic primitives.
 // - scrypt password hashing (memory-hard, offline-crack resistant)
 // - AES-256-GCM symmetric encryption (vote encryption at rest)
 // - HMAC signing (result snapshots, tokens)
@@ -70,7 +70,7 @@ export function generateBackupCodes(count = 8): { plain: string[]; hashed: strin
 }
 
 // One-way voter hash (so votes can't be traced back to a voter row).
-const VOTER_HASH_PEPPER = process.env.VOTER_HASH_PEPPER || 'afrivote-sug-pepper-v2'
+const VOTER_HASH_PEPPER = process.env.VOTER_HASH_PEPPER || 'votewise-sug-pepper-v2'
 export function hashVoter(matric: string): string {
   return createHash('sha256').update(`${matric}:${VOTER_HASH_PEPPER}`).digest('hex')
 }
@@ -82,7 +82,7 @@ export function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex')
 }
 
-const HMAC_SECRET = process.env.HMAC_SECRET || 'afrivote-sug-hmac-secret-dev-only'
+const HMAC_SECRET = process.env.HMAC_SECRET || 'votewise-sug-hmac-secret-dev-only'
 export function hmacSign(input: string): string {
   return createHmac('sha256', HMAC_SECRET).update(input).digest('hex')
 }
@@ -99,7 +99,7 @@ export function hmacVerify(input: string, sig: string): boolean {
 // ---------------------------------------------------------------------------
 // In sandbox the key is derived from env. In production this would be an
 // envelope key fetched from KMS and the data key itself encrypted at rest.
-const VOTE_ENC_KEY_RAW = process.env.VOTE_ENC_KEY || 'afrivote-sug-vote-encryption-key-v2-32bytes!'
+const VOTE_ENC_KEY_RAW = process.env.VOTE_ENC_KEY || 'votewise-sug-vote-encryption-key-v2-32bytes!'
 const VOTE_ENC_KEY = VOTE_ENC_KEY_RAW.length >= 32 ? VOTE_ENC_KEY_RAW.slice(0, 32) : sha256(VOTE_ENC_KEY_RAW).slice(0, 32)
 export const VOTE_KEY_ID = process.env.VOTE_KEY_ID || 'v1'
 
@@ -177,7 +177,7 @@ function base32Decode(str: string): Buffer {
   return Buffer.from(output)
 }
 
-export function totpUri(secret: string, email: string, issuer = 'AfriVote SUG'): string {
+export function totpUri(secret: string, email: string, issuer = 'VoteWise SUG'): string {
   const label = encodeURIComponent(`${issuer}:${email}`)
   const params = new URLSearchParams({
     secret: secret,
@@ -212,7 +212,7 @@ function generateTotp(key: Buffer, counter: number): string {
 // ---------------------------------------------------------------------------
 // Hash-chained audit log
 // ---------------------------------------------------------------------------
-export const AUDIT_GENESIS = 'GENESIS-afrivote-sug-v2'
+export const AUDIT_GENESIS = 'GENESIS-votewise-sug-v2'
 
 export function computeAuditHash(args: {
   prevHash: string

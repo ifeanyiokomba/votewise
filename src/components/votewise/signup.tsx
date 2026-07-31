@@ -32,7 +32,7 @@ export function SignupView() {
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
   function generateDisplayName() {
-    if (orgType === 'UNIVERSITY') return `${form.universityName || 'University'} SUG`
+    if (orgType === 'UNIVERSITY') return `${form.universityName || 'University'} Elections`
     if (orgType === 'FACULTY') return `${form.facultyName || 'Faculty'} — ${form.universityName || 'University'}`
     return `${form.departmentName || 'Department'} — ${form.facultyName || 'Faculty'}, ${form.universityName || 'University'}`
   }
@@ -109,7 +109,7 @@ export function SignupView() {
 
       {/* Step 1: Organization type + names */}
       {step === 1 && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader><CardTitle className="font-display">Organization Details</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {/* Org type selector */}
@@ -182,7 +182,7 @@ export function SignupView() {
 
       {/* Step 2: Admin account */}
       {step === 2 && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader><CardTitle className="font-display">Admin Account</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">This account will be the Super Admin for your organization's election platform.</p>
@@ -213,7 +213,7 @@ export function SignupView() {
 
       {/* Step 3: Branding */}
       {step === 3 && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader><CardTitle className="font-display">Branding & Logo</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {/* Logo upload */}

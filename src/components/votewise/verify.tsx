@@ -17,12 +17,12 @@ import { api, setVoterToken } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-type Step = 'matric' | 'channel' | 'otp' | 'accredit' | 'ready'
+type Step = 'voterId' | 'channel' | 'otp' | 'accredit' | 'ready'
 
 export function VerifyView() {
   const { setView, voterToken, setVoterToken, voterProfile, setVoterProfile, setAccredited } = useApp()
-  const [step, setStep] = useState<Step>('matric')
-  const [matric, setMatric] = useState('')
+  const [step, setStep] = useState<Step>('voterId')
+  const [voterId, setVoterId] = useState('')
   const [loading, setLoading] = useState(false)
   const [verifyData, setVerifyData] = useState<any>(null)
   const [channel, setChannel] = useState('EMAIL')
@@ -45,16 +45,16 @@ export function VerifyView() {
     return () => clearInterval(t)
   }, [resendIn])
 
-  async function onVerifyMatric() {
+  async function onVerifyVoterId() {
     setError(null); setLoading(true)
     try {
-      const d = await api.verifyMatric(matric)
-      if (!d.found) { setError('This matriculation number was not found in the voter register. Please contact the Electoral Committee.'); setLoading(false); return }
+      const d = await api.verifyVoterId(voterId)
+      if (!d.found) { setError('This voterIdulation number was not found in the voter register. Please contact the Electoral Committee.'); setLoading(false); return }
       if (d.hasVoted) { setError('This voter has already cast a ballot in this election. Each student may vote only once.'); setLoading(false); return }
       setVerifyData(d); setChannel(d.channels[0]); setStep('channel')
     } catch (e: any) {
       if (e?.data?.hasVoted) { setError('This voter has already cast a ballot in this election.'); setLoading(false); return }
-      if (e?.status === 404 || e?.data?.found === false) { setError('Matriculation number not found in the voter register.'); setLoading(false); return }
+      if (e?.status === 404 || e?.data?.found === false) { setError('Voter IDulation number not found in the voter register.'); setLoading(false); return }
       setError(e.message || 'Verification failed')
     } finally { setLoading(false) }
   }
@@ -62,7 +62,7 @@ export function VerifyView() {
   async function onSendOtp() {
     setError(null); setLoading(true)
     try {
-      const d = await api.sendOtp(matric, channel)
+      const d = await api.sendOtp(voterId, channel)
       setOtpInfo(d); setResendIn(60); setStep('otp')
       if (d.devOtp) toast.info(`Dev OTP (auto-fill): ${d.devOtp}`, { duration: 8000 })
     } catch (e: any) { setError(e.message || 'Failed to send OTP') } finally { setLoading(false) }
@@ -71,7 +71,7 @@ export function VerifyView() {
   async function onVerifyOtp() {
     setError(null); setLoading(true)
     try {
-      const d = await api.verifyOtp(matric, otp)
+      const d = await api.verifyOtp(voterId, otp)
       setVoterToken(d.token); setVoterProfile(d.voter)
       setStep('accredit')
       toast.success('Identity verified!')
@@ -102,19 +102,19 @@ export function VerifyView() {
         </Alert>
       )}
 
-      {step === 'matric' && (
-        <Card className="afrivote-card-glow">
+      {step === 'voterId' && (
+        <Card className="votewise-card-glow">
           <CardHeader>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><Shield className="h-6 w-6" /></div>
-            <CardTitle className="mt-3 font-display">Verify Your Matriculation Number</CardTitle>
+            <CardTitle className="mt-3 font-display">Verify Your Voter ID</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="matric">Matriculation / JAMB Registration Number</Label>
-              <Input id="matric" placeholder="e.g. CSC/2022/001" value={matric} onChange={(e) => setMatric(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === 'Enter' && onVerifyMatric()} className="font-mono" />
-              <p className="text-xs text-muted-foreground">Enter the matric number on your student ID. We check it against the official register.</p>
+              <Label htmlFor="voterId">Voter IDulation / JAMB Registration Number</Label>
+              <Input id="voterId" placeholder="e.g. CSC/2022/001" value={voterId} onChange={(e) => setVoterId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === 'Enter' && onVerifyVoterId()} className="font-mono" />
+              <p className="text-xs text-muted-foreground">Enter the voter ID on your student ID. We check it against the official register.</p>
             </div>
-            <Button onClick={onVerifyMatric} disabled={loading || !matric} className="w-full gap-2">
+            <Button onClick={onVerifyVoterId} disabled={loading || !voterId} className="w-full gap-2">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
               {loading ? 'Verifying…' : 'Continue'}
             </Button>
@@ -130,7 +130,7 @@ export function VerifyView() {
       )}
 
       {step === 'channel' && verifyData && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><CheckCircle2 className="h-6 w-6" /></div>
             <CardTitle className="mt-3 font-display">Hello, {verifyData.voter.fullName}</CardTitle>
@@ -159,7 +159,7 @@ export function VerifyView() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep('matric')} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Back</Button>
+              <Button variant="outline" onClick={() => setStep('voterId')} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Back</Button>
               <Button onClick={onSendOtp} disabled={loading} className="flex-1 gap-2">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />} Send Verification PIN
               </Button>
@@ -169,7 +169,7 @@ export function VerifyView() {
       )}
 
       {step === 'otp' && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><KeyRound className="h-6 w-6" /></div>
             <CardTitle className="mt-3 font-display">Enter Verification PIN</CardTitle>
@@ -199,7 +199,7 @@ export function VerifyView() {
       )}
 
       {step === 'accredit' && voterProfile && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><Fingerprint className="h-6 w-6" /></div>
             <CardTitle className="mt-3 font-display">Accreditation</CardTitle>
@@ -215,7 +215,7 @@ export function VerifyView() {
               </AlertDescription>
             </Alert>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <Info label="Matric" value={voterProfile.matric} />
+              <Info label="Voter ID" value={voterProfile.voterId} />
               <Info label="Faculty" value={voterProfile.faculty} />
               <Info label="Department" value={voterProfile.department} />
               <Info label="Level" value={voterProfile.level} />
@@ -228,7 +228,7 @@ export function VerifyView() {
       )}
 
       {step === 'ready' && voterProfile && (
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardHeader>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-emerald-100 text-emerald-700"><BadgeCheck className="h-6 w-6" /></div>
             <CardTitle className="mt-3 font-display">You&apos;re accredited, {voterProfile.fullName.split(' ')[0]}!</CardTitle>
@@ -254,7 +254,7 @@ export function VerifyView() {
 
 function Stepper({ step }: { step: Step }) {
   const steps: { key: Step; label: string }[] = [
-    { key: 'matric', label: 'Matric' },
+    { key: 'voterId', label: 'Voter ID' },
     { key: 'channel', label: 'Channel' },
     { key: 'otp', label: 'Verify' },
     { key: 'accredit', label: 'Accredit' },

@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
   const channel = voter.otpChannel || 'EMAIL'
   const dest = channel === 'EMAIL' ? (voter.institutionEmail || voter.personalEmail) : voter.phone
   const receiptList = receipts.map((r: any) => `${r.positionTitle}: ${r.receiptCode}`).join('\n')
-  const receiptMessage = `Dear ${voter.fullName}, your vote has been recorded and counted. Here are your receipt codes (save them to verify your vote later):\n\n${receiptList}\n\nYou can verify any of these codes on the AfriVote homepage. Your vote choice remains secret.`
+  const receiptMessage = `Dear ${voter.fullName}, your vote has been recorded and counted. Here are your receipt codes (save them to verify your vote later):\n\n${receiptList}\n\nYou can verify any of these codes on the VoteWise homepage. Your vote choice remains secret.`
   console.log(`[RECEIPT FORWARD] ${channel} -> ${dest || voter.matric}:\n${receiptMessage}`)
   // Enqueue async send (no-op transport in sandbox; production uses Resend/Termii)
   const { enqueue } = await import('@/lib/jobs')

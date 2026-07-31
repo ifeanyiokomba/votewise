@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { Reveal } from '@/components/afrivote/faq'
+import { Reveal } from '@/components/votewise/faq'
 
 export function FacultyTurnoutMap() {
   const [data, setData] = useState<any>(null)
@@ -34,14 +34,14 @@ export function FacultyTurnoutMap() {
   const maxTotal = Math.max(1, ...data.byFaculty.map((f: any) => f.total))
 
   return (
-    <Card className="afrivote-card-glow">
+    <Card className="votewise-card-glow">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="font-display text-base flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" /> Turnout by Faculty
           </CardTitle>
           <Badge variant="outline" className="gap-1">
-            <span className="afrivote-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             {data.summary.turnoutPct}% overall
           </Badge>
         </div>
@@ -70,7 +70,7 @@ export function FacultyTurnoutMap() {
                   {/* Progress bar */}
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="afrivote-bar-anim h-full rounded-full bg-primary transition-all"
+                      className="votewise-bar-anim h-full rounded-full bg-primary transition-all"
                       style={{ width: `${Math.max(2, barWidth)}%` }}
                     />
                   </div>

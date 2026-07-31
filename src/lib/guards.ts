@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — Route guards: RBAC + 2FA + rate limit + device binding.
+// VoteWise SUG v2 — Route guards: RBAC + 2FA + rate limit + device binding.
 // Every privileged endpoint goes through `requireOfficial(capability)`.
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -140,7 +140,7 @@ export function readVoterToken(req: NextRequest): string | null {
     req.headers.get('x-voter-token') ||
     req.headers.get('x-session-token') ||
     req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
-    req.cookies.get('afrivote_voter')?.value ||
+    req.cookies.get('votewise_voter')?.value ||
     null
   )
 }

@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useApp } from '@/lib/store'
 import { api, getVoterToken } from '@/lib/api'
 import { toast } from 'sonner'
-import { StatusBadge, Countdown } from '@/components/afrivote/shared'
+import { StatusBadge, Countdown } from '@/components/votewise/shared'
 import { cn } from '@/lib/utils'
 
 export function VoterDashboard() {
@@ -44,7 +44,7 @@ export function VoterDashboard() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Session expired</AlertTitle>
-          <AlertDescription>Please verify your matriculation number to access your dashboard.</AlertDescription>
+          <AlertDescription>Please verify your voterIdulation number to access your dashboard.</AlertDescription>
         </Alert>
         <Button onClick={() => setView('verify')} className="mt-4 gap-2"><Shield className="h-4 w-4" /> Verify Now</Button>
       </div>
@@ -59,7 +59,7 @@ export function VoterDashboard() {
       <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Welcome, {voterProfile.fullName.split(' ')[0]}</h1>
-          <p className="text-sm text-muted-foreground">{voterProfile.matric} · {voterProfile.faculty} · {voterProfile.level} Level</p>
+          <p className="text-sm text-muted-foreground">{voterProfile.voterId} · {voterProfile.faculty} · {voterProfile.level} Level</p>
         </div>
         <Button variant="outline" onClick={logout} className="gap-1.5"><LogOut className="h-4 w-4" /> Sign out</Button>
       </div>
@@ -69,7 +69,7 @@ export function VoterDashboard() {
         <div className="space-y-6">
           {/* Election status */}
           {election && (
-            <Card className="afrivote-card-glow">
+            <Card className="votewise-card-glow">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
@@ -84,7 +84,7 @@ export function VoterDashboard() {
           )}
 
           {/* Voting status / action */}
-          <Card className={cn('afrivote-card-glow', !hasVoted && 'ring-2 ring-primary/30')}>
+          <Card className={cn('votewise-card-glow', !hasVoted && 'ring-2 ring-primary/30')}>
             <CardHeader>
               <CardTitle className="font-display flex items-center gap-2">
                 {hasVoted ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Vote className="h-5 w-5 text-primary" />}
@@ -97,7 +97,7 @@ export function VoterDashboard() {
                   <Alert className="border-emerald-200 bg-emerald-50">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     <AlertTitle className="text-emerald-800">Vote cast successfully</AlertTitle>
-                    <AlertDescription className="text-emerald-700">Your ballot has been encrypted and recorded. Thank you for participating in the SUG election.</AlertDescription>
+                    <AlertDescription className="text-emerald-700">Your ballot has been encrypted and recorded. Thank you for participating in the election.</AlertDescription>
                   </Alert>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => setView('verify-receipt')} className="gap-1.5"><BadgeCheck className="h-4 w-4" /> Verify My Receipt</Button>

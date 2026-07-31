@@ -9,8 +9,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ThemeToggle } from '@/components/afrivote/theme-toggle'
-import { VoterNotifications } from '@/components/afrivote/voter-notifications'
+import { ThemeToggle } from '@/components/votewise/theme-toggle'
+import { VoterNotifications } from '@/components/votewise/voter-notifications'
 import { cn } from '@/lib/utils'
 import { useApp, View } from '@/lib/store'
 import { api } from '@/lib/api'
@@ -18,22 +18,20 @@ import { api } from '@/lib/api'
 export function Logo({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <Image src="/logo-afrivote.png" alt="AfriVote SUG" width={36} height={36} className="h-9 w-9 rounded-xl" priority />
+      <Image src="/logo-votewise.png" alt="VoteWise" width={36} height={36} className="h-9 w-9 rounded-xl" priority />
       <div className="leading-tight">
-        <div className="font-display text-lg font-bold tracking-tight">AfriVote<span className="text-accent"> SUG</span></div>
-        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Tertiary Institution Elections</div>
+        <div className="font-display text-lg font-bold tracking-tight">VoteWise</div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Election Platform</div>
       </div>
     </div>
   )
 }
 
 const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
-  { label: 'Live Results', target: 'results' },
-  { label: 'Candidates', target: 'candidates' },
-  { label: 'Timetable', target: 'timetable' },
+  { label: 'Features', target: 'features' },
   { label: 'How It Works', target: 'how' },
+  { label: 'Security', target: 'security' },
   { label: 'FAQ', target: 'faq' },
-  { label: 'Verify Receipt', target: 'receipt' },
 ]
 
 export function NavBar() {
@@ -66,11 +64,6 @@ export function NavBar() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          {!voterProfile && (
-            <Button onClick={() => setView('verify')} size="sm" className="gap-1.5">
-              <Shield className="h-4 w-4" /> Cast Your Vote
-            </Button>
-          )}
           {voterProfile && (
             <Button onClick={() => setView('voter-dashboard')} size="sm" className="gap-1.5">
               <BadgeCheck className="h-4 w-4" /> My Dashboard
@@ -78,7 +71,7 @@ export function NavBar() {
           )}
           {!official && (
             <Button variant="outline" size="sm" onClick={() => setView('official-login')} className="gap-1.5">
-              <Lock className="h-4 w-4" /> Official Portal
+              <Lock className="h-4 w-4" /> Login
             </Button>
           )}
           {!official && (
@@ -88,7 +81,7 @@ export function NavBar() {
           )}
           {official && (
             <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5">
-              <BarChart3 className="h-4 w-4" /> {official.role.split('_').map((w: string) => w[0] + w.slice(1).toLowerCase()).join(' ')} Dashboard
+              <BarChart3 className="h-4 w-4" /> Dashboard
             </Button>
           )}
           {voterProfile && <VoterNotifications />}
@@ -109,19 +102,14 @@ export function NavBar() {
               </Button>
             ))}
             <div className="my-1 h-px bg-border" />
-            {!voterProfile && (
-              <Button onClick={() => { setView('verify'); setOpen(false) }} size="sm" className="gap-1.5">
-                <Shield className="h-4 w-4" /> Cast Your Vote
-              </Button>
-            )}
             {voterProfile && (
-              <Button onClick={() => { setView('vote'); setOpen(false) }} size="sm" className="gap-1.5">
-                <BadgeCheck className="h-4 w-4" /> Continue Voting
+              <Button onClick={() => { setView('voter-dashboard'); setOpen(false) }} size="sm" className="gap-1.5">
+                <BadgeCheck className="h-4 w-4" /> My Dashboard
               </Button>
             )}
             {!official && (
               <Button variant="outline" size="sm" onClick={() => { setView('official-login'); setOpen(false) }} className="gap-1.5">
-                <Lock className="h-4 w-4" /> Official Portal
+                <Lock className="h-4 w-4" /> Login
               </Button>
             )}
             {!official && (
@@ -152,7 +140,7 @@ export function Footer() {
       <div className="border-b border-border/60 bg-primary/5">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-6 sm:grid-cols-4 sm:px-6">
           {[
-            { icon: Shield, label: 'Matric + OTP', sub: 'Verified' },
+            { icon: Shield, label: 'Voter ID + OTP', sub: 'Verified' },
             { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted' },
             { icon: BadgeCheck, label: 'Receipt', sub: 'Anchored' },
             { icon: ScrollText, label: 'Hash-Chained', sub: 'Audit Log' },
@@ -174,11 +162,11 @@ export function Footer() {
           <Logo />
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
             A secure, transparent, and high-capacity electronic voting platform built for the
-            Students&apos; Union Government (SUG) elections of a Nigerian tertiary institution.
+            Elections for any organization.
             Every vote is verifiable. Every action is audited.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> Matric + OTP Verified</Badge>
+            <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> Voter ID + OTP Verified</Badge>
             <Badge variant="secondary" className="gap-1"><Lock className="h-3 w-3" /> Ballot Secrecy</Badge>
             <Badge variant="secondary" className="gap-1"><BadgeCheck className="h-3 w-3" /> Receipt-Anchored</Badge>
           </div>
@@ -205,9 +193,9 @@ export function Footer() {
       </div>
       <div className="border-t border-border/60">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
-          <p>© {new Date().getFullYear()} AfriVote SUG. Built for transparent student democracy.</p>
+          <p>© {new Date().getFullYear()} VoteWise. Built for transparent organizational democracy.</p>
           <p className="flex items-center gap-1.5">
-            <span className="afrivote-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
             Results stream live via secure WebSocket
           </p>
         </div>
@@ -286,7 +274,7 @@ export function TurnoutRing({ voted, total, pct }: { voted: number; total: numbe
         <circle cx="70" cy="70" r={r} fill="none" stroke="currentColor" strokeWidth="10" className="text-muted/40" />
         <circle
           cx="70" cy="70" r={r} fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round"
-          className="text-primary afrivote-bar-anim"
+          className="text-primary votewise-bar-anim"
           strokeDasharray={c}
           strokeDashoffset={offset}
         />

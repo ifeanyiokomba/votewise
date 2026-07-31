@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — JWT access + refresh token auth with HttpOnly cookies.
+// VoteWise SUG v2 — JWT access + refresh token auth with HttpOnly cookies.
 // Stateless access token (15 min) + rotating refresh token (7 days, family-tracked).
 // Tokens NEVER touch JavaScript (HttpOnly cookies) → XSS cannot steal them.
 
@@ -7,11 +7,11 @@ import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 import { randomToken, sha256 } from '@/lib/crypto'
 
-const ACCESS_SECRET = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET || 'afrivote-access-secret-dev-only-32bytes!!'.slice(0, 32))
-const REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || 'afrivote-refresh-secret-dev-only-32byte!'.slice(0, 32))
+const ACCESS_SECRET = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET || 'votewise-access-secret-dev-only-32bytes!!'.slice(0, 32))
+const REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || 'votewise-refresh-secret-dev-only-32byte!'.slice(0, 32))
 
-export const ACCESS_COOKIE = 'afrivote_access'
-export const REFRESH_COOKIE = 'afrivote_refresh'
+export const ACCESS_COOKIE = 'votewise_access'
+export const REFRESH_COOKIE = 'votewise_refresh'
 
 export interface AccessPayload {
   sub: string        // official id

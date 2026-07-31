@@ -1,4 +1,4 @@
-// AfriVote SUG — cleanup duplicate candidates.
+// VoteWise SUG — cleanup duplicate candidates.
 // Keeps the candidate with the most votes (or the oldest) per (name, position)
 // and reassigns any votes from duplicates to the kept candidate, then deletes
 // the duplicates.

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const baseSlug = (slug || displayName || universityName).toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   const finalSlug = baseSlug + '-' + Math.random().toString(36).slice(2, 6)
-  // Auto-assign subdomain: e.g. unilag.afrivote.ng, eng-unilag.afrivote.ng
+  // Auto-assign subdomain: e.g. unilag.votewise.ng, eng-unilag.votewise.ng
   const subdomainBase = type === 'UNIVERSITY' ? universityName : (type === 'FACULTY' ? `${facultyName}-${universityName}` : `${departmentName}-${facultyName}`)
   const subdomain = subdomainBase.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) + '-' + Math.random().toString(36).slice(2, 4)
 

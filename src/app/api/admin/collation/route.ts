@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   return json({ collations })
 }
 
-// POST /api/admin/collation — submit student data for collation
+// POST /api/admin/collation — submit voter data for collation
 // Body: { facultyId?, departmentId?, students: [{ matric, fullName, email, phone, level }] }
 export async function POST(req: NextRequest) {
   const auth = await requireOfficial(req, 'voter.manage')

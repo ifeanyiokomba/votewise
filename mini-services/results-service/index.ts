@@ -10,7 +10,7 @@ import { createHash, createHmac, createDecipheriv } from 'crypto'
 
 const db = new PrismaClient({ log: ['error', 'warn'] })
 
-const VOTE_ENC_KEY_RAW = process.env.VOTE_ENC_KEY || 'afrivote-sug-vote-encryption-key-v2-32bytes!'
+const VOTE_ENC_KEY_RAW = process.env.VOTE_ENC_KEY || 'votewise-sug-vote-encryption-key-v2-32bytes!'
 const VOTE_ENC_KEY = VOTE_ENC_KEY_RAW.length >= 32 ? VOTE_ENC_KEY_RAW.slice(0, 32) : createHash('sha256').update(VOTE_ENC_KEY_RAW).digest().subarray(0, 32)
 
 function decryptVote(ciphertextB64: string, ivB64: string) {

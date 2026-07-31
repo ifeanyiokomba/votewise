@@ -1,9 +1,9 @@
-// AfriVote SUG v2 — Client-side API helpers.
+// VoteWise SUG v2 — Client-side API helpers.
 // Officials authenticate via HttpOnly cookies (set by /api/auth/login) → no
 // token management needed; `credentials: 'include'` carries the cookies.
 // Voters still use a header token (x-voter-token) for their session.
 
-const VOTER_TOKEN_KEY = 'afrivote_voter_token'
+const VOTER_TOKEN_KEY = 'votewise_voter_token'
 
 export function getVoterToken() { return typeof window === 'undefined' ? null : localStorage.getItem(VOTER_TOKEN_KEY) }
 export function setVoterToken(t: string | null) {

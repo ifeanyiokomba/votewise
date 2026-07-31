@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — In-process job queue (BullMQ interface in production).
+// VoteWise SUG v2 — In-process job queue (BullMQ interface in production).
 // Used for: sending OTP notifications, writing audit logs asynchronously,
 // result recomputation. Keeps request handlers fast.
 

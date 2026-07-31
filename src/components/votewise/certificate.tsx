@@ -35,7 +35,7 @@ export function CertificateView() {
         <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 gap-1.5">
           <ArrowLeft className="h-4 w-4" /> Back to home
         </Button>
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardContent className="py-16 text-center">
             <Award className="mx-auto h-16 w-16 text-muted-foreground/40" />
             <h1 className="mt-4 font-display text-2xl font-bold">Results Not Yet Certified</h1>
@@ -59,7 +59,7 @@ export function CertificateView() {
   async function share() {
     const url = window.location.href
     if (navigator.share) {
-      try { await navigator.share({ title: 'AfriVote SUG — Certified Results', url }) } catch {}
+      try { await navigator.share({ title: 'VoteWise — Certified Results', url }) } catch {}
     } else {
       navigator.clipboard?.writeText(url)
       toast.success('Link copied to clipboard')
@@ -79,7 +79,7 @@ export function CertificateView() {
       </div>
 
       {/* Certificate card */}
-      <Card className="afrivote-card-glow overflow-hidden print:shadow-none print:border-0">
+      <Card className="votewise-card-glow overflow-hidden print:shadow-none print:border-0">
         {/* Certificate header */}
         <div className="relative bg-gradient-to-br from-primary to-primary/80 p-8 text-center text-primary-foreground print:bg-primary">
           <div className="absolute inset-0 opacity-10" style={{
@@ -91,7 +91,7 @@ export function CertificateView() {
               <Award className="h-9 w-9" />
             </div>
             <h1 className="mt-3 font-display text-2xl font-bold sm:text-3xl">Official Election Certificate</h1>
-            <p className="mt-1 text-primary-foreground/85">{election?.name || 'SUG General Elections'}</p>
+            <p className="mt-1 text-primary-foreground/85">{election?.name || 'General Elections'}</p>
             <p className="text-sm text-primary-foreground/70">{election?.university} · {election?.academicSession}</p>
           </div>
         </div>

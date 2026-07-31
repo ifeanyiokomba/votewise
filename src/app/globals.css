@@ -129,62 +129,62 @@
 }
 
 /* Custom scrollbar for long lists */
-.afrivote-scroll::-webkit-scrollbar {
+.votewise-scroll::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-.afrivote-scroll::-webkit-scrollbar-track {
+.votewise-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-.afrivote-scroll::-webkit-scrollbar-thumb {
+.votewise-scroll::-webkit-scrollbar-thumb {
   background: var(--muted-foreground);
   border-radius: 8px;
   opacity: 0.4;
 }
-.afrivote-scroll::-webkit-scrollbar-thumb:hover {
+.votewise-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--primary);
 }
 
 /* Subtle marquee for the live ticker */
-@keyframes afrivote-pulse {
+@keyframes votewise-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
 }
-.afrivote-live-dot {
-  animation: afrivote-pulse 1.4s ease-in-out infinite;
+.votewise-live-dot {
+  animation: votewise-pulse 1.4s ease-in-out infinite;
 }
 
 /* Gradient hero backdrop */
-.afrivote-hero-bg {
+.votewise-hero-bg {
   background:
     radial-gradient(1100px 480px at 12% -10%, color-mix(in oklch, var(--primary) 28%, transparent), transparent 60%),
     radial-gradient(900px 420px at 92% 0%, color-mix(in oklch, var(--accent) 26%, transparent), transparent 55%),
     linear-gradient(180deg, color-mix(in oklch, var(--background) 92%, var(--primary)), var(--background));
 }
 
-.afrivote-card-glow {
+.votewise-card-glow {
   box-shadow: 0 1px 0 0 color-mix(in oklch, var(--primary) 12%, transparent) inset,
               0 10px 30px -12px color-mix(in oklch, var(--primary) 22%, transparent);
 }
 
 /* Animated bar fill */
-@keyframes afrivote-bar {
+@keyframes votewise-bar {
   from { width: 0; }
 }
-.afrivote-bar-anim {
-  animation: afrivote-bar 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+.votewise-bar-anim {
+  animation: votewise-bar 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Hero animated gradient orbs */
-@keyframes afrivote-orb {
+@keyframes votewise-orb {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33% { transform: translate(30px, -20px) scale(1.05); }
   66% { transform: translate(-20px, 15px) scale(0.95); }
 }
-.afrivote-orb {
-  animation: afrivote-orb 12s ease-in-out infinite;
+.votewise-orb {
+  animation: votewise-orb 12s ease-in-out infinite;
 }
-.afrivote-orb-delay {
+.votewise-orb-delay {
   animation-delay: -6s;
 }
 
@@ -193,7 +193,7 @@
   header, footer, .print\:hidden { display: none !important; }
   main { padding: 0 !important; }
   body { background: white !important; }
-  .afrivote-card-glow { box-shadow: none !important; border: 1px solid #ccc !important; }
+  .votewise-card-glow { box-shadow: none !important; border: 1px solid #ccc !important; }
 }
 
 /* Skip-to-content link for accessibility */

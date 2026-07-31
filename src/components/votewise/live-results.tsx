@@ -4,8 +4,8 @@ import { useApp } from '@/lib/store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { TurnoutRing } from '@/components/afrivote/shared'
-import { VoteShareDonut } from '@/components/afrivote/donut'
+import { TurnoutRing } from '@/components/votewise/shared'
+import { VoteShareDonut } from '@/components/votewise/donut'
 import { Users, CheckCircle2, Trophy, MinusCircle, Crown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,9 +14,9 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
 
   if (!live) {
     return (
-      <Card className="afrivote-card-glow">
+      <Card className="votewise-card-glow">
         <CardContent className="flex items-center justify-center gap-3 py-16 text-muted-foreground">
-          <span className="afrivote-live-dot inline-block h-3 w-3 rounded-full bg-primary" />
+          <span className="votewise-live-dot inline-block h-3 w-3 rounded-full bg-primary" />
           Connecting to the live results stream…
         </CardContent>
       </Card>
@@ -40,7 +40,7 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
     <div className="space-y-6">
       {/* Turnout summary */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardContent className="flex items-center gap-5 py-5">
             <TurnoutRing voted={turnout.voted} total={turnout.totalVoters} pct={turnout.turnoutPct} />
             <div className="space-y-1">
@@ -75,7 +75,7 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
         {positions.map((p: any) => {
           const leader = p.candidates[0]
           return (
-            <Card key={p.id} className="afrivote-card-glow overflow-hidden">
+            <Card key={p.id} className="votewise-card-glow overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -118,7 +118,7 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
                           </div>
                           <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
                             <div
-                              className={cn('afrivote-bar-anim h-full rounded-full', isLeader ? 'bg-primary' : 'bg-primary/40')}
+                              className={cn('votewise-bar-anim h-full rounded-full', isLeader ? 'bg-primary' : 'bg-primary/40')}
                               style={{ width: `${Math.max(2, c.pct)}%` }}
                             />
                           </div>

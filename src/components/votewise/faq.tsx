@@ -43,8 +43,8 @@ export function Reveal({ children, className, delay = 0 }: { children: React.Rea
 
 const FAQS = [
   {
-    q: 'How do I verify my matriculation number?',
-    a: 'Click "Cast Your Vote", enter your matric number (e.g. CSC/2022/001), and we check it against the official student register. If found, you choose a channel (email, SMS, or WhatsApp) to receive a one-time verification PIN.',
+    q: 'How do I verify my voterIdulation number?',
+    a: 'Click "Cast Your Vote", enter your voter ID (e.g. CSC/2022/001), and we check it against the official voter register. If found, you choose a channel (email, SMS, or WhatsApp) to receive a one-time verification PIN.',
   },
   {
     q: 'I didn\'t receive my OTP. What should I do?',
@@ -52,7 +52,7 @@ const FAQS = [
   },
   {
     q: 'Can someone see who I voted for?',
-    a: 'No. Your vote is encrypted with AES-256-GCM before storage. The system records only an opaque hash of your matric number — not your identity. Even the electoral committee cannot link a vote to a voter. You receive a receipt code that proves your vote was counted, but it does not reveal your choice.',
+    a: 'No. Your vote is encrypted with AES-256-GCM before storage. The system records only an opaque hash of your voter ID — not your identity. Even the electoral committee cannot link a vote to a voter. You receive a receipt code that proves your vote was counted, but it does not reveal your choice.',
   },
   {
     q: 'What positions am I eligible to vote for?',
@@ -86,12 +86,12 @@ export function FaqSection() {
           </div>
           <h2 className="font-display text-3xl font-bold sm:text-4xl">Got Questions?</h2>
           <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
-            Everything you need to know about voting in the SUG election.
+            Everything you need to know about voting in the election.
           </p>
         </div>
       </Reveal>
       <Reveal delay={100}>
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardContent className="p-2">
             <Accordion type="single" collapsible className="w-full">
               {FAQS.map((faq, i) => (

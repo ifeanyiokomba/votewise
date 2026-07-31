@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — Enterprise Prisma schema.
+// VoteWise SUG v2 — Enterprise Prisma schema.
 // Normalized, indexed, constraint-rich. SQLite in sandbox; swap `provider` to
 // `postgresql` + `DATABASE_URL` for production (no other changes needed).
 
@@ -32,7 +32,7 @@ model Tenant {
   universityLogoUrl String?
   primaryColour   String   @default("#15803d")
   accentColour    String   @default("#b45309")
-  // Subdomain (auto-assigned on signup: e.g. unilag.afrivote.ng)
+  // Subdomain (auto-assigned on signup: e.g. unilag.votewise.ng)
   subdomain       String?  @unique
   // Admin who created this tenant
   adminEmail      String

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const format = (searchParams.get('format') || 'csv').toLowerCase()
   const data = await computeAggregatedResults(true)
   if (format === 'json') {
-    return json(data, 200, { 'content-disposition': 'attachment; filename="afrivote-results.json"' })
+    return json(data, 200, { 'content-disposition': 'attachment; filename="votewise-results.json"' })
   }
   if (format === 'csv') {
     const rows: string[] = []
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         'content-type': 'text/csv',
-        'content-disposition': 'attachment; filename="afrivote-results.csv"',
+        'content-disposition': 'attachment; filename="votewise-results.csv"',
       },
     })
   }

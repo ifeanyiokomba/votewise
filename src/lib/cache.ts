@@ -1,4 +1,4 @@
-// AfriVote SUG v2 — In-memory TTL cache (Redis interface in production).
+// VoteWise SUG v2 — In-memory TTL cache (Redis interface in production).
 // Used for: aggregated results (2.5s TTL), election meta (10s), rate-limit
 // buckets (handled in ratelimit.ts). All methods are sync-safe.
 

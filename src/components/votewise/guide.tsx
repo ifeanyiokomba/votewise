@@ -13,18 +13,18 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useApp } from '@/lib/store'
 import { cn } from '@/lib/utils'
-import { Reveal } from '@/components/afrivote/faq'
+import { Reveal } from '@/components/votewise/faq'
 
 const GUIDE_STEPS = [
   {
     icon: Shield,
-    title: 'Verify Your Matriculation Number',
+    title: 'Verify Your Voter ID',
     duration: '~30 seconds',
-    desc: 'Enter your matric number on the voting page. We check it against the official student register before anything else.',
+    desc: 'Enter your voter ID on the voting page. We check it against the official voter register before anything else.',
     tips: [
       'Use the exact format on your student ID (e.g. CSC/2022/001)',
-      'Your matric is case-insensitive — we normalise it automatically',
-      'If your matric isn\'t found, contact the Electoral Committee',
+      'Your voterId is case-insensitive — we normalise it automatically',
+      'If your voterId isn\'t found, contact the Electoral Committee',
     ],
     color: 'bg-blue-100 text-blue-700',
   },
@@ -109,7 +109,7 @@ export function GuideView() {
           </div>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">How to Vote — Step by Step</h1>
           <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-            A complete visual guide to casting your vote in the SUG election. The entire process takes less than 5 minutes.
+            A complete visual guide to casting your vote in the election. The entire process takes less than 5 minutes.
           </p>
         </div>
       </Reveal>
@@ -137,7 +137,7 @@ export function GuideView() {
 
       {/* Active step detail */}
       <Reveal key={activeStep}>
-        <Card className="afrivote-card-glow mb-8 overflow-hidden">
+        <Card className="votewise-card-glow mb-8 overflow-hidden">
           <div className={cn('flex items-center gap-4 p-6', GUIDE_STEPS[activeStep].color)}>
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white/30">
               {(() => { const Icon = GUIDE_STEPS[activeStep].icon; return <Icon className="h-7 w-7" /> })()}
@@ -214,7 +214,7 @@ export function GuideView() {
 
       {/* Support CTA */}
       <Reveal>
-        <Alert className="afrivote-card-glow">
+        <Alert className="votewise-card-glow">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Need help?</AlertTitle>
           <AlertDescription>

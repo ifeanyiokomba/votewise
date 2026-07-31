@@ -74,7 +74,7 @@ export function VoteView() {
         <ArrowLeft className="h-4 w-4" /> Back
       </Button>
 
-      <Card className="afrivote-card-glow mb-6">
+      <Card className="votewise-card-glow mb-6">
         <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold">Your Ballot</h1>
@@ -84,7 +84,7 @@ export function VoteView() {
           </div>
           <div className="flex items-center gap-2">
             {ballot?.election.votingOpen ? (
-              <Badge className="gap-1 bg-emerald-100 text-emerald-700"><span className="afrivote-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" /> Voting Open</Badge>
+              <Badge className="gap-1 bg-emerald-100 text-emerald-700"><span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" /> Voting Open</Badge>
             ) : (
               <Badge variant="destructive">Voting Not Open</Badge>
             )}
@@ -178,7 +178,7 @@ export function VoteView() {
       </div>
 
       <div className="sticky bottom-4 z-10 mt-6">
-        <Card className="afrivote-card-glow">
+        <Card className="votewise-card-glow">
           <CardContent className="flex items-center justify-between gap-3 p-4">
             <div className="text-sm">
               <span className="font-semibold">{Object.keys(selections).length}</span>
@@ -200,7 +200,7 @@ export function VoteView() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">Please review your selections. This action is final and cannot be undone.</p>
-              <div className="max-h-64 space-y-2 overflow-y-auto afrivote-scroll">
+              <div className="max-h-64 space-y-2 overflow-y-auto votewise-scroll">
                 {positions.map((p: any) => {
                   const sel = selections[p.id]
                   const isNota = sel === 'NOTA'
@@ -233,7 +233,7 @@ export function SuccessView() {
   const channelLabel = receiptChannel === 'EMAIL' ? 'email' : receiptChannel === 'SMS' ? 'SMS' : receiptChannel === 'WHATSAPP' ? 'WhatsApp' : 'email'
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
-      <Card className="afrivote-card-glow overflow-hidden">
+      <Card className="votewise-card-glow overflow-hidden">
         <div className="bg-gradient-to-br from-emerald-500 to-primary p-8 text-center text-primary-foreground">
           <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary-foreground/15">
             <CheckCircle2 className="h-12 w-12" />
@@ -307,7 +307,7 @@ export function ReceiptVerifyView() {
       <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 gap-1.5">
         <ArrowLeft className="h-4 w-4" /> Back to home
       </Button>
-      <Card className="afrivote-card-glow">
+      <Card className="votewise-card-glow">
         <CardHeader>
           <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><BadgeCheck className="h-6 w-6" /></div>
           <CardTitle className="mt-3 font-display">Verify Your Vote</CardTitle>

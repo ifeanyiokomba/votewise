@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useApp } from '@/lib/store'
 
-// Election timetable phases (derived from election start/end + Nigerian SUG practice)
+// Election timetable phases (derived from election start/end + Nigerian election practice)
 const PHASES = [
   { icon: FileText, key: 'nomination', title: 'Nomination', desc: 'Aspirants submit nomination forms, screened by ELCOM.' },
   { icon: CheckCircle2, key: 'screening', title: 'Screening', desc: 'Credentials verified; qualified candidates published.' },
@@ -59,7 +59,7 @@ export function ElectionTimetable({ election }: { election: any }) {
   }
 
   return (
-    <Card className="afrivote-card-glow">
+    <Card className="votewise-card-glow">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
@@ -88,7 +88,7 @@ export function ElectionTimetable({ election }: { election: any }) {
                   <div className="flex-1 pt-0.5">
                     <div className="flex items-center justify-between gap-2">
                       <span className={cn('font-medium', status === 'future' && 'text-muted-foreground')}>{p.title}</span>
-                      {status === 'active' && <Badge className="gap-1 bg-emerald-100 text-emerald-700"><span className="afrivote-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Now</Badge>}
+                      {status === 'active' && <Badge className="gap-1 bg-emerald-100 text-emerald-700"><span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" /> Now</Badge>}
                       {status === 'past' && <Badge variant="secondary" className="text-[10px]">Done</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground">{p.desc}</p>
@@ -131,16 +131,16 @@ export function LiveActivityFeed() {
   if (activities.length === 0) return null
 
   return (
-    <Card className="afrivote-card-glow">
+    <Card className="votewise-card-glow">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
           <CardTitle className="font-display text-base">Live Activity</CardTitle>
-          <span className="afrivote-live-dot ml-auto inline-block h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="votewise-live-dot ml-auto inline-block h-2 w-2 rounded-full bg-emerald-500" />
         </div>
       </CardHeader>
       <CardContent className="space-y-1">
-        <div className="afrivote-scroll max-h-48 overflow-y-auto">
+        <div className="votewise-scroll max-h-48 overflow-y-auto">
           {activities.map((a, i) => (
             <div key={i} className="flex items-center gap-2 border-b border-border/40 py-1.5 text-xs last:border-0">
               <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-600">
