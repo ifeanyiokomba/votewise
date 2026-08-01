@@ -106,7 +106,7 @@ export function CommandCenter({ subdomain }: { subdomain?: string }) {
                       <div className="font-display text-lg font-bold text-primary">{unit.turnoutPct}%</div>
                       <div className="text-[10px] text-muted-foreground">{unit.votesCast.toLocaleString()} votes</div>
                     </div>
-                    <Button size="sm" variant="ghost" className="gap-1"><ChevronRight className="h-4 w-4" /></Button>
+                    <Button size="sm" variant="ghost" onClick={() => { window.location.href = `/workspace/unit/${unit.id}?org=${subdomain || ''}` }} className="gap-1">Open <ChevronRight className="h-4 w-4" /></Button>
                   </div>
                   {/* Live progress bar */}
                   {unit.isLive && (

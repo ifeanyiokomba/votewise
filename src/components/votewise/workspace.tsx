@@ -273,13 +273,14 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
 function WorkspaceNav({ subdomain }: { subdomain?: string }) {
   const items = [
     { label: 'Dashboard', icon: TrendingUp, href: subdomain ? `/workspace?org=${encodeURIComponent(subdomain)}` : '/workspace' },
+    { label: 'Command Center', icon: Activity, href: subdomain ? `/workspace/command-center?org=${encodeURIComponent(subdomain)}` : '/workspace/command-center' },
+    { label: 'Structure', icon: Building2, href: subdomain ? `/workspace/structure?org=${encodeURIComponent(subdomain)}` : '/workspace/structure' },
     { label: 'Elections', icon: Vote, href: '#' },
     { label: 'Voters', icon: Users, href: '#' },
     { label: 'Candidates', icon: Trophy, href: '#' },
     { label: 'Observers', icon: Eye, href: '#' },
     { label: 'Support', icon: Headphones, href: '#' },
     { label: 'Reports', icon: FileCheck2, href: '#' },
-    { label: 'Notifications', icon: Bell, href: '#' },
     { label: 'Audit Logs', icon: ScrollText, href: '#' },
     { label: 'Settings', icon: SettingsIcon, href: subdomain ? `/workspace/settings?org=${encodeURIComponent(subdomain)}` : '/workspace/settings' },
   ]
