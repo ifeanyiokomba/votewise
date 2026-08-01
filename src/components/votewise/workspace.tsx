@@ -91,7 +91,7 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
           </div>
         </div>
         {/* Workspace nav */}
-        <WorkspaceNav />
+        <WorkspaceNav subdomain={subdomain} />
       </header>
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
@@ -269,26 +269,26 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
   )
 }
 
-function WorkspaceNav() {
+function WorkspaceNav({ subdomain }: { subdomain?: string }) {
   const items = [
-    { label: 'Dashboard', icon: TrendingUp, active: true },
-    { label: 'Elections', icon: Vote },
-    { label: 'Voters', icon: Users },
-    { label: 'Candidates', icon: Trophy },
-    { label: 'Observers', icon: Eye },
-    { label: 'Support', icon: Headphones },
-    { label: 'Reports', icon: FileCheck2 },
-    { label: 'Notifications', icon: Bell },
-    { label: 'Audit Logs', icon: ScrollText },
-    { label: 'Settings', icon: SettingsIcon },
+    { label: 'Dashboard', icon: TrendingUp, href: subdomain ? `/workspace?org=${encodeURIComponent(subdomain)}` : '/workspace' },
+    { label: 'Elections', icon: Vote, href: '#' },
+    { label: 'Voters', icon: Users, href: '#' },
+    { label: 'Candidates', icon: Trophy, href: '#' },
+    { label: 'Observers', icon: Eye, href: '#' },
+    { label: 'Support', icon: Headphones, href: '#' },
+    { label: 'Reports', icon: FileCheck2, href: '#' },
+    { label: 'Notifications', icon: Bell, href: '#' },
+    { label: 'Audit Logs', icon: ScrollText, href: '#' },
+    { label: 'Settings', icon: SettingsIcon, href: subdomain ? `/workspace/settings?org=${encodeURIComponent(subdomain)}` : '/workspace/settings' },
   ]
   return (
     <div className="border-t border-border/60 bg-background">
       <div className="votewise-scroll mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-1.5 sm:px-6">
-        {items.map((it) => (
-          <button key={it.label} className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors', it.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
+        {items.map((it, i) => (
+          <a key={it.label} href={it.href} className={cn('flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors', i === 0 ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground')}>
             <it.icon className="h-3.5 w-3.5" /> {it.label}
-          </button>
+          </a>
         ))}
       </div>
     </div>

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  ArrowLeft, Building2, Users, Shield, CheckCircle2, Loader2,
+  ArrowLeft, ArrowRight, Building2, Shield, CheckCircle2, Loader2,
   AlertCircle, Upload, Palette, Sparkles, Heart, Church, Briefcase,
-  Landmark, Store, Dumbbell, Home, Award, Users2, Network, PartyPopper,
-  GraduationCap, BookOpen, Layers, Globe, Zap,
+  Landmark, Store, Dumbbell, Home as HomeIcon, Award, Users, Users2, Network, PartyPopper,
+  GraduationCap, BookOpen, Globe, Zap, User, Mail, Phone, Lock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,40 +33,29 @@ const ORG_CATEGORIES = [
   { value: 'COMPANY', icon: Briefcase, label: 'Company' },
   { value: 'COOPERATIVE', icon: Users2, label: 'Cooperative' },
   { value: 'PROFESSIONAL_BODY', icon: Award, label: 'Professional Body' },
-  { value: 'COMMUNITY', icon: Home, label: 'Community' },
+  { value: 'COMMUNITY', icon: HomeIcon, label: 'Community' },
   { value: 'CLUB', icon: Users, label: 'Club' },
   { value: 'ASSOCIATION', icon: Network, label: 'Association' },
   { value: 'TRADE_UNION', icon: Users2, label: 'Trade Union' },
   { value: 'MARKET_ASSOCIATION', icon: Store, label: 'Market Association' },
-  { value: 'RESIDENT_ASSOCIATION', icon: Home, label: 'Resident Association' },
+  { value: 'RESIDENT_ASSOCIATION', icon: HomeIcon, label: 'Resident Association' },
   { value: 'SPORTS_CLUB', icon: Dumbbell, label: 'Sports Club' },
   { value: 'OTHER', icon: Building2, label: 'Other' },
 ]
 
-// Preset terminology bundles — selecting a category auto-suggests terminology.
-const TERMINOLOGY_PRESETS: Record<string, any> = {
-  UNIVERSITY: { organizationLabel: 'University', workspaceLabel: 'Faculty', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
-  POLYTECHNIC: { organizationLabel: 'Polytechnic', workspaceLabel: 'School', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
-  COLLEGE: { organizationLabel: 'College', workspaceLabel: 'School', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
-  STUDENT_UNION: { organizationLabel: 'Student Union', workspaceLabel: 'Faculty', voterGroupLabel: 'Department', voterLabel: 'Student', candidateLabel: 'Aspirant' },
-  CHURCH: { organizationLabel: 'Church', workspaceLabel: 'Parish', voterGroupLabel: 'Fellowship', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  MOSQUE: { organizationLabel: 'Mosque', workspaceLabel: 'Branch', voterGroupLabel: 'Unit', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  NGO: { organizationLabel: 'Organization', workspaceLabel: 'Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  POLITICAL_PARTY: { organizationLabel: 'Party', workspaceLabel: 'State Chapter', voterGroupLabel: 'Ward', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  GOVERNMENT: { organizationLabel: 'Agency', workspaceLabel: 'Department', voterGroupLabel: 'Unit', voterLabel: 'Staff', candidateLabel: 'Candidate' },
-  COMPANY: { organizationLabel: 'Company', workspaceLabel: 'Division', voterGroupLabel: 'Department', voterLabel: 'Employee', candidateLabel: 'Candidate' },
-  COOPERATIVE: { organizationLabel: 'Cooperative', workspaceLabel: 'Branch', voterGroupLabel: 'Unit', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  PROFESSIONAL_BODY: { organizationLabel: 'Association', workspaceLabel: 'State Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  COMMUNITY: { organizationLabel: 'Community', workspaceLabel: 'Village', voterGroupLabel: 'Household', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  CLUB: { organizationLabel: 'Club', workspaceLabel: 'Chapter', voterGroupLabel: 'Group', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  TRADE_UNION: { organizationLabel: 'Union', workspaceLabel: 'State Chapter', voterGroupLabel: 'Branch', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  MARKET_ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Section', voterGroupLabel: 'Line', voterLabel: 'Trader', candidateLabel: 'Candidate' },
-  RESIDENT_ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Estate', voterGroupLabel: 'Street', voterLabel: 'Resident', candidateLabel: 'Candidate' },
-  SPORTS_CLUB: { organizationLabel: 'Club', workspaceLabel: 'Team', voterGroupLabel: 'Squad', voterLabel: 'Member', candidateLabel: 'Candidate' },
-  ALUMNI_ASSOCIATION: { organizationLabel: 'Association', workspaceLabel: 'Chapter', voterGroupLabel: 'Set', voterLabel: 'Alumnus', candidateLabel: 'Candidate' },
-  OTHER: { organizationLabel: 'Organization', workspaceLabel: 'Workspace', voterGroupLabel: 'Voter Group', voterLabel: 'Voter', candidateLabel: 'Candidate' },
-}
+const NIGERIAN_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue',
+  'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu',
+  'FCT (Abuja)', 'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina',
+  'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo',
+  'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara',
+]
+
+const TIMEZONES = [
+  'Africa/Lagos', 'Africa/Abidjan', 'Africa/Accra', 'Africa/Addis_Ababa',
+  'Africa/Cairo', 'Africa/Casablanca', 'Africa/Johannesburg', 'Africa/Nairobi',
+  'UTC',
+]
 
 export function SignupView() {
   const { setView, setOfficial } = useApp()
@@ -75,64 +64,82 @@ export function SignupView() {
   const [form, setForm] = useState<any>({
     primaryColour: '#15803d',
     accentColour: '#b45309',
+    secondaryColour: '#166534',
+    timezone: 'Africa/Lagos',
+    country: 'Nigeria',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Subdomain check state (Step 4)
+  const [subdomain, setSubdomain] = useState('')
+  const [subCheck, setSubCheck] = useState<any>(null)
+  const [checking, setChecking] = useState(false)
+  // Creation result (Step 5)
+  const [created, setCreated] = useState<any>(null)
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }))
 
-  function selectCategory(cat: string) {
-    setCategory(cat)
-    // Auto-apply terminology preset (user can still override in step 3)
-    const preset = TERMINOLOGY_PRESETS[cat]
-    if (preset) {
-      setForm((f: any) => ({ ...f, ...preset }))
+  // --- Step 4: live subdomain availability check ---
+  useEffect(() => {
+    if (step !== 4 || !subdomain) { setSubCheck(null); return }
+    const sub = subdomain.toLowerCase().trim()
+    if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(sub)) {
+      setSubCheck({ available: false, error: 'Must be 3-30 chars: lowercase letters, numbers, hyphens.' })
+      return
     }
-  }
+    setChecking(true)
+    const t = setTimeout(() => {
+      api.checkSubdomain(sub).then((d) => { setSubCheck(d); setChecking(false) }).catch(() => { setChecking(false) })
+    }, 400) // debounce
+    return () => clearTimeout(t)
+  }, [subdomain, step])
 
-  function onLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function onLogoUpload(e: React.ChangeEvent<HTMLInputElement>, field: string) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 1024 * 1024) { toast.error('Logo must be under 1MB'); return }
     const reader = new FileReader()
-    reader.onload = (ev) => set('logoUrl', ev.target?.result)
+    reader.onload = (ev) => set(field, ev.target?.result)
     reader.readAsDataURL(file)
   }
 
-  async function submit() {
+  // --- Step 5: create the workspace ---
+  async function createWorkspace() {
     setBusy(true); setError(null)
     try {
       const d = await api.registerOrganization({
-        name: form.name,
+        name: form.orgName,
         category,
         description: form.description,
         primaryColour: form.primaryColour,
+        secondaryColour: form.secondaryColour,
         accentColour: form.accentColour,
         logoUrl: form.logoUrl,
-        ownerName: form.ownerName,
-        ownerEmail: form.ownerEmail,
-        ownerPassword: form.ownerPassword,
-        terminology: {
-          organizationLabel: form.organizationLabel,
-          workspaceLabel: form.workspaceLabel,
-          voterGroupLabel: form.voterGroupLabel,
-          voterLabel: form.voterLabel,
-          candidateLabel: form.candidateLabel,
-        },
+        ownerName: form.fullName,
+        ownerEmail: form.email,
+        ownerPassword: form.password,
+        ownerPhone: form.phone,
+        country: form.country,
+        state: form.state,
+        timezone: form.timezone,
+        subdomain,
       })
       setOfficial(d.official)
-      toast.success(`${d.organization.name} created! Welcome, ${d.member.name}.`)
-      setView('official')
+      setCreated(d)
+      setStep(5)
+      toast.success(`${d.organization.name} workspace created!`)
     } catch (e: any) { setError(e.message) } finally { setBusy(false) }
   }
 
-  const canProceedStep1 = form.name && form.name.trim().length >= 2
-  const canProceedStep2 = form.ownerName && form.ownerEmail && form.ownerPassword?.length >= 8
+  // Validation per step
+  const canStep1 = form.fullName && form.email && form.phone && form.password?.length >= 8 && form.password === form.confirmPassword
+  const canStep2 = form.orgName && form.country && form.state && form.timezone
+  const canStep4 = subCheck?.available === true
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
-      <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 gap-1.5">
-        <ArrowLeft className="h-4 w-4" /> Back to home
+      <Button variant="ghost" size="sm" onClick={() => step === 1 ? setView('home') : setStep(step - 1)} className="mb-4 gap-1.5">
+        <ArrowLeft className="h-4 w-4" /> {step === 1 ? 'Back to home' : 'Back'}
       </Button>
 
       <div className="mb-6 text-center">
@@ -141,212 +148,259 @@ export function SignupView() {
         </div>
         <h1 className="font-display text-3xl font-bold sm:text-4xl">Register Your Organization</h1>
         <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-          Any organization. University, company, church, NGO, cooperative, association — VoteWise works for all of them.
+          Any organization. University, company, church, NGO, cooperative — VoteWise works for all of them.
         </p>
       </div>
 
       {/* Step indicator */}
-      <div className="mb-6 flex items-center justify-center gap-2">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className={cn('flex items-center gap-2', s < step && 'text-emerald-600')}>
-            <div className={cn('grid h-8 w-8 place-items-center rounded-full text-sm font-bold', s === step ? 'bg-primary text-primary-foreground' : s < step ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground')}>
-              {s < step ? <CheckCircle2 className="h-4 w-4" /> : s}
+      <div className="mb-6 flex items-center justify-center gap-1.5">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <div key={s} className={cn('flex items-center gap-1.5', s < step && 'text-emerald-600')}>
+            <div className={cn('grid h-7 w-7 place-items-center rounded-full text-xs font-bold', s === step ? 'bg-primary text-primary-foreground' : s < step ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground')}>
+              {s < step ? <CheckCircle2 className="h-3.5 w-3.5" /> : s}
             </div>
             <span className={cn('hidden text-xs sm:inline', s === step ? 'font-medium' : 'text-muted-foreground')}>
-              {s === 1 ? 'Organization' : s === 2 ? 'Owner Account' : 'Branding & Terms'}
+              {s === 1 ? 'Personal' : s === 2 ? 'Organization' : s === 3 ? 'Branding' : s === 4 ? 'Subdomain' : 'Done'}
             </span>
-            {s < 3 && <div className={cn('h-0.5 w-8', s < step ? 'bg-emerald-500' : 'bg-muted')} />}
+            {s < 5 && <div className={cn('h-0.5 w-4', s < step ? 'bg-emerald-500' : 'bg-muted')} />}
           </div>
         ))}
       </div>
 
       {error && <Alert variant="destructive" className="mb-4"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
 
-      {/* Step 1: Organization details */}
+      {/* === Step 1: Personal Information === */}
       {step === 1 && (
         <Card className="votewise-card-glow">
-          <CardHeader><CardTitle className="font-display">Organization Details</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2"><User className="h-5 w-5 text-primary" /> Personal Information</CardTitle>
+            <p className="text-sm text-muted-foreground">You will become the <strong className="text-foreground">Organization Owner</strong> with full control.</p>
+          </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Organization Name <span className="text-destructive">*</span></Label>
-              <Input value={form.name || ''} onChange={(e) => set('name', e.target.value)} placeholder="e.g. University of Lagos, MTN Nigeria, Red Cross Nigeria" />
-              <p className="text-xs text-muted-foreground">This is your organization&apos;s public name on VoteWise.</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Description (optional)</Label>
-              <Input value={form.description || ''} onChange={(e) => set('description', e.target.value)} placeholder="A short description of your organization" />
-            </div>
-
-            {/* Organization category selector */}
-            <div>
-              <Label className="mb-2 block">Organization Category</Label>
-              <p className="mb-2 text-xs text-muted-foreground">
-                Purely informational — VoteWise treats every organization the same regardless of category. This just helps us suggest the right terminology.
-              </p>
-              <div className="votewise-scroll grid max-h-64 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
-                {ORG_CATEGORIES.map((c) => (
-                  <button key={c.value} onClick={() => selectCategory(c.value)}
-                    className={cn('flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-all', category === c.value ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-muted/50')}>
-                    <c.icon className={cn('h-5 w-5', category === c.value ? 'text-primary' : 'text-muted-foreground')} />
-                    <span className="text-[11px] font-medium leading-tight">{c.label}</span>
-                  </button>
-                ))}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Full Name <span className="text-destructive">*</span></Label>
+                <Input value={form.fullName || ''} onChange={(e) => set('fullName', e.target.value)} placeholder="Jane Doe" />
               </div>
-            </div>
-
-            <Button onClick={() => setStep(2)} disabled={!canProceedStep1} className="w-full gap-2">Continue <Shield className="h-4 w-4" /></Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 2: Owner account */}
-      {step === 2 && (
-        <Card className="votewise-card-glow">
-          <CardHeader><CardTitle className="font-display">Owner Account</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              You will be the <strong className="text-foreground">Organization Owner</strong> with full control: create elections, invite admins, manage billing, configure branding, and connect a custom domain.
-            </p>
-            <div className="space-y-1.5">
-              <Label>Your Full Name <span className="text-destructive">*</span></Label>
-              <Input value={form.ownerName || ''} onChange={(e) => set('ownerName', e.target.value)} placeholder="e.g. Dr. Okon Edu" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Email <span className="text-destructive">*</span></Label>
-              <Input type="email" value={form.ownerEmail || ''} onChange={(e) => set('ownerEmail', e.target.value.toLowerCase())} placeholder="you@yourorganization.org" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Password <span className="text-destructive">*</span></Label>
-              <Input type="password" value={form.ownerPassword || ''} onChange={(e) => set('ownerPassword', e.target.value)} placeholder="At least 8 characters" />
+              <div className="space-y-1.5">
+                <Label>Email <span className="text-destructive">*</span></Label>
+                <Input type="email" value={form.email || ''} onChange={(e) => set('email', e.target.value.toLowerCase())} placeholder="you@yourorg.org" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Phone Number <span className="text-destructive">*</span></Label>
+                <Input value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} placeholder="+234 801 234 5678" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Password <span className="text-destructive">*</span></Label>
+                <Input type="password" value={form.password || ''} onChange={(e) => set('password', e.target.value)} placeholder="At least 8 characters" />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Confirm Password <span className="text-destructive">*</span></Label>
+                <Input type="password" value={form.confirmPassword || ''} onChange={(e) => set('confirmPassword', e.target.value)} placeholder="Re-enter password" />
+                {form.password && form.confirmPassword && form.password !== form.confirmPassword && (
+                  <p className="text-xs text-destructive">Passwords do not match.</p>
+                )}
+              </div>
             </div>
             <Alert>
               <Shield className="h-4 w-4" />
               <AlertTitle>Owner privileges</AlertTitle>
-              <AlertDescription>
-                Full control of your organization. You can enable 2FA from your account settings after sign-up. Ownership can be transferred later.
-              </AlertDescription>
+              <AlertDescription>Full control: create elections, invite admins, manage billing, configure branding, connect domains. Ownership can be transferred later.</AlertDescription>
             </Alert>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Back</Button>
-              <Button onClick={() => setStep(3)} disabled={!canProceedStep2} className="flex-1 gap-2">Continue <Palette className="h-4 w-4" /></Button>
-            </div>
+            <Button onClick={() => setStep(2)} disabled={!canStep1} className="w-full gap-2">Continue <ArrowRight className="h-4 w-4" /></Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 3: Branding + terminology */}
+      {/* === Step 2: Organization Information === */}
+      {step === 2 && (
+        <Card className="votewise-card-glow">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" /> Organization Information</CardTitle>
+            <p className="text-sm text-muted-foreground">Tell us about your organization. Nothing university-specific.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Organization Name <span className="text-destructive">*</span></Label>
+              <Input value={form.orgName || ''} onChange={(e) => set('orgName', e.target.value)} placeholder="e.g. Lagos Medical Association" />
+            </div>
+            <div>
+              <Label className="mb-2 block">Organization Type</Label>
+              <div className="votewise-scroll grid max-h-48 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                {ORG_CATEGORIES.map((c) => (
+                  <button key={c.value} onClick={() => setCategory(c.value)}
+                    className={cn('flex flex-col items-center gap-1 rounded-lg border p-2.5 text-center transition-all', category === c.value ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-muted/50')}>
+                    <c.icon className={cn('h-4 w-4', category === c.value ? 'text-primary' : 'text-muted-foreground')} />
+                    <span className="text-[10px] font-medium leading-tight">{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Country</Label>
+                <Input value={form.country || 'Nigeria'} onChange={(e) => set('country', e.target.value)} placeholder="Nigeria" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>State <span className="text-destructive">*</span></Label>
+                <Input list="states" value={form.state || ''} onChange={(e) => set('state', e.target.value)} placeholder="Lagos" />
+                <datalist id="states">{NIGERIAN_STATES.map((s) => <option key={s} value={s} />)}</datalist>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Timezone <span className="text-destructive">*</span></Label>
+                <Input list="tzs" value={form.timezone || 'Africa/Lagos'} onChange={(e) => set('timezone', e.target.value)} />
+                <datalist id="tzs">{TIMEZONES.map((t) => <option key={t} value={t} />)}</datalist>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description (optional)</Label>
+              <Input value={form.description || ''} onChange={(e) => set('description', e.target.value)} placeholder="A short description of your organization" />
+            </div>
+            <Button onClick={() => setStep(3)} disabled={!canStep2} className="w-full gap-2">Continue <ArrowRight className="h-4 w-4" /></Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* === Step 3: Branding (optional) === */}
       {step === 3 && (
         <Card className="votewise-card-glow">
-          <CardHeader><CardTitle className="font-display">Branding &amp; Terminology</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2"><Palette className="h-5 w-5 text-primary" /> Branding</CardTitle>
+            <p className="text-sm text-muted-foreground">Optional — you can change this later in Settings.</p>
+          </CardHeader>
           <CardContent className="space-y-4">
-            {/* Logo upload */}
-            <div className="space-y-1.5">
-              <Label>Organization Logo</Label>
-              <div className="flex items-center gap-4 rounded-lg border-2 border-dashed border-border p-4">
-                {form.logoUrl ? (
-                  <img src={form.logoUrl} alt="Logo" className="h-16 w-16 rounded-lg object-contain" />
-                ) : (
-                  <div className="grid h-16 w-16 place-items-center rounded-lg text-white" style={{ backgroundColor: form.primaryColour }}>
-                    <Building2 className="h-8 w-8" />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Upload your organization&apos;s logo (optional, under 1MB).</p>
-                  <Button size="sm" variant="outline" onClick={() => document.getElementById('logo-upload')?.click()} className="mt-2 gap-1.5">
-                    <Upload className="h-3.5 w-3.5" /> Upload Logo
-                  </Button>
-                  <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={onLogoUpload} />
-                </div>
-              </div>
-            </div>
-
-            {/* Colour pickers */}
+            {/* Logo uploads */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Primary Colour</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" value={form.primaryColour} onChange={(e) => set('primaryColour', e.target.value)} className="h-10 w-14 cursor-pointer rounded border border-border" />
-                  <Input value={form.primaryColour} onChange={(e) => set('primaryColour', e.target.value)} className="font-mono text-sm" />
+                <Label>Logo</Label>
+                <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-3">
+                  {form.logoUrl ? <img src={form.logoUrl} alt="Logo" className="h-14 w-14 rounded-lg object-contain" /> : <Building2 className="h-10 w-10 text-muted-foreground/40" />}
+                  <Button size="sm" variant="outline" onClick={() => document.getElementById('logo-upload')?.click()} className="gap-1 text-xs"><Upload className="h-3 w-3" /> Upload</Button>
+                  <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={(e) => onLogoUpload(e, 'logoUrl')} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Accent Colour</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" value={form.accentColour} onChange={(e) => set('accentColour', e.target.value)} className="h-10 w-14 cursor-pointer rounded border border-border" />
-                  <Input value={form.accentColour} onChange={(e) => set('accentColour', e.target.value)} className="font-mono text-sm" />
+                <Label>Dark Mode Logo</Label>
+                <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-3">
+                  {form.darkModeLogoUrl ? <img src={form.darkModeLogoUrl} alt="Dark logo" className="h-14 w-14 rounded-lg object-contain" /> : <Building2 className="h-10 w-10 text-muted-foreground/40" />}
+                  <Button size="sm" variant="outline" onClick={() => document.getElementById('dark-logo-upload')?.click()} className="gap-1 text-xs"><Upload className="h-3 w-3" /> Upload</Button>
+                  <input id="dark-logo-upload" type="file" accept="image/*" className="hidden" onChange={(e) => onLogoUpload(e, 'darkModeLogoUrl')} />
                 </div>
               </div>
             </div>
-
-            {/* Terminology configuration (Principle 4) */}
-            <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-              <div className="mb-2 flex items-center gap-1.5">
-                <Zap className="h-4 w-4 text-primary" />
-                <h4 className="font-display text-sm font-semibold">Your Terminology</h4>
-                <Badge variant="secondary" className="ml-auto text-[10px]">Principle 4</Badge>
-              </div>
-              <p className="mb-3 text-xs text-muted-foreground">
-                Configure your own terms instead of VoteWise hardcoding &ldquo;University&rdquo;, &ldquo;Faculty&rdquo;, &ldquo;Department&rdquo;. Pre-filled based on your category — override as needed.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Organization →</Label>
-                  <Input value={form.organizationLabel || 'Organization'} onChange={(e) => set('organizationLabel', e.target.value)} className="h-8 text-sm" />
+            {/* Colour pickers */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                { key: 'primaryColour', label: 'Primary' },
+                { key: 'secondaryColour', label: 'Secondary' },
+                { key: 'accentColour', label: 'Accent' },
+              ].map((c) => (
+                <div key={c.key} className="space-y-1.5">
+                  <Label>{c.label} Colour</Label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" value={form[c.key]} onChange={(e) => set(c.key, e.target.value)} className="h-10 w-12 cursor-pointer rounded border border-border" />
+                    <Input value={form[c.key]} onChange={(e) => set(c.key, e.target.value)} className="font-mono text-xs" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Workspace →</Label>
-                  <Input value={form.workspaceLabel || 'Workspace'} onChange={(e) => set('workspaceLabel', e.target.value)} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Voter Group →</Label>
-                  <Input value={form.voterGroupLabel || 'Voter Group'} onChange={(e) => set('voterGroupLabel', e.target.value)} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Voter →</Label>
-                  <Input value={form.voterLabel || 'Voter'} onChange={(e) => set('voterLabel', e.target.value)} className="h-8 text-sm" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px]">Candidate →</Label>
-                  <Input value={form.candidateLabel || 'Candidate'} onChange={(e) => set('candidateLabel', e.target.value)} className="h-8 text-sm" />
-                </div>
-              </div>
+              ))}
             </div>
-
             {/* Preview */}
             <div className="rounded-lg border border-border p-4">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">Preview</div>
               <div className="mt-2 flex items-center gap-3">
-                {form.logoUrl ? (
-                  <img src={form.logoUrl} alt="Logo" className="h-12 w-12 rounded-xl object-contain" />
-                ) : (
-                  <div className="grid h-12 w-12 place-items-center rounded-xl text-white" style={{ backgroundColor: form.primaryColour }}>
-                    <Building2 className="h-6 w-6" />
-                  </div>
-                )}
+                {form.logoUrl ? <img src={form.logoUrl} alt="Logo" className="h-11 w-11 rounded-xl object-contain" /> : <div className="grid h-11 w-11 place-items-center rounded-xl text-white" style={{ backgroundColor: form.primaryColour }}><Building2 className="h-5 w-5" /></div>}
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-lg font-bold truncate">{form.name || 'Your Organization'}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {form.organizationLabel || 'Organization'} · {form.workspaceLabel || 'Workspace'} · {form.voterGroupLabel || 'Voter Group'}
-                  </div>
+                  <div className="font-display text-base font-bold truncate">{form.orgName || 'Your Organization'}</div>
+                  <div className="text-xs text-muted-foreground">{form.country} · {form.state}</div>
                 </div>
-                <Badge className="ml-auto shrink-0" style={{ backgroundColor: form.accentColour, color: '#fff' }}>
-                  {form.voterLabel || 'Voter'} Election
-                </Badge>
-              </div>
-              <div className="mt-2 flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
-                <Globe className="h-3 w-3" />
-                {form.name ? form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) : 'your-org'}.votewise.ng
+                <Badge style={{ backgroundColor: form.accentColour, color: '#fff' }}>Election Platform</Badge>
               </div>
             </div>
+            <Button onClick={() => setStep(4)} className="w-full gap-2">Continue <ArrowRight className="h-4 w-4" /></Button>
+          </CardContent>
+        </Card>
+      )}
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(2)} className="gap-1.5"><ArrowLeft className="h-4 w-4" /> Back</Button>
-              <Button onClick={submit} disabled={busy} className="flex-1 gap-2">
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                {busy ? 'Creating…' : 'Create Organization'}
+      {/* === Step 4: Choose Subdomain === */}
+      {step === 4 && (
+        <Card className="votewise-card-glow">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2"><Globe className="h-5 w-5 text-primary" /> Choose Your Subdomain</CardTitle>
+            <p className="text-sm text-muted-foreground">This is your workspace URL. You can connect a custom domain later.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Subdomain</Label>
+              <div className="flex items-center gap-2">
+                <Input value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="marketunion" className="font-mono" />
+                <span className="shrink-0 font-mono text-sm text-muted-foreground">.votewise.ng</span>
+              </div>
+              {subdomain && (
+                <div className="mt-2">
+                  {checking ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Checking availability…</div>
+                  ) : subCheck?.error ? (
+                    <div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="h-4 w-4" /> {subCheck.error}</div>
+                  ) : subCheck?.available ? (
+                    <div className="flex items-center gap-2 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> <strong>{subdomain}.votewise.ng</strong> is available!</div>
+                  ) : subCheck && !subCheck.available ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="h-4 w-4" /> <strong>{subdomain}.votewise.ng</strong> is already taken.</div>
+                      {subCheck.suggestions?.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Try one of these:</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {subCheck.suggestions.map((s: any) => (
+                              <button key={s.subdomain} onClick={() => setSubdomain(s.subdomain)} className="rounded-full border border-border bg-card px-3 py-1 text-xs font-mono transition-colors hover:border-primary hover:bg-primary/5">
+                                {s.url}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            <Alert>
+              <Globe className="h-4 w-4" />
+              <AlertTitle>Your workspace URL</AlertTitle>
+              <AlertDescription>This is where your organization will access VoteWise. You can connect a custom domain (e.g. vote.yourorg.org) later from Settings → Domain.</AlertDescription>
+            </Alert>
+            <Button onClick={createWorkspace} disabled={!canStep4 || busy} className="w-full gap-2">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {busy ? 'Creating workspace…' : 'Create Workspace'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* === Step 5: Workspace Created === */}
+      {step === 5 && created && (
+        <Card className="votewise-card-glow">
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-100 text-emerald-600"><CheckCircle2 className="h-8 w-8" /></div>
+            <h2 className="mt-4 font-display text-2xl font-bold">Workspace Created!</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+              <strong className="text-foreground">{created.organization.name}</strong> is ready. Your workspace URL is{' '}
+              <span className="font-mono text-primary">{created.organization.subdomain}.votewise.ng</span>
+            </p>
+            <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 text-left">
+              <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Organization</div><div className="text-sm font-medium">{created.organization.name}</div></div>
+              <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Subdomain</div><div className="font-mono text-sm font-medium">{created.organization.subdomain}.votewise.ng</div></div>
+              <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Your Role</div><div className="text-sm font-medium">Organization Owner</div></div>
+              <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Plan</div><div className="text-sm font-medium">{created.organization.plan} (Trial)</div></div>
+            </div>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <Button onClick={() => { window.location.href = `/workspace?org=${created.organization.subdomain}` }} className="gap-2">
+                <Building2 className="h-4 w-4" /> Open My Workspace
+              </Button>
+              <Button variant="outline" onClick={() => setView('official')} className="gap-2">
+                <Shield className="h-4 w-4" /> Go to Dashboard
               </Button>
             </div>
+            <p className="mt-4 text-xs text-muted-foreground">Your trial is active. Pay to go live when you&apos;re ready.</p>
           </CardContent>
         </Card>
       )}
