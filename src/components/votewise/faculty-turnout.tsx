@@ -5,10 +5,12 @@ import { Building2, Users, CheckCircle2, Loader2, MapPin } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { api } from '@/lib/api'
+import { useTerminology } from '@/lib/terminology'
 import { cn } from '@/lib/utils'
 import { Reveal } from '@/components/votewise/faq'
 
 export function FacultyTurnoutMap() {
+  const t = useTerminology()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -38,7 +40,7 @@ export function FacultyTurnoutMap() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="font-display text-base flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" /> Turnout by Faculty
+            <MapPin className="h-4 w-4 text-primary" /> Turnout by {t.workspaceLabel}
           </CardTitle>
           <Badge variant="outline" className="gap-1">
             <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />

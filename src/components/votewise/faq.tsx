@@ -43,8 +43,8 @@ export function Reveal({ children, className, delay = 0 }: { children: React.Rea
 
 const FAQS = [
   {
-    q: 'How do I verify my voterIdulation number?',
-    a: 'Click "Cast Your Vote", enter your voter ID (e.g. CSC/2022/001), and we check it against the official voter register. If found, you choose a channel (email, SMS, or WhatsApp) to receive a one-time verification PIN.',
+    q: 'How do I verify my voter ID?',
+    a: 'Click "Cast Your Vote", enter your voter ID, and we check it against the official voter register. If found, you choose a channel (email, SMS, or WhatsApp) to receive a one-time verification PIN.',
   },
   {
     q: 'I didn\'t receive my OTP. What should I do?',
@@ -56,7 +56,7 @@ const FAQS = [
   },
   {
     q: 'What positions am I eligible to vote for?',
-    a: 'University-wide positions (President, VP, Secretary General, etc.) are open to every registered student. Faculty Representative positions are voted only by students of that faculty. Departmental Senator positions are voted only by students of that department. You will see only your eligible positions on the ballot.',
+    a: 'Organization-wide positions (e.g. President, Chairperson, Secretary) are open to every registered voter. Workspace-level positions are voted only by voters in that workspace. Voter-group-level positions are voted only by voters in that group. You will see only your eligible positions on the ballot.',
   },
   {
     q: 'Why is the candidate order different from my friend\'s?',
@@ -72,7 +72,7 @@ const FAQS = [
   },
   {
     q: 'What is accreditation and why is it required?',
-    a: 'Accreditation is a one-time verification step that confirms your identity and device for this election. It mirrors the physical accreditation done at Nigerian campus polling units (where students are cleared with indelible ink). You must complete accreditation before you can access your ballot.',
+    a: 'Accreditation is a one-time verification step that confirms your identity and device for this election. It is the digital equivalent of being cleared at a physical polling station before voting. You must complete accreditation before you can access your ballot.',
   },
 ]
 

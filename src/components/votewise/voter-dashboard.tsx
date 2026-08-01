@@ -12,12 +12,14 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useApp } from '@/lib/store'
 import { api, getVoterToken } from '@/lib/api'
+import { useTerminology } from '@/lib/terminology'
 import { toast } from 'sonner'
 import { StatusBadge, Countdown } from '@/components/votewise/shared'
 import { cn } from '@/lib/utils'
 
 export function VoterDashboard() {
   const { setView, voterProfile, voterToken, setVoterToken, setVoterProfile, election, setElection, accredited } = useApp()
+  const t = useTerminology()
   const [ballot, setBallot] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -135,7 +137,7 @@ export function VoterDashboard() {
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium">{p.title}</div>
-                      <div className="text-xs text-muted-foreground">{p.candidates.length} candidates · {scopeLabel(p.scope)}</div>
+                      <div className="text-xs text-muted-foreground">{p.candidates.length} candidates · {scopeLabel(p.scope, t)}</div>
                     </div>
                     <Badge variant="outline" className="text-[10px]">{p.candidates.length} choices</Badge>
                   </div>
@@ -207,9 +209,9 @@ function Stat({ icon: Icon, label, value, accent }: any) {
   )
 }
 
-function scopeLabel(s: string) {
-  if (s === 'UNIVERSITY') return 'University-wide'
-  if (s === 'FACULTY') return 'Faculty'
-  if (s === 'DEPARTMENT') return 'Department'
+function scopeLabel(s: string, t: any) {
+  if (s === 'UNIVERSITY') return `${t.organizationLabel}-wide`
+  if (s === 'FACULTY') return t.workspaceLabel
+  if (s === 'DEPARTMENT') return t.voterGroupLabel
   return s
 }

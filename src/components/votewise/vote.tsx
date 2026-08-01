@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Vote, ArrowLeft, ArrowRight, CheckCircle2, Loader2, AlertCircle, Copy,
-  Trophy, Shield, BadgeCheck, MinusCircle, GraduationCap, Lock, Sparkles, Mail,
+  Trophy, Shield, BadgeCheck, MinusCircle, User, Lock, Sparkles, Mail,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,11 +15,13 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/lib/store'
 import { api, setVoterToken } from '@/lib/api'
+import { useTerminology } from '@/lib/terminology'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 export function VoteView() {
   const { setView, voterToken, voterProfile, setVoterProfile, setVoterToken, lastReceipts, setLastReceipts, setReceiptChannel } = useApp()
+  const t = useTerminology()
   const [ballot, setBallot] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [selections, setSelections] = useState<Record<string, string>>({})
@@ -113,7 +115,7 @@ export function VoteView() {
                     <CardTitle className="font-display text-base">{p.title}</CardTitle>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2 pl-8">
-                    <Badge variant="outline" className="text-[10px]">{scopeLabel(p.scope)}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{scopeLabel(p.scope, t)}</Badge>
                     {p.faculty && <span className="text-xs text-muted-foreground">{p.faculty.name}</span>}
                     {p.department && <span className="text-xs text-muted-foreground">{p.department.name}</span>}
                   </div>
@@ -141,7 +143,7 @@ export function VoteView() {
                       <RadioGroupItem value={c.id} id={`${p.id}-${c.id}`} className="sr-only" />
                       <Avatar className="h-11 w-11 ring-1 ring-border">
                         {c.photoUrl ? <AvatarImage src={c.photoUrl} alt={c.fullName} /> : null}
-                        <AvatarFallback><GraduationCap className="h-5 w-5" /></AvatarFallback>
+                        <AvatarFallback><User className="h-5 w-5" /></AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -350,9 +352,9 @@ export function ReceiptVerifyView() {
   )
 }
 
-function scopeLabel(s: string) {
-  if (s === 'UNIVERSITY') return 'University-wide'
-  if (s === 'FACULTY') return 'Faculty'
-  if (s === 'DEPARTMENT') return 'Department'
+function scopeLabel(s: string, t: any) {
+  if (s === 'UNIVERSITY') return `${t.organizationLabel}-wide`
+  if (s === 'FACULTY') return t.workspaceLabel
+  if (s === 'DEPARTMENT') return t.voterGroupLabel
   return s
 }

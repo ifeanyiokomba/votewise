@@ -10,10 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useApp } from '@/lib/store'
 import { api, setVoterToken } from '@/lib/api'
+import { useTerminology } from '@/lib/terminology'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +21,7 @@ type Step = 'voterId' | 'channel' | 'otp' | 'accredit' | 'ready'
 
 export function VerifyView() {
   const { setView, voterToken, setVoterToken, voterProfile, setVoterProfile, setAccredited } = useApp()
+  const t = useTerminology()
   const [step, setStep] = useState<Step>('voterId')
   const [voterId, setVoterId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -48,13 +49,13 @@ export function VerifyView() {
   async function onVerifyVoterId() {
     setError(null); setLoading(true)
     try {
-      const d = await api.verifyVoterId(voterId)
-      if (!d.found) { setError('This voterIdulation number was not found in the voter register. Please contact the Electoral Committee.'); setLoading(false); return }
-      if (d.hasVoted) { setError('This voter has already cast a ballot in this election. Each student may vote only once.'); setLoading(false); return }
+      const d = await api.verifyMatric(voterId)
+      if (!d.found) { setError('This voter ID was not found in the voter register. Please contact the Electoral Committee.'); setLoading(false); return }
+      if (d.hasVoted) { setError('This voter has already cast a ballot in this election. Each voter may vote only once.'); setLoading(false); return }
       setVerifyData(d); setChannel(d.channels[0]); setStep('channel')
     } catch (e: any) {
       if (e?.data?.hasVoted) { setError('This voter has already cast a ballot in this election.'); setLoading(false); return }
-      if (e?.status === 404 || e?.data?.found === false) { setError('Voter IDulation number not found in the voter register.'); setLoading(false); return }
+      if (e?.status === 404 || e?.data?.found === false) { setError('Voter ID not found in the voter register.'); setLoading(false); return }
       setError(e.message || 'Verification failed')
     } finally { setLoading(false) }
   }
@@ -106,13 +107,13 @@ export function VerifyView() {
         <Card className="votewise-card-glow">
           <CardHeader>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary"><Shield className="h-6 w-6" /></div>
-            <CardTitle className="mt-3 font-display">Verify Your Voter ID</CardTitle>
+            <CardTitle className="mt-3 font-display">Verify Your {t.voterIdLabel}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="voterId">Voter IDulation / JAMB Registration Number</Label>
+              <Label htmlFor="voterId">{t.voterIdLabel}</Label>
               <Input id="voterId" placeholder="e.g. CSC/2022/001" value={voterId} onChange={(e) => setVoterId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === 'Enter' && onVerifyVoterId()} className="font-mono" />
-              <p className="text-xs text-muted-foreground">Enter the voter ID on your student ID. We check it against the official register.</p>
+              <p className="text-xs text-muted-foreground">Enter the {t.voterIdLabel.toLowerCase()} issued by your {t.organizationLabel.toLowerCase()}. We check it against the official voter register.</p>
             </div>
             <Button onClick={onVerifyVoterId} disabled={loading || !voterId} className="w-full gap-2">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
@@ -137,8 +138,8 @@ export function VerifyView() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <Info label="Faculty" value={verifyData.voter.faculty} />
-              <Info label="Department" value={verifyData.voter.department} />
+              <Info label={t.workspaceLabel} value={verifyData.voter.faculty} />
+              <Info label={t.voterGroupLabel} value={verifyData.voter.department} />
               <Info label="Level" value={verifyData.voter.level} />
               <Info label="Voting" value={verifyData.votingOpen ? 'Open now' : 'Not yet open'} />
             </div>
@@ -210,14 +211,14 @@ export function VerifyView() {
               <AlertTitle>One step before you vote</AlertTitle>
               <AlertDescription>
                 Accreditation records that you, {voterProfile.fullName}, have been verified for this
-                election on this device. This mirrors the physical accreditation done at Nigerian campus
-                polling units. You can vote only once accreditation is complete.
+                election on this device. This is the digital equivalent of being cleared at a polling
+                station before voting. You can vote only once accreditation is complete.
               </AlertDescription>
             </Alert>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <Info label="Voter ID" value={voterProfile.voterId} />
-              <Info label="Faculty" value={voterProfile.faculty} />
-              <Info label="Department" value={voterProfile.department} />
+              <Info label={t.voterIdLabel} value={voterProfile.voterId} />
+              <Info label={t.workspaceLabel} value={voterProfile.faculty} />
+              <Info label={t.voterGroupLabel} value={voterProfile.department} />
               <Info label="Level" value={voterProfile.level} />
             </div>
             <Button onClick={onAccredit} disabled={loading} size="lg" className="w-full gap-2">

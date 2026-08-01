@@ -659,7 +659,7 @@ export function HomeView() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Building2, label: 'University', desc: 'Full SUG election' },
+              { icon: Building2, label: 'University', desc: 'Union election' },
               { icon: Heart, label: 'NGO', desc: 'Board election' },
               { icon: Church, label: 'Church', desc: 'Parish council' },
               { icon: Briefcase, label: 'Company', desc: 'Staff election' },

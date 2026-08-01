@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowLeft, Building2, Calendar, Users, Shield, Award, Mail, Phone, MapPin,
-  CheckCircle2, Loader2, GraduationCap, FileText, Vote, BadgeCheck,
+  CheckCircle2, Loader2, FileText, Vote, BadgeCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
+import { useTerminology } from '@/lib/terminology'
 import { StatusBadge, Countdown } from '@/components/votewise/shared'
 import { Reveal } from '@/components/votewise/faq'
 
 export function AboutView() {
   const { setView } = useApp()
+  const t = useTerminology()
   const [election, setElection] = useState<any>(null)
   const [officials, setOfficials] = useState<any[]>([])
   const [positions, setPositions] = useState<any[]>([])
@@ -55,7 +57,7 @@ export function AboutView() {
           </div>
           <h1 className="font-display text-3xl font-bold sm:text-4xl">{election?.name || 'General Elections'}</h1>
           <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-            {election?.university} · {election?.academicSession} Academic Session
+            {election?.university} · {election?.academicSession} {t.periodLabel}
           </p>
           {election && <div className="mt-4 flex justify-center"><StatusBadge status={election.liveStatus || election.status} /></div>}
         </div>
@@ -134,16 +136,16 @@ export function AboutView() {
           </Card>
         </Reveal>
 
-        {/* University info */}
+        {/* Organization info */}
         <Reveal delay={100}>
           <Card className="h-full">
             <CardHeader>
-              <CardTitle className="font-display text-base flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> University Information</CardTitle>
+              <CardTitle className="font-display text-base flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> {t.organizationLabel} Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <InfoRow icon={GraduationCap} label="University" value={election?.university} />
-              <InfoRow icon={Calendar} label="Academic Session" value={election?.academicSession} />
-              <InfoRow icon={FileText} label="Election Name" value={election?.name} />
+              <InfoRow icon={Building2} label={t.organizationLabel} value={election?.university} />
+              <InfoRow icon={Calendar} label={t.periodLabel} value={election?.academicSession} />
+              <InfoRow icon={FileText} label={`${t.electionLabel} Name`} value={election?.name} />
               <InfoRow icon={MapPin} label="Accreditation" value={election?.settings?.requireAccreditation ? 'Required' : 'Optional'} />
               <InfoRow icon={Shield} label="Ballot Secrecy" value="AES-256-GCM Encrypted" />
               <InfoRow icon={BadgeCheck} label="Audit Trail" value="Hash-Chained + Tamper-Evident" />
@@ -156,7 +158,7 @@ export function AboutView() {
       <Reveal>
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="font-display text-base flex items-center gap-2"><Vote className="h-4 w-4 text-primary" /> Contestable Positions</CardTitle>
+            <CardTitle className="font-display text-base flex items-center gap-2"><Vote className="h-4 w-4 text-primary" /> Contestable {t.positionLabel}s</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -165,7 +167,7 @@ export function AboutView() {
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <div className="font-medium">{p.title}</div>
-                    <div className="text-xs text-muted-foreground">{p.candidates?.length || 0} candidates · {scopeLabel(p.scope)}</div>
+                    <div className="text-xs text-muted-foreground">{p.candidates?.length || 0} {t.candidateLabel.toLowerCase()}s · {scopeLabel(p.scope, t)}</div>
                   </div>
                 </div>
               ))}
@@ -205,9 +207,9 @@ function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value
   )
 }
 
-function scopeLabel(s: string) {
-  if (s === 'UNIVERSITY') return 'University-wide'
-  if (s === 'FACULTY') return 'Faculty'
-  if (s === 'DEPARTMENT') return 'Department'
+function scopeLabel(s: string, t: any) {
+  if (s === 'UNIVERSITY') return `${t.organizationLabel}-wide`
+  if (s === 'FACULTY') return t.workspaceLabel
+  if (s === 'DEPARTMENT') return t.voterGroupLabel
   return s
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useApp } from '@/lib/store'
+import { useTerminology } from '@/lib/terminology'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils'
 
 export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
   const { live } = useApp()
+  const t = useTerminology()
 
   if (!live) {
     return (
@@ -81,7 +83,7 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
                   <div>
                     <CardTitle className="font-display text-base">{p.title}</CardTitle>
                     <div className="mt-1 flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px]">{scopeLabel(p.scope)}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{scopeLabel(p.scope, t)}</Badge>
                       <span className="text-xs text-muted-foreground">{p.totalVotes} votes</span>
                     </div>
                   </div>
@@ -149,9 +151,9 @@ export function LiveResultsPanel({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function scopeLabel(s: string) {
-  if (s === 'UNIVERSITY') return 'University-wide'
-  if (s === 'FACULTY') return 'Faculty'
-  if (s === 'DEPARTMENT') return 'Department'
+function scopeLabel(s: string, t: any) {
+  if (s === 'UNIVERSITY') return `${t.organizationLabel}-wide`
+  if (s === 'FACULTY') return t.workspaceLabel
+  if (s === 'DEPARTMENT') return t.voterGroupLabel
   return s
 }

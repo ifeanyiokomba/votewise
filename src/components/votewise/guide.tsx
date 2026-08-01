@@ -22,9 +22,9 @@ const GUIDE_STEPS = [
     duration: '~30 seconds',
     desc: 'Enter your voter ID on the voting page. We check it against the official voter register before anything else.',
     tips: [
-      'Use the exact format on your student ID (e.g. CSC/2022/001)',
-      'Your voterId is case-insensitive — we normalise it automatically',
-      'If your voterId isn\'t found, contact the Electoral Committee',
+      'Use the exact format issued by your organization (e.g. CSC/2022/001)',
+      'Your voter ID is case-insensitive — we normalise it automatically',
+      'If your voter ID isn\'t found, contact the Electoral Committee',
     ],
     color: 'bg-blue-100 text-blue-700',
   },
@@ -45,7 +45,7 @@ const GUIDE_STEPS = [
     icon: Fingerprint,
     title: 'Complete Accreditation',
     duration: '~30 seconds',
-    desc: 'Accreditation records that you\'ve been verified for this election on this device. This mirrors the physical accreditation done at Nigerian campus polling units.',
+    desc: 'Accreditation records that you\'ve been verified for this election on this device. It is the digital equivalent of being cleared at a physical polling station before voting.',
     tips: [
       'You only need to accredit once per election',
       'Accreditation binds your session to this device',
@@ -60,9 +60,9 @@ const GUIDE_STEPS = [
     desc: 'Vote for each position you\'re eligible for. Candidate order is shuffled per voter to remove bias. You may choose "None of the Above" to abstain.',
     tips: [
       'You\'ll see only positions you\'re eligible for',
-      'University-wide positions are open to all students',
-      'Faculty rep positions are voted only by that faculty',
-      'Department senator positions are voted only by that department',
+      'Organization-wide positions are open to all voters',
+      'Workspace positions are voted only by voters in that workspace',
+      'Voter-group positions are voted only by voters in that group',
       'Review your selections carefully before confirming',
     ],
     color: 'bg-emerald-100 text-emerald-700',
@@ -83,7 +83,7 @@ const GUIDE_STEPS = [
 ]
 
 const HELP_TOPICS = [
-  { icon: Mail, title: 'Email Delivery', desc: 'PIN sent to your institutional or personal email.' },
+  { icon: Mail, title: 'Email Delivery', desc: 'PIN sent to your registered email address.' },
   { icon: Smartphone, title: 'SMS Delivery', desc: 'PIN sent via SMS to your registered phone number.' },
   { icon: MessageSquare, title: 'WhatsApp Delivery', desc: 'PIN sent via WhatsApp to your registered number.' },
   { icon: Lock, title: 'Ballot Secrecy', desc: 'Your vote is encrypted with AES-256-GCM. No one can see your choice.' },
