@@ -137,32 +137,72 @@ model OrganizationWorkspaceSetting {
   updatedAt       DateTime @updatedAt
 }
 
-/// A Workspace is a sub-division within an Organization.
-/// For a university: Faculty / Department / Hall of Residence.
-/// For a company: Division / Branch / Department.
-/// For a church: Diocese / Parish / Fellowship.
-/// Workspaces can be nested (parentWorkspaceId) to model arbitrary depth.
+/// Organization Unit (formerly "Workspace") — the hierarchical election
+/// division within an Organization. Can represent:
+///   University: Faculty / Department / School / Hall
+///   Company: Region / Branch / Division
+///   Church: Diocese / Parish / Fellowship
+///   Government: State / LGA / Zone
+///   Market: Section / Line
+///   Association: Chapter / Branch
+///
+/// Each unit owns elections, can have its own observers/admins, and runs
+/// independently. Units can be nested (parentWorkspaceId) for arbitrary depth
+/// (e.g. Faculty → Department → Programme).
+///
+/// This is the core architectural capability that lets a university run
+/// hundreds of concurrent faculty/department elections, each with its own
+/// dashboard, observers, and results — all under one organization.
 model Workspace {
   id              String   @id @default(cuid())
   organizationId  String
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  parentWorkspaceId String? // nested workspaces (e.g. Department under Faculty)
+  parentWorkspaceId String? // nested units (e.g. Department under Faculty)
   parent          Workspace?  @relation("WorkspaceHierarchy", fields: [parentWorkspaceId], references: [id], onDelete: SetNull)
   children        Workspace[] @relation("WorkspaceHierarchy")
-  name            String   // "Faculty of Engineering" / "Lagos Branch" / "Finance Dept"
+  name            String   // "Faculty of Engineering" / "Lagos Region" / "Youth Church"
   slug            String
-  code            String?  // "ENG" / "LOS" / "FIN"
+  code            String?  // "ENG" / "LOS" / "YTH"
   description     String?
   metadata        String?  // JSON for flexible extra attributes
+  // Unit-level admin (who manages this unit's elections)
+  unitAdminId     String?  // OrganizationMember ID of the unit admin
+  // Unit status
+  status          String   @default("ACTIVE") // ACTIVE | ARCHIVED
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   voterGroups     VoterGroup[]
   elections       ElectionSession[]
+  observerAssignments UnitObserverAssignment[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([parentWorkspaceId])
+  @@index([status])
+}
+
+/// Unit Observer Assignment — observers are assigned to specific Organization
+/// Units, NOT the whole organization. This enables scoped monitoring:
+///   Mr. John → Faculty of Engineering → Observer
+///   Mrs. Grace → Faculty of Law → Observer
+/// Platform Super Admin + Org Owner can monitor all units.
+model UnitObserverAssignment {
+  id              String   @id @default(cuid())
+  organizationId  String
+  workspaceId     String   // the Organization Unit this observer is assigned to
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  memberId        String?  // OrganizationMember ID (the observer)
+  memberEmail     String   // email (for invitation tracking)
+  memberName      String
+  status          String   @default("ACTIVE") // ACTIVE | REVOKED
+  assignedAt      DateTime @default(now())
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@unique([workspaceId, memberEmail])
+  @@index([workspaceId])
+  @@index([organizationId])
 }
 
 /// A Voter Group is a flexible grouping of voters within an Organization.

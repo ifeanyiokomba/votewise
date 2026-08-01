@@ -66,6 +66,14 @@ export const api = {
   workspaceRevokeInvitation: (id: string, subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ id }) }),
   acceptInvitation: (token: string, password: string) => req('/api/workspace/invitations/accept', { method: 'POST', body: JSON.stringify({ token, password }) }),
 
+  // Organization Units (hierarchical election divisions)
+  commandCenter: (subdomain?: string) => req(`/api/workspace/command-center${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceUnits: (subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceCreateUnit: (data: any, subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  workspaceUnitObservers: (unitId: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceAssignObserver: (unitId: string, data: any, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  workspaceRevokeObserver: (unitId: string, memberEmail: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ memberEmail }) }),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),

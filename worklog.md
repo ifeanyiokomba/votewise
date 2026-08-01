@@ -2865,3 +2865,83 @@ Stage Summary:
   system: one identity, many organizations, flexible roles, permission-driven
   access, secure sessions, and a clear separation between who you are and
   what you're allowed to do.
+
+---
+Task ID: ORG-UNIT-HIERARCHY
+Agent: Lead Developer (main)
+Task: Add the Organization Unit layer between Organization and Election — the
+hierarchical election workspace that lets an org run hundreds of concurrent
+unit-level elections (Faculty/Region/Parish/Branch) each with its own
+dashboard, observers, and results.
+
+Work Log:
+- **Schema: Enhanced `Workspace` model → "Organization Unit"**
+  - Updated comments to reflect it's now the Organization Unit (Faculty /
+    Department / Region / Branch / Parish / Chapter / Zone / State / LGA /
+    Market Section / Committee — the org decides the name).
+  - Added `unitAdminId` (who manages this unit's elections).
+  - Added `status` (ACTIVE | ARCHIVED) + index.
+  - Added `observerAssignments` relation.
+- **New model: `UnitObserverAssignment`** — observers assigned to specific
+  Organization Units, NOT the whole org. Enables scoped monitoring:
+  Mr. John → Faculty of Engineering → Observer
+  Mrs. Grace → Faculty of Law → Observer
+  Platform Super Admin + Org Owner can monitor all units.
+  Fields: organizationId, workspaceId, memberId, memberEmail, memberName,
+  status (ACTIVE | REVOKED), assignedAt, revokedAt. Unique on
+  [workspaceId, memberEmail].
+- **Election Command Center API (`/api/workspace/command-center`):**
+  - Returns all Organization Units with their elections (running/completed/
+    upcoming/archived), live progress bars, and aggregate stats.
+  - Per-unit: electionCount, observerCount, voterGroupCount, runningElections,
+    totalVoters, votesCast, turnoutPct, isLive flag, elections list.
+  - Aggregate stats: runningElections, completedElections, upcomingElections,
+    totalUnits, totalObservers, totalVoters, votesCast, turnoutPct,
+    systemHealth, otpSuccessRate.
+- **Units CRUD API (`/api/workspace/units`):**
+  - GET — list all units for the org.
+  - POST — create a new unit (name, code, description, parentWorkspaceId
+    for nesting).
+- **Observer Assignment API (`/api/workspace/units/[id]/observers`):**
+  - GET — list observers assigned to a unit.
+  - POST — assign an observer to a unit (memberEmail, memberName). Audited.
+  - DELETE — revoke an observer assignment. Audited.
+- **Election Command Center UI (`src/components/votewise/command-center.tsx`):**
+  - Header: org logo/name + "Election Command Center" + New Unit button.
+  - 8 stat boxes: Running, Completed, Upcoming, Units, Observers, Accredited,
+    Votes Cast, Health.
+  - OTP Success Rate banner with turnout %.
+  - Organization Units list: each unit shows name, code, live badge, election
+    count, voter count, observer count, turnout %, live progress bar, and
+    running election badges.
+  - 3-column section: Running / Upcoming / Completed elections.
+  - Auto-refreshes every 15s.
+  - Dedicated route: `/workspace/command-center?org=<subdomain>`.
+- **Workspace dashboard updated:** added "Command Center" button in the header
+  that links to the command center.
+- **Seed data:** Added 4 more units to Demo University (Faculty of Law,
+  Faculty of Medicine, Faculty of Pharmacy, Department of Computer Science
+  nested under Engineering). Now 7 units total.
+- **Client API methods added:** commandCenter, workspaceUnits,
+  workspaceCreateUnit, workspaceUnitObservers, workspaceAssignObserver,
+  workspaceRevokeObserver.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Command Center renders: "Demo University Election Command Center", 8 stat
+    boxes, OTP banner, 7 Organization Units (Engineering, Science, Arts, Law,
+    Medicine, Pharmacy, Computer Science), Running/Upcoming/Completed sections.
+  - API returns correct data (7 units, 0 running elections, all units listed).
+  - Zero console/runtime errors.
+
+Stage Summary:
+- ✅ Organization Unit hierarchy implemented. The architecture now supports:
+  Organization → Organization Unit (Faculty/Region/Parish) → Election →
+  Positions → Candidates → Voting.
+- ✅ Each unit owns elections, can have its own observers, and runs
+  independently — all under one organization.
+- ✅ Election Command Center provides the "one glance" dashboard: running/
+  completed/upcoming elections, per-unit live progress bars, aggregate stats.
+- ✅ Observer assignment is scoped to specific units (not the whole org).
+- **The same architecture works for every organization type:** universities
+  (Faculty → Department), companies (Region → Branch), churches (Diocese →
+  Parish), governments (State → LGA), markets (Section → Line). We never
+  hardcoded "Faculty" — we built a hierarchical election workspace.

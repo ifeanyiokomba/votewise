@@ -87,6 +87,7 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
             <Badge className={cn(org.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : org.status === 'TRIAL' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>{org.status}</Badge>
             <Badge variant="outline" className="text-[10px]">{org.plan}</Badge>
             {official && <Badge variant="secondary">{official.name}</Badge>}
+            <Button variant="outline" size="sm" onClick={() => { window.location.href = `/workspace/command-center?org=${subdomain || ''}` }} className="gap-1.5"><Activity className="h-4 w-4" /> Command Center</Button>
             <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5"><SettingsIcon className="h-4 w-4" /> Manage</Button>
           </div>
         </div>
