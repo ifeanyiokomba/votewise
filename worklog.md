@@ -7847,3 +7847,62 @@ Work Log:
   designated observers; (4) integrate with the existing RLA tool —
   when an RLA passes, auto-generate a "post-audit certified result
   sheet" that includes the RLA summary alongside the tally.
+
+---
+Task ID: SCHEDULING-EXPORT-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — Notification Scheduling + Election Export & Report Generator.
+
+Work Log:
+- **QA Assessment**: Platform stable — all services running, lint 0 errors.
+  Previous round built Election Notification System + Risk-Limiting Audit
+  Tool. This round built 2 new features from the next-phase recommendations.
+- **Notification Scheduling** (new model + processor + 3 APIs + UI):
+  - New `ScheduledNotification` model: trigger (VOTING_OPENED/VOTING_CLOSED/
+    RESULTS_PUBLISHED/CUSTOM_DATETIME), target (ALL_VOTERS/VERIFIED_ONLY/
+    CUSTOM), status (PENDING/SENT/CANCELLED/FAILED).
+  - New background processor: `processDueNotifications()` — finds pending
+    schedules due for sending, resolves targets, creates Notification rows,
+    enqueues delivery jobs, marks as SENT. Idempotent + failure-tolerant.
+  - 3 new APIs: GET/POST schedule, PATCH/DELETE schedule/[id], POST
+    schedule/process (manual "Send Now" for testing).
+  - UI: Scheduled Notifications section in Notifications tab with summary
+    chips (Pending/Sent/Cancelled/Failed/Due), lifecycle timeline preview,
+    per-row actions (Edit/Cancel/Send Now), Schedule dialog with trigger
+    selector, datetime, title/message, type, target.
+- **Election Export & Report Generator** (2 APIs + UI component):
+  - New API: GET /api/workspace/elections/[id]/export?type=results|audit|
+    voters|full&format=csv|json|printable — permission-gated, org-scoped.
+    - Results CSV: Position, Candidate, Votes, Percentage, Winner, NOTA.
+    - Audit CSV: Timestamp, Actor, Role, Action, Details, IP, Hash, PrevHash.
+    - Voters CSV: Name, Email, Matric, Status, Verification, Has Voted
+      (NO vote choices).
+    - Full JSON: complete archival package (config, results, verification,
+      audit, participation summary, incidents, timeline).
+  - New public API: GET /api/workspace/elections/[id]/export/printable —
+    no auth, returns official certified result sheet as print-optimized
+    HTML (government-document style with VoteWise branding).
+  - UI: ElectionExports component with 4-card grid (Results/Audit/Voters/
+    Full) + format buttons + printable result sheet CTA. Added to Reports
+    tab above ElectionVerification.
+  - All exports audit-logged.
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Scheduled Notifications section renders with Schedule dialog (trigger
+    selector, datetime, title/message, type, target).
+  - Export & Reports section renders with all 4 export cards + format
+    buttons.
+  - Printable HTML: 200 (14603 bytes) — public, no auth needed.
+  - Zero runtime errors.
+
+Stage Summary:
+- ✅ Notification Scheduling — organizations can now schedule notifications
+  to fire automatically at voting open/close/results published. Manual
+  "Send Now" for testing. Background processor handles delivery.
+- ✅ Election Export & Report Generator — 4 export types (results, audit,
+  voters, full) in 3 formats (CSV, JSON, printable). Public printable
+  result sheet for certified elections. This completes the reporting layer.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Multi-language support, mobile app,
+  observer mobile companion, election comparison analytics, API rate
+  limiting dashboard.
+
