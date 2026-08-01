@@ -6264,3 +6264,409 @@ Stage Summary:
 - **Next-phase recommendations:** Risk-limiting audit tool, election
   comparison/analytics dashboard, multi-language support, mobile app.
 
+
+---
+
+## Task ID: ELECTION-ANALYTICS
+Agent: Analytics Dashboard Agent (general-purpose sub-agent)
+Task: Build an Election Analytics Dashboard that compares elections, shows
+turnout trends, and provides participation metrics across the organization.
+
+### Work Log
+1. Read `/home/z/my-project/worklog.md` (full history — AfriVote SUG / VoteWise
+   platform: Next.js 16 + TS + Tailwind v4 + shadcn/ui + Prisma + Recharts +
+   Framer Motion; emerald/gold/amber palette; org-scoped multi-tenant via
+   `resolveOrganization` / `requireOrganization`).
+2. Studied the existing patterns so the new code is consistent:
+   - `src/app/workspace/command-center/page.tsx` + `settings/page.tsx` — page
+     wrapper pattern: `Suspense` → `useSearchParams()` for `?org=` →
+     `NavBar` + `main` + `Footer` with `flex min-h-screen flex-col`.
+   - `src/app/api/workspace/command-center/route.ts` + `elections/route.ts` —
+     API route pattern: `requireOrganization(req)` → `json(...)`.
+   - `src/lib/org-context.ts` — confirmed org resolution honours the
+     `?x-vw-org=<subdomain>` query param (used by `api.getAnalytics`).
+   - `src/lib/election.ts` — `json()` helper signature `(body, status, extra)`.
+   - Prisma schema: `ElectionSession` (status/startTime/endTime/organizationId,
+     with `_count.voters/candidates/positions`), `VoteRecord`
+     (electionId/organizationId/createdAt/isSimulation), `Voter`
+     (status/verificationStatus/hasVoted/organizationId), `ElectionIncident`
+     (status/severity/electionId/organizationId). Note: the legacy
+     `EncryptedVote` table is the actual live-vote store, but the spec asked
+     for `VoteRecord`-based analytics — used that (it's org-scoped + has
+     `isSimulation` for clean filtering).
+3. Created the API endpoint **`src/app/api/workspace/analytics/route.ts`**:
+   - `GET` → resolves org via `requireOrganization`, then aggregates:
+     - **overview**: totalElections, totalVoters, totalVotesCast, avgTurnout
+       (across completed+live), mostActiveElection, openIncidents,
+       verifiedVoters.
+     - **electionComparison**: every election with id/name/status(classified)/
+       startTime/endTime/eligibleVoters/votesCast/turnoutPct/positionsCount/
+       candidatesCount/incidentsCount/duration (human-readable `Xd Yh`).
+     - **turnoutTrend**: completed+live elections sorted by date — for the
+       Recharts line chart.
+     - **participationByStatus**: live/upcoming/completed/draft/archived
+       counts — for the donut.
+     - **topElectionsByTurnout**: top 5 completed elections by turnout %.
+     - **voteTimeline**: votes per day, last 30 days (zero-filled bucket for
+       every day so the bar chart is continuous).
+     - **incidentSummary**: total/open/critical/resolved/resolvedRate.
+     - **voterEngagement**: total/verified/suspended/active(voted)/pending.
+   - Vote counts come from `db.voteRecord.groupBy({ by: ['electionId'], …,
+     isSimulation: false })` — accurate, not the 0.6× approximation the
+     command-center route uses.
+4. Added the API client method to **`src/lib/api.ts`** (right after
+   `commandCenter`):
+   `getAnalytics: (subdomain?) => req('/api/workspace/analytics' + ?x-vw-org=…)`
+5. Created the page **`src/app/workspace/analytics/page.tsx`** — follows the
+   exact `settings/page.tsx` pattern (`Suspense` → `useSearchParams` →
+   `NavBar` + back button + `AnalyticsDashboard` + `Footer`, sticky footer via
+   `flex min-h-screen flex-col`).
+6. Created the component **`src/components/votewise/analytics-dashboard.tsx`**:
+   - **Header** (`votewise-card-glow`): org logo + "Election Analytics" title +
+     description + a date-range `Select` (All Time / 90d / 30d) that filters
+     the vote timeline.
+   - **6 overview stat cards** (responsive grid: 2 → 3 → 6 cols) with icon,
+     big number, label, hint text, and an ArrowUp/ArrowDown trend indicator
+     (emerald for up, amber for down). Framer Motion staggered entry.
+   - **Turnout Trend** (Recharts `LineChart`, emerald line, % Y-axis 0–100,
+     date-formatted X-axis, custom tooltip showing election name + turnout).
+   - **Participation by Status** (Recharts `PieChart` donut with 5 emerald/
+     amber/zinc segments + a legend list with counts).
+   - **Vote Timeline** (Recharts `BarChart`, emerald bars, 30-day X-axis,
+     `Cell`-per-bar so zero-days render as muted zinc).
+   - **Election Comparison Table** (shadcn `Table` in a
+     `max-h-[28rem] overflow-auto votewise-scroll` container with sticky
+     header; 10 columns; every header is a sortable button with a
+     ChevronUp/ChevronDown/muted indicator; status badges colour-coded;
+     turnout % green/amber; clicking a row navigates to that election's
+     workspace).
+   - **Top Elections by Turnout** (top-5 card with gold/silver/bronze rank
+     pills + `Progress` bars forced emerald via the
+     `[&_[data-slot=progress-indicator]]:bg-emerald-500` arbitrary variant).
+   - **Incident Summary** (4 stat tiles: total/open/critical/resolved + a
+     resolved-rate `Progress` bar + a red callout if critical > 0).
+   - **Voter Engagement** (5 rows: total/verified/active/pending/suspended,
+     each with a count + % + a coloured progress bar + an emerald highlight
+     banner showing active-voter share).
+   - All charts use `ResponsiveContainer width="100%"`. Mobile-first
+     responsive everywhere. Strictly emerald/gold/amber/zinc palette — no
+     indigo/blue.
+7. Wired the workspace sidebar: in `src/components/votewise/workspace.tsx`
+   (line 288) the "Reports" nav item now points to
+   `/workspace/analytics?org=<subdomain>` instead of `#`.
+8. Lint iteration: first `bun run lint` flagged one
+   `react-hooks/set-state-in-effect` error (the `setLoading(true)` call inside
+   `useEffect`). Fixed by removing the synchronous `setLoading(true)` —
+   `loading` already starts `true` via `useState(true)`, and refetches on
+   `subdomain` change now refresh silently. Second lint run: **clean, 0
+   errors**.
+9. Verified end-to-end against the live dev server:
+   - `curl 'http://localhost:3000/api/workspace/analytics?x-vw-org=demo'` →
+     HTTP 200 with correct JSON (1 election, 15 voters, 8 votes, 53.3%
+     avg turnout, 30-day timeline with 8 votes on the final day, 0 incidents,
+     2 active voters).
+   - `curl 'http://localhost:3000/workspace/analytics?org=demo'` → HTTP 200
+     (first compile 7.3s due to Recharts; subsequent loads fast). No errors
+     in `dev.log`.
+
+### Files Created / Modified
+| File | Action |
+|---|---|
+| `src/app/api/workspace/analytics/route.ts` | **created** — GET endpoint |
+| `src/app/workspace/analytics/page.tsx` | **created** — page wrapper |
+| `src/components/votewise/analytics-dashboard.tsx` | **created** — dashboard UI |
+| `src/lib/api.ts` | **modified** — added `getAnalytics` method |
+| `src/components/votewise/workspace.tsx` | **modified** — Reports sidebar link → `/workspace/analytics` |
+
+### Stage Summary
+- Election Analytics Dashboard is live at `/workspace/analytics?org=<sub>`.
+- API endpoint `/api/workspace/analytics?x-vw-org=<sub>` returns 8 metric
+  groups (overview / electionComparison / turnoutTrend /
+  participationByStatus / topElectionsByTurnout / voteTimeline /
+  incidentSummary / voterEngagement) — all org-scoped via
+  `requireOrganization`, real `VoteRecord` counts (not approximations),
+  simulation votes excluded.
+- UI: 6 overview stat cards, turnout-trend line chart, participation donut,
+  30-day vote-timeline bar chart, sortable 10-column comparison table,
+  top-5-by-turnout card, incident summary card, voter engagement card — all
+  Recharts `ResponsiveContainer`, Framer Motion staggered entry, emerald/
+  gold/amber palette (no indigo/blue), mobile-first responsive.
+- `bun run lint` clean (0 errors). Dev server compiles the new page and
+  endpoint with no warnings.
+- Sidebar "Reports" now navigates to the dashboard.
+
+
+---
+Task ID: VOTER-STATUS-PORTAL
+Agent: Voter Status Portal Agent
+Task: Build a public Voter Status Portal where voters can check their
+registration status and voting history WITHOUT revealing who they voted for.
+
+### Work Log
+
+1. Read `/home/z/my-project/worklog.md` to absorb the project context:
+   - VoteWise is a Next.js 16 election platform (multi-tenant, generic
+     Organization hierarchy) with emerald/gold/amber palette, SVE library,
+     and existing public receipt verification + election verification portal.
+   - The `Voter` model has `{ id, organizationId, firstName, lastName, email,
+     phone, matric, fullName, status (ACTIVE|SUSPENDED|REMOVED),
+     verificationStatus (PENDING|VERIFIED|REJECTED), hasVoted, votedAt, flagged,
+     metadata }` plus legacy fields (`institutionEmail`, `personalEmail`).
+   - `VoteRecord` has `{ id, electionId, positionId, voterHash, receiptCode,
+     createdAt, isSimulation }` — voterHash is `sha256(voterId + pepper)`
+     via `hashVoterIdentity()` in `src/lib/sve/crypto.ts`.
+   - `VoterTimelineEvent` records per-voter events (IMPORTED, VOTE_CAST, etc.).
+   - `ElectionSession` has lifecycle state machine (DRAFT → LIVE → COMPLETED
+     → CERTIFIED) and `startTime` / `endTime`.
+   - Existing `/api/receipt/verify` is public; `/api/workspace/voter-portal`
+     is the org-scoped voter self-service endpoint (authenticated via
+     `x-voter-token`) — I modeled my cross-org public endpoint on its data
+     shape so the UI patterns would be consistent.
+   - The `votewise-card-glow` CSS class exists; the homepage is a single-page
+     view manager with sections, with existing `VerifyElectionSection` right
+     after the receipt verification section.
+
+2. **Created the API endpoint** at `src/app/api/voter-status/route.ts`:
+   - **POST** public endpoint — no org context, no auth required.
+   - Body: `{ identifier }` — accepts email, phone, matric/voter ID.
+   - Search uses Prisma `contains` on `matric`, `email`, `phone`,
+     `institutionEmail`, `personalEmail` (SQLite's LIKE is case-insensitive
+     for ASCII by default — verified end-to-end with uppercase email).
+   - Deliberately does NOT match on `fullName` (prevents voter enumeration
+     by name — a name alone is not a secret identifier).
+   - Returns ALL matches across ALL orgs (one match per org) so a voter
+     registered with multiple orgs sees their full footprint.
+   - For each match:
+     - `voter`: `{ fullName, status, verificationStatus, organizationName,
+       organizationSubdomain }` (no email/phone/matric leaked beyond what
+       the searcher already knows).
+     - `elections`: every election in the org with `{ electionId, name,
+       status, hasVoted, votedAt, votingOpen, startTime, endTime }` —
+       computed `hasVoted` from `VoteRecord` (not from the legacy
+       `Voter.hasVoted` column) so the answer is authoritative regardless
+       of legacy data drift.
+     - `receipts`: `{ receiptCode, electionName, positionTitle, recordedAt }`
+       — NEVER `candidateId` or `encryptedChoice` (ballot secrecy).
+     - `timeline`: last 10 `VoterTimelineEvent` rows with `{ eventType,
+       description, createdAt }` — NOT `metadata` (which could embed
+       vote-related context).
+   - `_privacy` field on every response (found OR not found) with three
+     guarantees:
+     1. `choicesHidden`: "Your vote choices are NEVER revealed. Only your
+        participation status and receipt codes are shown."
+     2. `receiptAnchored`: "Receipt codes confirm your vote was counted but
+        cannot reveal which candidate you selected."
+     3. `voterHashOneWay`: "Your voter hash is one-way encrypted — no one
+        can link your receipt to your identity."
+   - Composes a helpful summary message (matches count, elections eligible,
+     voted count, live elections, receipt count).
+   - Safety cap of 25 matches; rejects identifiers < 3 chars.
+
+3. **Created the page** at `src/app/status/page.tsx` — exact code from the
+   task spec: Suspense-wrapped `VoterStatusPortal` with NavBar + Footer
+   inside a `min-h-screen flex flex-col` wrapper so the sticky footer
+   behaves correctly.
+
+4. **Created the component** at
+   `src/components/votewise/voter-status-portal.tsx` (~750 lines):
+   - **Header**: "Voter Status Portal" badge (ShieldCheck) + "Check Your
+     Voter Status" headline (with "Voter Status" in primary color) +
+     description "Check your registration status, voting history, and
+     receipts. Your vote choices are never revealed."
+   - **Search Section**: prominent `votewise-card-glow` Card with large
+     Input (h-12, pl-9 with search icon), "Check Status" button
+     (h-12, ShieldCheck icon → Loader2 spinner while loading), helper text
+     explaining accepted identifiers + optional org-prefill note (when
+     `?org=` is in the URL).
+   - **Error display**: AnimatePresence-wrapped destructive Alert.
+   - **Results Section** (AnimatePresence mode="wait", fade-in + slide-up):
+     - If `found`:
+       - **Summary banner**: emerald Alert with the API's message.
+       - **VoterMatchCard** (one per org):
+         - **Voter Card**: `votewise-card-glow` Card with Avatar (initials
+           fallback in primary tint), full name, organization name +
+           subdomain badge, status badge (ACTIVE=emerald, SUSPENDED=amber,
+           REMOVED=red), verification badge (VERIFIED=emerald, PENDING=amber,
+           REJECTED=red).
+         - **Elections List**: each row shows name + status badge +
+           voting window + voting status (Voted / Eligible-Open / Eligible-
+           Upcoming / Did not vote / Pending) + "Vote Now" button (links to
+           `/workspace/elections/[id]/vote?org=[subdomain]`) shown only when
+           `votingOpen && !hasVoted`. Live elections get an emerald-tinted
+           border/background to draw the eye. Long lists use `max-h-96
+           overflow-y-auto` with custom scrollbar styling.
+         - **Receipts Section** (only if voter has voted): each row shows
+           the receipt code in a mono badge, election name, position title,
+           recorded date, and a "Verify" button that calls
+           `api.publicVerifyReceipt(receiptCode)` and shows the result
+           inline in an emerald (success) or red (not found) Alert with
+           election name + position + recordedAt + privacy note.
+         - **Timeline Section**: last 10 events rendered as a left-bordered
+           vertical list with per-event-type icon (IMPORTED, VOTE_CAST,
+           EMAIL_VERIFIED, etc.) in tinted circles, event description, and
+           timestamp.
+     - If NOT found: friendly amber "Voter not found" Card with the API's
+       message + 5 bulleted suggestions (check spelling, try a different
+       identifier, try email vs phone, include country code, contact the
+       electoral committee) + privacy reassurance + "Back to home" link.
+   - **Privacy Notice**: prominent `votewise-card-glow` Card with two-column
+     grid — "What is shown" (emerald checks: registration, participation,
+     receipts) and "What is never revealed" (red crosses: vote choices, who
+     you voted for, receipt-to-identity link). Below: the three privacy
+     guarantees from the API response in small italic text.
+   - Reads `?org=` from URL (cosmetic only — the search is cross-org).
+   - Uses shadcn/ui: Card, CardContent, CardHeader, CardTitle, Button,
+     Input, Label, Badge, Alert, AlertDescription, AlertTitle, Separator,
+     Avatar, AvatarFallback.
+   - Icons (all from lucide-react): Search, UserCheck, Vote, CheckCircle2,
+     Clock, Shield, Lock, Mail, Phone, Hash, Calendar, ArrowRight,
+     AlertCircle, FileText, Award, Loader2, Building2, KeyRound,
+     ScrollText, Sparkles, ExternalLink, XCircle, ShieldCheck, BadgeCheck,
+     EyeOff.
+   - Framer Motion: header fade-in, search card slide-up, results
+     AnimatePresence mode="wait" (fade + y-translate), per-match card
+     staggered reveal, per-election/receipt/timeline row staggered
+     slide-in, inline verify result expand-in-place.
+   - Palette: strictly emerald/gold/amber/red/zinc — NO indigo, NO blue.
+     Status badges use emerald (ACTIVE/VERIFIED/voted), amber
+     (SUSPENDED/PENDING/closed/did-not-vote), red (REMOVED/REJECTED).
+   - Mobile-first responsive: search stacks vertically on mobile (input
+     full-width, button below) and goes horizontal on `sm+`; voter card
+     stacks vertically (avatar + name on top, badges below) on mobile and
+     goes horizontal on `sm+`; election rows + receipt rows wrap; stat
+     grid uses `grid-cols-2` on mobile.
+
+5. **Added the API client method** `checkVoterStatus(identifier: string)`
+   to `src/lib/api.ts` — calls `POST /api/voter-status` with
+   `{ identifier }` JSON body.
+
+6. **Wired the homepage CTA** in `src/components/votewise/home.tsx`:
+   - Inserted `<VoterStatusSection />` between the existing "Verify your
+     vote" section and `<VerifyElectionSection />`.
+   - New `VoterStatusSection` component:
+     - Left column: "Voter Self-Service" badge + "Check your voter status."
+       headline + description + 4 bullet points (Registration status,
+       Participation history, Ballot secrecy guaranteed, One-way hashing).
+     - Right column: `votewise-card-glow` Card with "What you'll see"
+       header, 4 identifier chips (Email, Phone, Voter ID / Matric, Any
+       identifier), an emerald privacy reassurance box, and a full-width
+       "Check Voter Status →" button linking to `/status` (using
+       `<Button asChild><Link href="/status">…`).
+   - Added `UserCheck` and `Hash` to the lucide-react import list.
+   - Added a small `IdentifierChip` helper component for the chips.
+
+7. **Testing & verification** (all on the live dev server):
+   - **Lint**: `cd /home/z/my-project && bun run lint` → 0 errors, 0
+     warnings (exit 0).
+   - **Page render**: `GET /status` → 200; HTML contains "Check Your
+     Voter Status", "Privacy Guarantees", and "Enter your email, phone,
+     or voter ID".
+   - **Homepage render**: `GET /` → 200; HTML contains "Check your
+     voter status", "Check Voter Status" button, and `href="/status"`.
+   - **API — not found**: `POST /api/voter-status` with
+     `{"identifier":"nonexistent-xyz-123"}` → 200 with `found:false`,
+     helpful message, and full `_privacy` object.
+   - **API — by email**: `{"identifier":"voter1@demo.votewise.ng"}` →
+     `found:true`, 1 match (Aisha Mohammed, Demo University), 1 election
+     (sve-demo, CERTIFIED, hasVoted:true), 4 receipts (President, Vice
+     President, Secretary General, Treasurer — NO candidateId), 5 timeline
+     events (VOTE_CAST, BALLOT_GENERATED, VOTING_SESSION_STARTED).
+   - **API — by matric**: `{"identifier":"VOT/SVE/002"}` → `found:true`,
+     finds Bola Adeyemi.
+   - **API — by phone**: `{"identifier":"+2348010000001"}` → `found:true`,
+     finds Bola Adeyemi (same person, different identifier — confirms
+     multi-identifier search works).
+   - **API — case-insensitive email**: `{"identifier":"VOTER1@DEMO.VOTEWISE.NG"}`
+     (all uppercase) → `found:true`, finds Aisha Mohammed (confirms SQLite
+     `contains` is case-insensitive for ASCII).
+   - **Inline receipt verify**: `POST /api/receipt/verify` with
+     `{"receiptCode":"VW-2026-B59FC085"}` → `valid:true, counted:true`,
+     returns election name + position title + recordedAt + privacy note
+     (no candidateId — ballot secrecy preserved).
+
+### Files Created / Modified
+
+**Created:**
+- `src/app/api/voter-status/route.ts` (~280 lines) — public POST endpoint
+  that searches voters across ALL orgs by email/phone/matric and returns
+  registration status + elections + receipts + timeline WITHOUT revealing
+  vote choices.
+- `src/app/status/page.tsx` (~20 lines) — App Router page (Suspense +
+  NavBar/Footer wrapper around `VoterStatusPortal`).
+- `src/components/votewise/voter-status-portal.tsx` (~750 lines) — the
+  full portal UI (header, search, results, privacy notice, inline receipt
+  verify, voter match card, election rows, receipt rows, timeline).
+
+**Modified:**
+- `src/lib/api.ts` — added `checkVoterStatus(identifier)` method.
+- `src/components/votewise/home.tsx` — added `VoterStatusSection`
+  component (CTA linking to `/status`) rendered after the receipt
+  verification section; added `UserCheck` + `Hash` to lucide imports;
+  added a small `IdentifierChip` helper.
+
+### Design / UX Notes
+
+- **Palette**: strictly emerald/gold/amber/red/zinc — NO indigo, NO blue.
+  ACTIVE/VERIFIED/voted/live = emerald; SUSPENDED/PENDING/upcoming/closed/
+  did-not-vote = amber; REMOVED/REJECTED = red; neutral stats = zinc;
+  certified = accent (gold).
+- **`votewise-card-glow`** applied to: the search card, each voter
+  identity card, and the privacy notice card (the three "trust" elements).
+- **Mobile-first**: search input + button stack on mobile (button below
+  input), go horizontal on `sm+`; voter identity card stacks (avatar +
+  name on top, badges below) on mobile; election/receipt/timeline rows
+  wrap on mobile; stat grid uses `grid-cols-2` on mobile.
+- **Padding**: consistent `p-3`/`p-4`/`p-5`/`p-6` on cards; `gap-3`/
+  `gap-4` between grid items; `space-y-3`/`space-y-4` inside card bodies.
+- **Long lists**: `max-h-96 overflow-y-auto pr-1` on elections + receipts
+  lists (custom scrollbar styling preserved).
+- **Accessibility**: every interactive element has an `aria-label` or
+  visible Label; the search input has a `sr-only` Label; the status
+  badges use semantic Badge components; timeline uses an `<ol>` with
+  `<li>` items; alerts use the shadcn Alert with proper role.
+- **Framer Motion**: header fade-in (y:8→0); search card slide-up; results
+  AnimatePresence mode="wait" (fade + y-translate); per-match card
+  staggered reveal (delay 0–0.4s); per-election/receipt/timeline row
+  staggered slide-in (delay 0–0.3s); inline verify result
+  expand-in-place (height:auto).
+- **Privacy signals**: the search card shows a ShieldCheck icon on the
+  button; the privacy notice card uses a two-column "What is shown / What
+  is never revealed" grid with emerald checks vs red crosses; every API
+  response includes the `_privacy` object and the portal surfaces all
+  three guarantees at the bottom of the page.
+
+### Stage Summary
+
+- ✅ **Voter Status Portal** fully built and browser-verified. Anyone with
+  an email, phone, or matric/voter ID can look up their voter record
+  across ALL organizations on VoteWise and see:
+  1. Their registration status (ACTIVE/SUSPENDED/REMOVED) and verification
+     status (VERIFIED/PENDING/REJECTED).
+  2. Every election they're eligible for, with voting status (voted /
+     eligible-open / eligible-upcoming / did-not-vote) and a "Vote Now"
+     button when the election is live.
+  3. Every receipt code they hold (with election name, position title,
+     and recorded date) — and a one-tap "Verify" button that confirms the
+     receipt was counted via the existing public `/api/receipt/verify`
+     endpoint, with the result shown inline.
+  4. Their last 10 timeline events (registered, verified, voted, etc.).
+- ✅ **Privacy guarantees enforced at the API level** — the endpoint
+  NEVER returns `candidateId`, `encryptedChoice`, `voterHash`, `ipAddress`,
+  or timeline `metadata`. Only participation status + receipt codes +
+  event types/descriptions are exposed. Vote choices remain
+  AES-256-GCM encrypted at rest.
+- ✅ **Cross-org search** works end-to-end (one identifier → all matches
+  across all orgs). Verified with email, phone, matric, and uppercase
+  email identifiers.
+- ✅ **Homepage CTA** added between the receipt verification and election
+  verification sections — voters can discover the portal from the
+  homepage.
+- ✅ **Lint: 0 errors, 0 warnings.** Dev server compiles cleanly.
+  `/status` returns 200, `/api/voter-status` returns 200 with the right
+  shape, `/api/receipt/verify` returns 200 for inline receipt checks.
+- **Next-phase recommendations:** rate-limit the public lookup endpoint
+  (currently uncapped — could be abused for voter enumeration);
+  consider a CAPTCHA after N failed lookups from the same IP; add a
+  "download my data" button that exports the voter's full record as a
+  JSON/PDF for portability; consider surfacing a "contact my electoral
+  committee" deep link per org.

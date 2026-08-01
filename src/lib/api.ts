@@ -73,6 +73,8 @@ export const api = {
 
   // Organization Units (hierarchical election divisions)
   commandCenter: (subdomain?: string) => req(`/api/workspace/command-center${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Organization-wide Election Analytics Dashboard (cross-election metrics).
+  getAnalytics: (subdomain?: string) => req(`/api/workspace/analytics${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   workspaceUnits: (subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   workspaceCreateUnit: (data: any, subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   workspaceUnitObservers: (unitId: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
@@ -173,6 +175,9 @@ export const api = {
   getPublicResults: (electionId: string) => req(`/api/elections/${electionId}/public-results`),
   // Public verification portal for certified elections (shareable URL)
   getVerificationPortal: (electionId: string) => req(`/api/elections/${electionId}/verification-portal`),
+  // Public voter status portal (cross-org, no auth) — check registration +
+  // voting history + receipts WITHOUT revealing vote choices.
+  checkVoterStatus: (identifier: string) => req('/api/voter-status', { method: 'POST', body: JSON.stringify({ identifier }) }),
 
 
   // Platform (super-admin)

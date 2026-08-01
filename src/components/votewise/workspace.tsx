@@ -285,7 +285,7 @@ function WorkspaceNav({ subdomain }: { subdomain?: string }) {
     { label: 'Candidates', icon: Trophy, href: '#' },
     { label: 'Observers', icon: Eye, href: '#' },
     { label: 'Support', icon: Headphones, href: '#' },
-    { label: 'Reports', icon: FileCheck2, href: '#' },
+    { label: 'Reports', icon: FileCheck2, href: subdomain ? `/workspace/analytics?org=${encodeURIComponent(subdomain)}` : '/workspace/analytics' },
     { label: 'Audit Logs', icon: ScrollText, href: '#' },
     { label: 'Settings', icon: SettingsIcon, href: subdomain ? `/workspace/settings?org=${encodeURIComponent(subdomain)}` : '/workspace/settings' },
   ]

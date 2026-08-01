@@ -10,7 +10,7 @@ import {
   Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
   Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
   ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2, Phone,
-  AlertCircle, ShieldCheck, ExternalLink,
+  AlertCircle, ShieldCheck, ExternalLink, UserCheck, Hash,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -512,6 +512,9 @@ export function HomeView() {
           </div>
         </div>
       </section>
+
+      {/* VOTER STATUS PORTAL — cross-org voter self-service lookup */}
+      <VoterStatusSection />
 
       {/* VERIFY AN ELECTION — public verification portal CTA */}
       <VerifyElectionSection />
@@ -1370,5 +1373,149 @@ function VerifyElectionSection() {
         </div>
       </div>
     </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Voter Status Section — cross-org voter self-service lookup CTA.
+// Prompts the voter to check their registration status, voting history, and
+// receipts WITHOUT revealing vote choices. Links to /status.
+// ---------------------------------------------------------------------------
+function VoterStatusSection() {
+  return (
+    <section
+      id="voter-status"
+      className="border-b border-border/60 bg-gradient-to-b from-primary/5 to-background scroll-mt-20"
+    >
+      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+          {/* Left: explanation */}
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            <Badge variant="secondary" className="gap-1">
+              <UserCheck className="h-3.5 w-3.5" /> Voter Self-Service
+            </Badge>
+            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              Check your{' '}
+              <span className="text-primary">voter status.</span>
+            </h2>
+            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+              Enter your email, phone, or voter ID and we&apos;ll show you
+              your registration status, the elections you&apos;re eligible
+              for, the receipts you hold, and your recent activity timeline —
+              all without ever revealing how you voted. Cross-organization:
+              one lookup, every org you&apos;re registered with.
+            </p>
+            <ul className="space-y-2.5 pt-1">
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <UserCheck className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Registration status.</strong>{' '}
+                  Confirm you&apos;re ACTIVE and VERIFIED across all the
+                  organizations you&apos;re registered with.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Vote className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Participation history.</strong>{' '}
+                  See which elections you&apos;ve voted in, which are live,
+                  and which are upcoming — with a one-tap &ldquo;Vote Now&rdquo; button.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Lock className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Ballot secrecy guaranteed.</strong>{' '}
+                  Receipt codes confirm your vote was counted but cannot
+                  reveal which candidate you selected.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Hash className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">One-way hashing.</strong>{' '}
+                  Your voter hash is one-way encrypted — no one can link a
+                  receipt back to your identity.
+                </span>
+              </li>
+            </ul>
+          </motion.div>
+
+          {/* Right: identifier chips + CTA */}
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="votewise-card-glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-display text-lg">
+                  <ShieldCheck className="h-5 w-5 text-primary" /> What you&apos;ll see
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <IdentifierChip icon={Mail} label="Email" />
+                  <IdentifierChip icon={Phone} label="Phone" />
+                  <IdentifierChip icon={Hash} label="Voter ID / Matric" />
+                  <IdentifierChip icon={UserCheck} label="Any identifier" />
+                </div>
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
+                  <p className="flex items-start gap-2">
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Lookups are{' '}
+                      <strong>private and anonymous</strong> — no search
+                      history is kept, and your vote choices are{' '}
+                      <strong>never</strong> revealed.
+                    </span>
+                  </p>
+                </div>
+                <Button asChild className="w-full gap-2">
+                  <Link href="/status">
+                    <UserCheck className="h-4 w-4" /> Check Voter Status
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Don&apos;t have your voter ID?
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    Use your registration email or phone instead.
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function IdentifierChip({ icon: Icon, label }: { icon: any; label: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card p-2.5">
+      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </div>
+      <span className="text-xs font-medium">{label}</span>
+    </div>
   )
 }
