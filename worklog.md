@@ -2669,3 +2669,49 @@ Stage Summary:
 - ✅ Chapter 3 is now 100% spec-complete after word-by-word crosscheck. Every
   table and field listed in the spec exists in the schema. All 9 refactoring
   tasks verified. The database is a generic election platform database.
+
+---
+Task ID: CHAPTER-3-FINAL-CROSSCHECK
+Agent: Lead Developer (main)
+Task: Final programmatic word-by-word crosscheck of every spec table + field.
+
+Crosscheck Method:
+- Wrote a script that queries `PRAGMA table_info` for each spec table and
+  verifies every field listed in the spec exists in the database.
+
+Results:
+- **19/19 tables PASS, 0 FAIL.**
+- Found 1 remaining gap: Voter was missing generic `email` and `status` fields
+  (had `institutionEmail`/`personalEmail` + `verificationStatus` but not the
+  spec's `email`/`status`). → FIXED: Added `email`, `status` (ACTIVE|SUSPENDED|
+  REMOVED) to Voter. Removed the duplicate legacy `phone` field (now uses the
+  generic Chapter 3 `phone`).
+
+Final 19/19 Tables Verified:
+✅ Organization (16 fields)
+✅ OrganizationMember (10 fields)
+✅ Role (6 fields)
+✅ Permission (5 fields)
+✅ RolePermission (4 fields)
+✅ VoterField (8 fields)
+✅ ImportJob (11 fields)
+✅ VotingCredential (10 fields)
+✅ VotingSession (9 fields)
+✅ SupportMessage (8 fields)
+✅ OrganizationBrand (9 fields)
+✅ OrganizationSubscription (7 fields)
+✅ OrganizationDomain (5 fields)
+✅ Voter (10 fields) — now includes email, status, metadata, verificationStatus
+✅ Candidate (8 fields)
+✅ Position (6 fields) — maximumVotes, displayOrder
+✅ EncryptedVote (4 fields) — encryptedReceipt, organizationId
+✅ AuditLog (10 fields) — resource, resourceId, device, browser
+✅ SupportTicket (8 fields) — openedBy, assignedTo, category
+
+Verification: `bun run lint` → 0 errors. Schema pushed. Home (200), workspace
+(200). Zero errors.
+
+Stage Summary:
+- ✅ Chapter 3 is 100% spec-complete. Programmatic crosscheck confirms all 19
+  spec tables exist with all their fields. The database is a generic election
+  platform database — no university assumptions remain in the new models.

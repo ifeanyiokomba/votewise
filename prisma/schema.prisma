@@ -734,6 +734,9 @@ model Voter {
   electionId        String?      // generic election reference (future)
   firstName         String?
   lastName          String?
+  email             String?      // Chapter 3: generic email (legacy uses institutionEmail/personalEmail)
+  phone             String?      // Chapter 3: generic phone (legacy also has phone)
+  status            String?      @default("ACTIVE") // Chapter 3: ACTIVE | SUSPENDED | REMOVED
   metadata          String?      // JSON: { matricNumber, faculty, department, level, employeeId, ... }
   verificationStatus String?     @default("PENDING") // PENDING | VERIFIED | REJECTED
   // Legacy academic fields (DEPRECATED — use metadata + VoterField instead)
@@ -745,7 +748,6 @@ model Voter {
   fullName          String
   institutionEmail  String?
   personalEmail     String?
-  phone             String?
   facultyId         String
   faculty           Faculty      @relation(fields: [facultyId], references: [id])
   departmentId      String
