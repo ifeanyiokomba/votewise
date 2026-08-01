@@ -1721,3 +1721,121 @@ model IntegrityCertificate {
   @@index([electionId])
   @@index([organizationId])
 }
+
+// ===========================================================================
+// CHAPTER 12 — COMMUNICATION, NOTIFICATION & SUPPORT ECOSYSTEM (CNSE)
+// ===========================================================================
+
+/// MessageTemplate — customizable, multilingual notification templates.
+/// Organizations can customize built-in templates or create their own.
+model MessageTemplate {
+  id              String   @id @default(cuid())
+  organizationId  String?  // null = built-in (available to all orgs)
+  name            String
+  category        String   // AUTHENTICATION | ELECTION | RESULTS | SUPPORT | BILLING | SECURITY | SYSTEM | MARKETING
+  channel         String   // EMAIL | SMS | WHATSAPP | IN_APP
+  language        String   @default("en") // en | fr | yo | ha | ig | ...
+  subject         String?
+  body            String   // template with {{variables}}
+  variables       String?  // JSON array of available variable names
+  isBuiltIn       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdBy       String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([category])
+  @@index([channel])
+}
+
+/// MessageQueue — every message passes through the queue before delivery.
+/// Tracks the full delivery lifecycle: QUEUED → SENDING → DELIVERED →
+/// OPENED → CLICKED → FAILED. Supports retry + channel fallback.
+model MessageQueue {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  recipientId     String?  // voter or member ID
+  recipientName   String?
+  recipientAddress String? // masked email/phone
+  channel         String   // EMAIL | SMS | WHATSAPP | IN_APP
+  fallbackChannel String?  // next channel to try if this one fails
+  category        String   // AUTHENTICATION | ELECTION | RESULTS | SUPPORT | SECURITY | SYSTEM
+  priority        String   @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  subject         String?
+  body            String
+  templateId      String?
+  status          String   @default("QUEUED") // QUEUED | SENDING | DELIVERED | OPENED | CLICKED | FAILED | RETRYING
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(3)
+  lastAttemptAt   DateTime?
+  deliveredAt     DateTime?
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  failedAt        DateTime?
+  errorMessage    String?
+  externalId      String?  // provider message ID
+  metadata        String?  // JSON: { ip, device, relatedTicketId, ... }
+  relatedNotificationId String? // link to Notification record
+  scheduledAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([recipientId])
+  @@index([status])
+  @@index([channel])
+  @@index([category])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([createdAt])
+}
+
+/// Announcement — organization-published notices visible to voters/admins.
+model Announcement {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  title           String
+  body            String
+  type            String   @default("INFO") // INFO | NOTICE | WARNING | EMERGENCY | RESULT
+  targetAudience  String   @default("ALL") // ALL | VOTERS | ADMINS | OBSERVERS | CANDIDATES
+  isPinned        Boolean  @default(false)
+  isPublished     Boolean  @default(true)
+  publishedAt     DateTime @default(now())
+  expiresAt       DateTime?
+  createdById     String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([type])
+  @@index([isPublished])
+}
+
+/// KnowledgeBaseArticle — org-specific help articles to reduce support load.
+model KnowledgeBaseArticle {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  title           String
+  slug            String   @unique
+  body            String
+  category        String   @default("GENERAL") // HOW_TO | FAQ | RULES | TROUBLESHOOTING | GENERAL
+  tags            String?  // JSON array of tags
+  views           Int      @default(0)
+  helpfulCount    Int      @default(0)
+  notHelpfulCount Int      @default(0)
+  isPublished     Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([category])
+  @@index([isPublished])
+}

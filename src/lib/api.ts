@@ -192,6 +192,19 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 12: CNSE — Communication, Notification & Support Ecosystem
+  cnseSend: (data: any, subdomain?: string) => req(`/api/cnse/send${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  cnseGetTemplates: (params: string, subdomain?: string) => req(`/api/cnse/templates${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  cnseCreateTemplate: (data: any, subdomain?: string) => req(`/api/cnse/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  cnseUpdateTemplate: (data: any, subdomain?: string) => req(`/api/cnse/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  cnseGetAnnouncements: (params: string, subdomain?: string) => req(`/api/cnse/announcements${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  cnseCreateAnnouncement: (data: any, subdomain?: string) => req(`/api/cnse/announcements${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  cnseDeleteAnnouncement: (id: string, subdomain?: string) => req(`/api/cnse/announcements?id=${id}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  cnseGetTimeline: (params: string, subdomain?: string) => req(`/api/cnse/timeline${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  cnseGetAnalytics: (params: string, subdomain?: string) => req(`/api/cnse/analytics${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  cnseGetNotifications: (params: string, subdomain?: string) => req(`/api/cnse/notifications${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  cnseMarkNotificationRead: (data: any, subdomain?: string) => req(`/api/cnse/notifications${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
   // Chapter 11: EIFDIRS — Election Integrity, Fraud Detection & Incident Response
   getEifdirsEvents: (params: string, subdomain?: string) => req(`/api/eifdirs/events${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getEifdirsIncidents: (params: string, subdomain?: string) => req(`/api/eifdirs/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
