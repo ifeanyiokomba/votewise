@@ -3937,3 +3937,66 @@ Stage Summary:
 - Both features honor the emerald/gold/amber palette (no indigo/blue), use
   Framer Motion for animations, are mobile-first responsive, and pass
   `bun run lint` with zero errors.
+
+---
+Task ID: CHAPTER-10-SVE-REVIEW-1
+Agent: Lead Developer (main)
+Task: Scheduled review — QA verification + new features for the SVE platform.
+
+Work Log:
+- **QA Verification**: Re-verified the SVE works end-to-end via agent-browser.
+  Homepage loads cleanly, election workspace renders, vote flow functional.
+  Dev server + results-service both running with zero errors.
+- **Public Receipt Verification Portal** (new):
+  - New API: `POST /api/receipt/verify` — public endpoint (no org context or
+    auth required). Checks BOTH the new SVE VoteRecord and legacy EncryptedVote
+    tables. Returns confirmation WITHOUT revealing vote choices.
+  - Homepage section: prominent "Verify your vote was recorded & counted"
+    section between hero and trust indicators. Two-column layout with
+    explanation + input/verify button. Inline result display.
+  - Updated `ReceiptVerifyView` to use the new public API.
+  - Verified: receipt code VW-2026-26A429D0 → "Vote confirmed & counted" with
+    timestamp.
+- **Public Live Results Page** (new):
+  - New API: `GET /api/elections/[id]/public-results` — returns live results
+    for public/completed elections. No org context needed.
+  - New page: `/results/[id]` — shareable URL with real-time WebSocket updates.
+    Shows election header, countdown timer, 4 stat cards, turnout progress,
+    per-position candidate results with animated bars + winner highlighting,
+    cryptographic verification section (audit hash + integrity signature).
+  - "Public Results" button added to Election Workspace header.
+  - Verified: `/results/sve-demo` shows 1 vote, 6.7% turnout, all 4 positions
+    with winners highlighted (Adebayo Johnson 100%, etc.).
+- **Audit Logs Tab** (new):
+  - New API: `GET /api/workspace/elections/[id]/audit` — returns all AuditLog
+    entries + hash chain verification result.
+  - New component: `audit-logs.tsx` — hash-chained audit log viewer with:
+    - Chain integrity banner (green "intact" or red "broken at entry X")
+    - Search + action filter chips
+    - Scrollable list with timestamp, actor, action badge, hash, IP
+    - Expandable details pane
+    - Verify Chain + Export buttons
+  - Wired into Election Workspace "Audit Logs" tab.
+  - Verified: shows hash chain verification correctly detecting chain status.
+- **Voter Portal SVE Integration** (enhanced):
+  - New API: `GET /api/workspace/voter-portal` — returns voter's elections
+    (with voting status), receipts history (without choices), timeline events.
+  - Enhanced `voter-portal.tsx`: 7 tabs (added Timeline, renamed Past Elections
+    → My Receipts). Voting Status tab shows per-election status + Vote Now
+    button. My Receipts tab shows receipt history + inline verification.
+  - Verified API: Bola Adeyemi (voted) → hasVoted: true, 4 receipts returned
+    without candidate choices. Aisha Mohammed (not voted) → eligible status,
+    empty receipts, timeline events.
+
+Stage Summary:
+- ✅ All 4 new features built, verified, and pushed to GitHub.
+- ✅ Lint: 0 errors. Zero runtime errors in dev log.
+- ✅ The SVE now has a complete public-facing layer:
+  - Anyone can verify a receipt on the homepage (no login needed)
+  - Anyone can view live public results at /results/[id] (shareable URL)
+  - Admins can audit the hash-chained audit log
+  - Voters can track their voting status + receipts in the portal
+- **Next-phase recommendations:** Chapter 11 Integrity Engine (end-to-end
+  cryptographic verification, blockchain-backed audit proofs, HSM integration,
+  risk-limiting audits, public verification portals for certified elections).
+
