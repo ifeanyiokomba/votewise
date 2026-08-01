@@ -8,7 +8,7 @@ import {
   FileText, Play, Award, BookOpen, Sparkles, Globe, Server, Layers,
   Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
   Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
-  ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2,
+  ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2, Phone,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -808,6 +808,51 @@ export function HomeView() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contact" className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 scroll-mt-20">
+        <Reveal>
+          <div className="mb-8 text-center">
+            <Badge variant="secondary" className="mb-2 gap-1"><Mail className="h-3.5 w-3.5" /> Contact</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">Get In Touch</h2>
+            <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+              Questions? Partnerships? Press? We&apos;d love to hear from you.
+            </p>
+          </div>
+        </Reveal>
+        <Reveal delay={100}>
+          <Card className="votewise-card-glow">
+            <CardContent className="space-y-3 p-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-name">Your Name</Label>
+                  <Input id="contact-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="contact-email">Email</Label>
+                  <Input id="contact-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-org">Organization (optional)</Label>
+                <Input id="contact-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="Your organization" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="contact-msg">Message</Label>
+                <Textarea id="contact-msg" rows={4} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="How can we help?" />
+              </div>
+              <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+                {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {demoBusy ? 'Sending…' : 'Send Message'}
+              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.ng</span>
+                <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> +234 800 VOTEWISE</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Reveal>
       </section>
 
       {/* ORG SIGNUP CTA */}

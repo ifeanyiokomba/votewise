@@ -34,6 +34,7 @@ const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
   { label: 'Testimonials', target: 'testimonials' },
   { label: 'Security', target: 'security' },
   { label: 'Docs', target: 'docs' },
+  { label: 'Contact', target: 'contact' },
 ]
 
 export function NavBar() {

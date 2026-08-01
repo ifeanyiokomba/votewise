@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   Building2, Palette, Globe, Shield, CreditCard, Bell, KeyRound,
   FileCheck2, ScrollText, Loader2, CheckCircle2, AlertCircle, Plus,
-  Trash2, Upload, Lock,
+  Trash2, Upload, Lock, Users, Headphones, Mail, MessageSquare,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,10 +23,12 @@ const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: Building2 },
   { value: 'branding', label: 'Branding', icon: Palette },
   { value: 'domain', label: 'Domain', icon: Globe },
+  { value: 'roles', label: 'Roles', icon: Users },
   { value: 'security', label: 'Security', icon: Shield },
   { value: 'billing', label: 'Billing', icon: CreditCard },
   { value: 'notifications', label: 'Notifications', icon: Bell },
   { value: 'otp', label: 'OTP Preferences', icon: KeyRound },
+  { value: 'support', label: 'Support', icon: Headphones },
   { value: 'elections', label: 'Election Defaults', icon: FileCheck2 },
   { value: 'audit', label: 'Audit', icon: ScrollText },
 ]
@@ -88,6 +90,11 @@ export function WorkspaceSettings({ subdomain }: { subdomain?: string }) {
           <DomainTab org={org} subdomain={subdomain} />
         </TabsContent>
 
+        {/* Roles */}
+        <TabsContent value="roles">
+          <RolesTab subdomain={subdomain} />
+        </TabsContent>
+
         {/* Security */}
         <TabsContent value="security">
           <SecurityTab settings={s} saving={saving} onSave={save} />
@@ -108,6 +115,11 @@ export function WorkspaceSettings({ subdomain }: { subdomain?: string }) {
           <OTPTab settings={s} saving={saving} onSave={save} />
         </TabsContent>
 
+        {/* Support Preferences */}
+        <TabsContent value="support">
+          <SupportTab settings={s} saving={saving} onSave={save} />
+        </TabsContent>
+
         {/* Election Defaults */}
         <TabsContent value="elections">
           <ElectionDefaultsTab settings={s} saving={saving} onSave={save} />
@@ -125,7 +137,7 @@ export function WorkspaceSettings({ subdomain }: { subdomain?: string }) {
 function GeneralTab({ org, term, saving, onSave }: any) {
   const [form, setForm] = useState({
     name: org.name, description: org.description || '', country: org.country || '',
-    state: org.state || '', timezone: org.timezone,
+    state: org.state || '', timezone: org.timezone, language: org.language || 'en',
     organizationLabel: term?.organizationLabel || 'Organization',
     workspaceLabel: term?.workspaceLabel || 'Workspace',
     voterGroupLabel: term?.voterGroupLabel || 'Voter Group',
@@ -142,6 +154,7 @@ function GeneralTab({ org, term, saving, onSave }: any) {
           <div className="space-y-1.5"><Label>Country</Label><Input value={form.country} onChange={(e) => set('country', e.target.value)} /></div>
           <div className="space-y-1.5"><Label>State</Label><Input value={form.state} onChange={(e) => set('state', e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Timezone</Label><Input value={form.timezone} onChange={(e) => set('timezone', e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Language</Label><Input list="langs" value={form.language} onChange={(e) => set('language', e.target.value)} /><datalist id="langs"><option value="en" /><option value="fr" /><option value="ha" /><option value="yo" /><option value="ig" /></datalist></div>
         </div>
         <div className="space-y-1.5"><Label>Description</Label><Input value={form.description} onChange={(e) => set('description', e.target.value)} /></div>
 
@@ -158,7 +171,7 @@ function GeneralTab({ org, term, saving, onSave }: any) {
           </div>
         </div>
 
-        <Button onClick={() => onSave({ organization: { name: form.name, description: form.description, country: form.country, state: form.state, timezone: form.timezone }, terminology: { organizationLabel: form.organizationLabel, workspaceLabel: form.workspaceLabel, voterGroupLabel: form.voterGroupLabel, voterLabel: form.voterLabel, candidateLabel: form.candidateLabel } })} disabled={saving} className="gap-2">
+        <Button onClick={() => onSave({ organization: { name: form.name, description: form.description, country: form.country, state: form.state, timezone: form.timezone, language: form.language }, terminology: { organizationLabel: form.organizationLabel, workspaceLabel: form.workspaceLabel, voterGroupLabel: form.voterGroupLabel, voterLabel: form.voterLabel, candidateLabel: form.candidateLabel } })} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Save Changes
         </Button>
       </CardContent>
@@ -369,6 +382,71 @@ function AuditTab({ subdomain }: any) {
             </tbody>
           </table>
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Roles tab — manage organization members (admins, observers).
+function RolesTab({ subdomain }: { subdomain?: string }) {
+  const [members, setMembers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    api.workspaceDashboard(subdomain).then((d: any) => setMembers(d.members || [])).catch(() => {}).finally(() => setLoading(false))
+  }, [subdomain])
+  const roleLabel = (r: string) => r === 'ORG_OWNER' || r === 'SUPER_ADMIN' ? 'Owner' : r === 'ORG_ADMIN' ? 'Admin' : r === 'OBSERVER' ? 'Observer' : r.replace(/_/g, ' ')
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="font-display text-base">Roles & Members</CardTitle>
+          <Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Invite</Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : members.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No members yet.</p>
+        ) : (
+          members.map((m) => (
+            <div key={m.id} className="flex items-center gap-3 rounded-lg border border-border/60 p-3">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">{m.name?.charAt(0) || '?'}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium">{m.name}</div>
+                <div className="text-xs text-muted-foreground">{m.email}</div>
+              </div>
+              <Badge variant="outline" className="text-[10px]">{roleLabel(m.role)}</Badge>
+              {m.lastLoginAt && <span className="text-[10px] text-muted-foreground">Last seen {new Date(m.lastLoginAt).toLocaleDateString()}</span>}
+            </div>
+          ))
+        )}
+        <Alert>
+          <Users className="h-4 w-4" />
+          <AlertDescription>Owners can invite admins and observers. Admins manage elections but cannot transfer ownership. Observers monitor but cannot modify.</AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Support Preferences tab — how the org handles support tickets.
+function SupportTab({ settings, saving, onSave }: any) {
+  const [form, setForm] = useState({
+    supportEmail: settings.supportEmail || '',
+    supportPhone: settings.supportPhone || '',
+    autoEscalate: settings.autoEscalate ?? true,
+    slaHours: settings.slaHours || 24,
+  })
+  return (
+    <Card>
+      <CardHeader><CardTitle className="font-display text-base">Support Preferences</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5"><Label>Support Email</Label><Input value={form.supportEmail} onChange={(e) => setForm((f) => ({ ...f, supportEmail: e.target.value }))} placeholder="support@yourorg.org" /></div>
+          <div className="space-y-1.5"><Label>Support Phone</Label><Input value={form.supportPhone} onChange={(e) => setForm((f) => ({ ...f, supportPhone: e.target.value }))} placeholder="+234 801 234 5678" /></div>
+        </div>
+        <ToggleRow label="Auto-escalate unresolved tickets" desc="Automatically escalate tickets unresolved after SLA hours." value={form.autoEscalate} onChange={(v) => setForm((f) => ({ ...f, autoEscalate: v }))} />
+        <div className="space-y-1.5"><Label>SLA (hours)</Label><Input type="number" value={form.slaHours} onChange={(e) => setForm((f) => ({ ...f, slaHours: parseInt(e.target.value) || 24 }))} /></div>
+        <Button onClick={() => onSave({ settings: form })} disabled={saving} className="gap-2">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Save</Button>
       </CardContent>
     </Card>
   )

@@ -68,6 +68,7 @@ export async function PATCH(req: NextRequest) {
         ...(orgUpdates.country !== undefined && { country: orgUpdates.country }),
         ...(orgUpdates.state !== undefined && { state: orgUpdates.state }),
         ...(orgUpdates.timezone && { timezone: orgUpdates.timezone }),
+        ...(orgUpdates.language && { language: orgUpdates.language }),
       },
     })
   }
