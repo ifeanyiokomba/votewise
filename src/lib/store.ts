@@ -19,6 +19,7 @@ export type View =
   | 'official'
   | 'organizations'       // Public organizations directory
   | 'workspace'           // Chapter 2: Organization Workspace dashboard
+  | 'onboarding'          // Chapter 6: First-login onboarding wizard
   // Legacy aliases kept for nav compatibility
   | 'admin-login' | 'admin' | 'observer-login' | 'observer'
 

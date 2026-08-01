@@ -18,6 +18,7 @@ import { OfficialLoginView, OfficialDashboard } from '@/components/votewise/offi
 import { ObserverAnalyticsView } from '@/components/votewise/observer-analytics'
 import { OrganizationsView } from '@/components/votewise/organizations'
 import { WorkspaceView } from '@/components/votewise/workspace'
+import { OnboardingWizard } from '@/components/votewise/onboarding-wizard'
 import { ChatbotWidget } from '@/components/votewise/chatbot'
 import { api } from '@/lib/api'
 
@@ -69,6 +70,7 @@ export default function Home() {
           {v === 'signup' && <SignupView />}
           {v === 'organizations' && <OrganizationsView />}
           {v === 'workspace' && <WorkspaceView />}
+          {v === 'onboarding' && <OnboardingWizard onDone={() => useApp.getState().setView('workspace')} />}
           {v === 'official-login' && <OfficialLoginView />}
           {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
         </main>

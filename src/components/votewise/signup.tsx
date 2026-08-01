@@ -393,11 +393,11 @@ export function SignupView() {
               <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Plan</div><div className="text-sm font-medium">{created.organization.plan} (Trial)</div></div>
             </div>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <Button onClick={() => { window.location.href = `/workspace?org=${created.organization.subdomain}` }} className="gap-2">
-                <Building2 className="h-4 w-4" /> Open My Workspace
+              <Button onClick={() => { window.location.href = `/workspace?org=${created.organization.subdomain}&onboard=1` }} className="gap-2">
+                <Sparkles className="h-4 w-4" /> Start Setup Wizard
               </Button>
-              <Button variant="outline" onClick={() => setView('official')} className="gap-2">
-                <Shield className="h-4 w-4" /> Go to Dashboard
+              <Button variant="outline" onClick={() => { window.location.href = `/workspace?org=${created.organization.subdomain}` }} className="gap-2">
+                <Building2 className="h-4 w-4" /> Skip to Workspace
               </Button>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">Your trial is active. Pay to go live when you&apos;re ready.</p>

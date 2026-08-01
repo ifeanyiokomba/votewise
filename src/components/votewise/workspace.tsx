@@ -16,6 +16,7 @@ import { api } from '@/lib/api'
 import { StatusBadge } from '@/components/votewise/shared'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { ReadinessChecklist } from '@/components/votewise/readiness-checklist'
 
 interface WorkspaceData {
   organization: any
@@ -191,8 +192,11 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
             </div>
           </div>
 
-          {/* Sidebar — subscription, support, notifications, domains */}
+          {/* Sidebar — readiness, subscription, support, notifications, domains */}
           <div className="space-y-6">
+            {/* Election Readiness Checklist (Chapter 6) */}
+            <ReadinessChecklist data={data} />
+
             {/* Subscription */}
             <Card>
               <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" /> Subscription</CardTitle></CardHeader>
