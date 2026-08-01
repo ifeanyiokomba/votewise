@@ -2031,3 +2031,47 @@ Stage Summary:
 - ✅ New "Morph" loader concept: circle → rounded square morph (the
   transformation), ballot box draws in, checkmark self-draws, shimmer sweep,
   wordmark fade. Premium, ~1.7s, zero errors.
+
+---
+Task ID: LOGO-LOADER-MORPH-V2
+Agent: Lead Developer (main)
+Task: Improve "The Morph" logo loader — more polished, richer depth, better
+choreography.
+
+Work Log:
+- **Refined `src/components/votewise/logo-loader.tsx`** ("The Morph" v2):
+  - **Gradient square**: replaced flat green with a 3-stop linear gradient
+    (155deg: #16a34a → #15803d → #166534) + a colored drop shadow
+    (rgba(21,128,61,0.45)) for depth.
+  - **Gloss highlight**: added a top highlight strip (white/22 → transparent)
+    that fades in after the morph — gives a glassmorphism feel.
+  - **Aura pulse**: the ambient glow now pulses on a 4-keyframe timeline
+    (opacity 0→0.9→0.5→0.7, scale 0.5→1.1→0.95→1) synchronized with the morph.
+  - **Expanding ring**: a primary/30 border ring expands outward (0.6→2 scale)
+    during the morph — reinforces the "community → mark" transformation.
+  - **Ballot box**: slot now slides down with a back-out overshoot (bounce);
+    box body has its own gold gradient (#f59e0b → #d97706) and draws in from
+    the bottom with the same bounce ease.
+  - **Checkmark flash**: after the checkmark draws itself, a white/40 blur
+    flash expands (0→2.4 scale) — a satisfying completion burst.
+  - **Richer shimmer**: wider (w-1/2), brighter (white/45), sweeps later
+    (1.5s) and longer (0.7s) — more premium glossy finish.
+  - **Wordmark**: letter-by-letter reveal (8 chars × 0.035s stagger) with
+    expo-out ease; "Vote" in foreground, "Wise" in primary.
+  - **Easing**: standardized on expo-out [0.16, 1, 0.3, 1] for entrances +
+    back-out [0.34, 1.56, 0.64, 1] for stamps/bounces.
+  - Total: ~1.9s. Logo size: 108px.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - At 0.4s: VLM confirmed "solid green circle" (morph starting) + expanding
+    ring visible.
+  - At 1.2s: VLM confirmed "green rounded square with glossy highlight on top"
+    + "gold/orange ballot box" + slot.
+  - At 1.5s: VLM confirmed "green rounded square, gold ballot box, white
+    checkmark inside, glossy/glassmorphism appearance, soft drop shadow, green
+    aura glow."
+  - Loader gone after ~1.9s, app visible. Zero errors.
+
+Stage Summary:
+- ✅ Improved "The Morph" v2: gradient + gloss + aura pulse + expanding ring +
+  bouncing ballot box + checkmark flash + richer shimmer + letter-by-letter
+  wordmark. More polished, deeper, better choreographed. ~1.9s, zero errors.
