@@ -1919,3 +1919,34 @@ Stage Summary:
   logo builds itself piece-by-piece (square → box → slot → checkmark draws →
   wordmark → progress bar), pulses, then fades away to reveal the app. Plays
   on every initial page load.
+
+---
+Task ID: LOGO-LOADER-SIMPLIFY
+Agent: Lead Developer (main)
+Task: Redesign the logo loader to be simpler, more professional, and shorter.
+
+Work Log:
+- **Redesigned `src/components/votewise/logo-loader.tsx`** — stripped back to a
+  clean, minimal, fast transformation:
+  - Removed: wordmark (letter-by-letter), tagline, progress bar, expanding
+    pulse ring, radial glow, gradient overlay, staggered element entrances.
+  - Kept: the single logo mark (green rounded square + slot + gold ballot box +
+    white checkmark).
+  - Animation (total ~1.3s, down from 2.8s):
+    1. **0s**: Logo scales in (0.85 → 1) + fades in (opacity 0 → 1) over 0.45s
+       with a smooth ease curve.
+    2. **0.25s**: White checkmark draws itself (pathLength 0 → 1, 0.45s) — the
+       single transformative moment.
+    3. **1.3s**: Entire loader fades out (opacity 1 → 0, 0.4s) + scales up
+       slightly (1 → 1.08) to reveal the app.
+  - Logo size reduced from 120px to 72px for a more refined, less bulky feel.
+  - Background: plain `bg-background` (no glow).
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA: VLM confirmed
+  "clean, minimal design with a centered green rounded square logo containing
+  an orange ballot box with a checkmark" on a plain background. Loader gone
+  after ~1.3s, app visible. Zero errors.
+
+Stage Summary:
+- ✅ Loader redesigned: minimal (just the logo mark), fast (~1.3s total),
+  professional (single smooth scale-in + checkmark draw + fade-out). No bulky
+  extras.
