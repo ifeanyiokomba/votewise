@@ -4959,3 +4959,55 @@ Stage Summary:
   are flattened into one array and passed to the calendar; no API
   changes were needed.
 - ✅ Lint passes with zero errors. Dev server compiles cleanly.
+
+---
+Task ID: POSITIONS-CALENDAR-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — build Positions CRUD tab + Election Calendar view.
+
+Work Log:
+- **QA Assessment**: Platform stable — dev server + results-service running
+  cleanly. Previous rounds completed the full SVE (Chapter 10) and all 12
+  Election Workspace tabs. The Positions tab was still a basic placeholder
+  (list only, no CRUD), and there was no calendar view for visualizing
+  election schedules.
+- **Positions Tab** (full CRUD — 3 new APIs + new component):
+  - GET/POST /api/workspace/elections/[id]/positions — list with stats +
+    add with auto-slug + timeline event.
+  - PATCH/DELETE /api/workspace/elections/[id]/positions/[positionId] —
+    update + delete (409 if has candidates).
+  - POST /api/workspace/elections/[id]/positions/reorder — reorder via
+    Move Up/Down buttons.
+  - UI: 4 stat cards (total/candidates/single/multiple choice), position
+    cards with scope badge + "Choose N" badge + candidate count, Add/Edit
+    dialog (title/description/scope/max votes), Delete with confirmation,
+    Framer Motion animations.
+- **Election Calendar** (new component + Election Center enhancement):
+  - Monthly calendar grid (7 columns, weekday headers, day cells with
+    min-h-[100px]).
+  - Election chips on date ranges, color-coded by status (LIVE=emerald
+    pulsing, UPCOMING=amber, COMPLETED=zinc, DRAFT=dashed).
+  - Month navigation (prev/next/today), Framer Motion slide transitions.
+  - Click chip → navigate to election workspace.
+  - Legend + current-month election list below calendar.
+  - Responsive (horizontal scroll on mobile).
+  - List/Calendar view toggle added to Election Center.
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Positions tab: 4 positions shown with edit/delete, Add dialog works
+    (title/description/scope/max votes).
+  - Calendar view: August 2026 shows "1 election this month" with SUG
+    General Elections chip on day 1.
+  - Zero runtime errors in dev log.
+
+Stage Summary:
+- ✅ Positions tab now has full CRUD (was basic list, now complete
+  management with add/edit/delete/reorder).
+- ✅ Election Calendar provides a visual monthly view of all elections —
+  a major UX improvement over the list-only view.
+- ✅ The Election Center now supports both List and Calendar views via a
+  toggle.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Bulk voter import wizard completion,
+  observer real-time incident dashboard, election templates (save as
+  template), election duplication with date shifting.
+
