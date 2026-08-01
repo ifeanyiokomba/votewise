@@ -18,6 +18,7 @@ import { api, getVoterToken } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n'
 
 type Phase = 'loading' | 'ballot' | 'review' | 'submitting' | 'success'
 
@@ -57,6 +58,7 @@ interface BallotData {
 }
 
 export function BallotView({ electionId, subdomain, voterId }: { electionId: string; subdomain?: string; voterId?: string }) {
+  const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>('loading')
   const [ballot, setBallot] = useState<BallotData | null>(null)
   const [selections, setSelections] = useState<Record<string, string | string[]>>({})
@@ -156,7 +158,7 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
           next = arr.filter((c) => c !== candidateId)
         } else {
           if (arr.length >= maxVotes) {
-            toast.warning(`You can select at most ${maxVotes} candidates for this position.`)
+            toast.warning(`${t('voting.chooseN')} ${maxVotes}`)
             return prev
           }
           next = [...arr, candidateId]
@@ -199,7 +201,7 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
       api.clearAutoSavedSelections(ballot!.ballotId, subdomain).catch(() => {})
       localStorage.removeItem('votewise_voter_token')
       setPhase('success')
-      toast.success('Vote successfully recorded!')
+      toast.success(t('voting.voteRecorded'))
     } catch (e: any) {
       setError(e.message || 'Failed to cast vote')
       setPhase('ballot')
@@ -215,8 +217,8 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
       <div className="grid min-h-[60vh] place-items-center">
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-3 text-sm text-muted-foreground">Generating your secure ballot…</p>
-          <p className="mt-1 text-xs text-muted-foreground">Validating eligibility, accreditation, and election rules.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t('voting.generatingBallot')}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t('voting.generatingBallotSub')}</p>
         </div>
       </div>
     )
@@ -231,11 +233,11 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
       <div className="mx-auto max-w-2xl px-4 py-10">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Cannot load ballot</AlertTitle>
+          <AlertTitle>{t('voting.cannotLoadBallot')}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <Button variant="outline" onClick={() => window.location.href = `/workspace/elections/${electionId}?org=${subdomain || ''}`} className="mt-4 gap-1.5">
-          <ArrowLeft className="h-4 w-4" /> Back to Election
+          <ArrowLeft className="h-4 w-4" /> {t('voting.backToElection')}
         </Button>
       </div>
     )
@@ -253,16 +255,16 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
       {/* Top bar */}
       <div className="mb-4 flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => window.location.href = `/workspace/elections/${electionId}?org=${subdomain || ''}`} className="gap-1.5">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t('voting.backBtn')}
         </Button>
         <div className="flex items-center gap-2">
           <Badge variant={online ? 'outline' : 'destructive'} className="gap-1">
             {online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            {online ? 'Online' : 'Offline'}
+            {online ? t('voting.online') : t('voting.offline')}
           </Badge>
           {autoSaved && online && (
             <Badge variant="outline" className="gap-1 text-emerald-600">
-              <Check className="h-3 w-3" /> Auto-saved
+              <Check className="h-3 w-3" /> {t('voting.autoSaved')}
             </Badge>
           )}
         </div>
@@ -276,23 +278,23 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Badge variant="secondary" className="mb-1 gap-1">
-                <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live Election
+                <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> {t('voting.liveElection')}
               </Badge>
-              <h1 className="font-display text-xl font-bold sm:text-2xl">{ballot?.content?.electionName || 'Election'}</h1>
-              <p className="text-xs text-muted-foreground">Voter: {ballot?.voter.fullName}</p>
+              <h1 className="font-display text-xl font-bold sm:text-2xl">{ballot?.content?.electionName || t('workspace.elections')}</h1>
+              <p className="text-xs text-muted-foreground">{t('voting.voter')}: {ballot?.voter.fullName}</p>
             </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-primary">
                 <Clock className="h-4 w-4" />
                 <span className="font-mono tabular-nums">{formatDuration(timeRemaining)}</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">Voting closes in</p>
+              <p className="text-[10px] text-muted-foreground">{t('voting.votingClosesIn')}</p>
             </div>
           </div>
           {liveCount && (
             <div className="mt-4 flex items-center gap-4 rounded-lg bg-muted/50 p-2 text-xs">
-              <span className="flex items-center gap-1"><VoteIcon className="h-3 w-3 text-primary" /> <strong>{liveCount.votesCast.toLocaleString()}</strong> votes cast</span>
-              <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-amber-600" /> <strong>{liveCount.turnoutPct}%</strong> turnout</span>
+              <span className="flex items-center gap-1"><VoteIcon className="h-3 w-3 text-primary" /> <strong>{liveCount.votesCast.toLocaleString()}</strong> {t('publicResults.votesCast').toLowerCase()}</span>
+              <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 text-amber-600" /> <strong>{liveCount.turnoutPct}%</strong> {t('election.turnout').toLowerCase()}</span>
             </div>
           )}
         </CardContent>
@@ -302,9 +304,9 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
       <div className="mb-6">
         <div className="mb-1 flex justify-between text-xs">
           <span className="text-muted-foreground">
-            {phase === 'review' ? 'Reviewing' : `Position ${Math.min((currentPositionIdx >= 0 ? currentPositionIdx : positions.length) + 1, positions.length)} of ${positions.length}`}
+            {phase === 'review' ? t('voting.reviewing') : `${t('voting.position')} ${Math.min((currentPositionIdx >= 0 ? currentPositionIdx : positions.length) + 1, positions.length)} ${t('voting.of')} ${positions.length}`}
           </span>
-          <span className="text-primary">{answeredCount}/{positions.length} completed</span>
+          <span className="text-primary">{answeredCount}/{positions.length} {t('voting.completed')}</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(answeredCount / Math.max(positions.length, 1)) * 100}%` }} />
@@ -327,11 +329,11 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
                       </div>
                       <CardTitle className="font-display text-base">{pos.title}</CardTitle>
                       <Badge variant="outline" className="text-[10px]">
-                        {pos.maximumVotes > 1 ? `Choose ${pos.maximumVotes}` : 'Choose 1'}
+                        {pos.maximumVotes > 1 ? `${t('voting.chooseN')} ${pos.maximumVotes}` : t('voting.chooseOne')}
                       </Badge>
                       {isCompleted && (
                         <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => clearPosition(pos.positionId)}>
-                          Clear
+                          {t('voting.clear')}
                         </Button>
                       )}
                     </div>
@@ -369,7 +371,7 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
                                   onClick={(e) => { e.stopPropagation(); setExpandedCandidate(isExpanded ? null : c.id) }}
                                   className="mt-1 flex items-center gap-1 text-[11px] text-primary hover:underline"
                                 >
-                                  <Eye className="h-3 w-3" /> {isExpanded ? 'Hide manifesto' : 'Read manifesto'}
+                                  <Eye className="h-3 w-3" /> {isExpanded ? t('voting.hideManifesto') : t('voting.readManifesto')}
                                 </button>
                               )}
                             </div>
@@ -386,7 +388,7 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
                             {isExpanded && c.manifesto && (
                               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                                 <div className="ml-15 mt-1 rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground" style={{ marginLeft: '3.5rem' }}>
-                                  <p className="font-medium text-foreground mb-1">Manifesto</p>
+                                  <p className="font-medium text-foreground mb-1">{t('voting.manifesto')}</p>
                                   {c.manifesto}
                                 </div>
                               </motion.div>
@@ -405,8 +407,8 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
                           <X className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium">None of the Above</div>
-                          <div className="text-xs text-muted-foreground">I do not support any of these candidates</div>
+                          <div className="font-medium">{t('voting.noneOfTheAbove')}</div>
+                          <div className="text-xs text-muted-foreground">{t('voting.noneOfTheAboveDesc')}</div>
                         </div>
                         {sel === 'NOTA' && <CheckCircle2 className="h-5 w-5 text-primary" />}
                       </button>
@@ -423,7 +425,7 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
             <Card className="votewise-card-glow">
               <CardHeader>
                 <CardTitle className="font-display text-base flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-primary" /> Review Your Vote
+                  <Shield className="h-5 w-5 text-primary" /> {t('voting.reviewYourVote')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -440,30 +442,30 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
                       <div className="min-w-0">
                         <div className="text-xs text-muted-foreground">{pos.title}</div>
                         {isNota ? (
-                          <div className="font-medium text-muted-foreground">None of the Above</div>
+                          <div className="font-medium text-muted-foreground">{t('voting.noneOfTheAbove')}</div>
                         ) : selectedCandidates.length > 0 ? (
                           <div className="font-medium">{selectedCandidates.map((c) => c!.name).join(', ')}</div>
                         ) : (
                           <div className="font-medium text-muted-foreground">—</div>
                         )}
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => setPhase('ballot')} className="text-xs">Change</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setPhase('ballot')} className="text-xs">{t('voting.change')}</Button>
                     </div>
                   )
                 })}
                 <Alert>
                   <Lock className="h-4 w-4" />
-                  <AlertTitle>Your vote is secret</AlertTitle>
+                  <AlertTitle>{t('voting.ballotSecrecyProtected')}</AlertTitle>
                   <AlertDescription>
-                    Your selections will be encrypted with AES-256-GCM before storage. Only an anonymous hash of your identity is recorded — no one can link your vote to you.
+                    {t('voting.ballotSecrecyDesc')}
                   </AlertDescription>
                 </Alert>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setPhase('ballot')} className="gap-1.5">
-                    <ArrowLeft className="h-4 w-4" /> Back
+                    <ArrowLeft className="h-4 w-4" /> {t('voting.backBtn')}
                   </Button>
                   <Button onClick={() => setShowConfirm(true)} className="flex-1 gap-2">
-                    <Lock className="h-4 w-4" /> Submit Vote
+                    <Lock className="h-4 w-4" /> {t('voting.submitVote')}
                   </Button>
                 </div>
               </CardContent>
@@ -479,10 +481,10 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
             <CardContent className="flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <span className="text-sm font-medium">All positions completed</span>
+                <span className="text-sm font-medium">{t('voting.allPositionsCompleted')}</span>
               </div>
               <Button onClick={() => setPhase('review')} className="gap-2">
-                Review Vote <ArrowRight className="h-4 w-4" />
+                {t('voting.review')} <ArrowRight className="h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
@@ -494,8 +496,8 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
         <Card className="votewise-card-glow">
           <CardContent className="py-12 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-3 text-sm font-medium">Encrypting and recording your vote…</p>
-            <p className="mt-1 text-xs text-muted-foreground">Running 8-step validation pipeline. Atomic transaction — if anything fails, your vote is NOT recorded.</p>
+            <p className="mt-3 text-sm font-medium">{t('voting.encrypting')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('voting.encryptingSub')}</p>
           </CardContent>
         </Card>
       )}
@@ -505,23 +507,22 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-600" /> Final Confirmation
+              <AlertCircle className="h-5 w-5 text-amber-600" /> {t('voting.finalConfirmation')}
             </DialogTitle>
             <DialogDescription>
-              You are about to submit your vote. This action <strong>cannot be reversed</strong>.
-              Your ballot will be encrypted and recorded permanently.
+              {t('voting.finalConfirmationDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg bg-muted/50 p-3 text-sm">
-            <div className="font-medium mb-1">Summary:</div>
+            <div className="font-medium mb-1">{t('voting.summary')}</div>
             <div className="text-muted-foreground">
-              {positions.length} position{positions.length === 1 ? '' : 's'} · {Object.values(selections).reduce((acc, s) => acc + (Array.isArray(s) ? s.length : 1), 0)} selection{Object.values(selections).reduce((acc, s) => acc + (Array.isArray(s) ? s.length : 1), 0) === 1 ? '' : 's'}
+              {positions.length} {t('workspace.positions').toLowerCase()}{positions.length === 1 ? '' : 's'} · {Object.values(selections).reduce((acc, s) => acc + (Array.isArray(s) ? s.length : 1), 0)} {t('voting.ballot').toLowerCase()}{Object.values(selections).reduce((acc, s) => acc + (Array.isArray(s) ? s.length : 1), 0) === 1 ? '' : 's'}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirm(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowConfirm(false)}>{t('common.cancel')}</Button>
             <Button onClick={submitVote} className="gap-2">
-              <Lock className="h-4 w-4" /> Confirm &amp; Submit
+              <Lock className="h-4 w-4" /> {t('voting.confirmAndSubmit')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -534,6 +535,7 @@ export function BallotView({ electionId, subdomain, voterId }: { electionId: str
 // Vote Success — receipt display
 // ---------------------------------------------------------------------------
 function VoteSuccess({ receipts, electionId, subdomain }: { receipts: Array<{ positionId: string; positionTitle: string; receiptCode: string }>; electionId: string; subdomain?: string }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState<string | null>(null)
   const [verifying, setVerifying] = useState<string | null>(null)
   const [verifyResult, setVerifyResult] = useState<any>(null)
@@ -541,7 +543,7 @@ function VoteSuccess({ receipts, electionId, subdomain }: { receipts: Array<{ po
   function copy(code: string) {
     navigator.clipboard.writeText(code)
     setCopied(code)
-    toast.success('Receipt copied to clipboard')
+    toast.success(t('voting.receiptCopied'))
     setTimeout(() => setCopied(null), 2000)
   }
 
@@ -570,9 +572,9 @@ function VoteSuccess({ receipts, electionId, subdomain }: { receipts: Array<{ po
             >
               <CheckCircle2 className="h-8 w-8" />
             </motion.div>
-            <h2 className="mt-4 font-display text-2xl font-bold">Vote Successfully Recorded</h2>
+            <h2 className="mt-4 font-display text-2xl font-bold">{t('voting.voteRecorded')}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your vote has been encrypted, recorded, and audited. Save your receipt numbers below to verify your participation later.
+              {t('voting.voteRecordedDesc')}
             </p>
 
             <div className="mt-6 space-y-2 text-left">
@@ -588,7 +590,7 @@ function VoteSuccess({ receipts, electionId, subdomain }: { receipts: Array<{ po
                         {copied === r.receiptCode ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => verify(r.receiptCode)} disabled={verifying === r.receiptCode}>
-                        {verifying === r.receiptCode ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Hash className="h-3 w-3" /> Verify</>}
+                        {verifying === r.receiptCode ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Hash className="h-3 w-3" /> {t('voting.verify')}</>}
                       </Button>
                     </div>
                   </div>
@@ -599,21 +601,21 @@ function VoteSuccess({ receipts, electionId, subdomain }: { receipts: Array<{ po
             {verifyResult && (
               <Alert className={cn('mt-4 text-left', verifyResult.valid ? 'border-emerald-500/30 bg-emerald-500/5' : '')}>
                 <Shield className="h-4 w-4" />
-                <AlertTitle>{verifyResult.valid ? 'Receipt Verified' : 'Verification Failed'}</AlertTitle>
+                <AlertTitle>{verifyResult.valid ? t('voting.receiptVerified') : t('voting.verificationFailed')}</AlertTitle>
                 <AlertDescription>{verifyResult.message}</AlertDescription>
               </Alert>
             )}
 
             <Alert className="mt-4 text-left">
               <Lock className="h-4 w-4" />
-              <AlertTitle>Ballot Secrecy Protected</AlertTitle>
+              <AlertTitle>{t('voting.ballotSecrecyProtected')}</AlertTitle>
               <AlertDescription>
-                Your receipt confirms participation — <strong>not</strong> candidate choices. No one can determine who you voted for, not even database administrators.
+                {t('voting.ballotSecrecyDesc')}
               </AlertDescription>
             </Alert>
 
             <Button onClick={() => window.location.href = `/workspace/elections/${electionId}?org=${subdomain || ''}`} className="mt-6 gap-2">
-              Back to Election <ArrowRight className="h-4 w-4" />
+              {t('voting.backToElection')} <ArrowRight className="h-4 w-4" />
             </Button>
           </CardContent>
         </Card>

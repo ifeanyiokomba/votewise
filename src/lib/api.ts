@@ -75,6 +75,8 @@ export const api = {
   commandCenter: (subdomain?: string) => req(`/api/workspace/command-center${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   // Organization-wide Election Analytics Dashboard (cross-election metrics).
   getAnalytics: (subdomain?: string) => req(`/api/workspace/analytics${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Side-by-side comparison of 2–5 elections (metrics, turnout, results, integrity).
+  compareElections: (electionIds: string[], subdomain?: string) => req(`/api/workspace/elections/compare${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionIds }) }),
   workspaceUnits: (subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   workspaceCreateUnit: (data: any, subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   workspaceUnitObservers: (unitId: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

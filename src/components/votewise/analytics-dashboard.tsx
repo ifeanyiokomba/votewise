@@ -28,6 +28,9 @@ import {
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { GitCompare } from 'lucide-react'
+import { ElectionComparison } from '@/components/votewise/election-comparison'
 
 // ---- Palette (emerald / gold / amber / zinc only — NO indigo/blue) ----
 const CHART_COLORS = {
@@ -91,6 +94,7 @@ export function AnalyticsDashboard({ subdomain }: { subdomain?: string }) {
   const [range, setRange] = useState<'all' | '30d' | '90d'>('all')
   const [sortKey, setSortKey] = useState<SortKey>('startTime')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [tab, setTab] = useState<'overview' | 'compare'>('overview')
 
   useEffect(() => {
     let active = true
@@ -198,6 +202,24 @@ export function AnalyticsDashboard({ subdomain }: { subdomain?: string }) {
         </Card>
       </motion.div>
 
+      {/* ---- Tab toggle: Overview / Compare ---- */}
+      <div className="mb-6 flex items-center gap-2">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'compare')} className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" /> Overview
+            </TabsTrigger>
+            <TabsTrigger value="compare" className="gap-1.5">
+              <GitCompare className="h-4 w-4" /> Compare Elections
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {tab === 'compare' ? (
+        <ElectionComparison subdomain={subdomain} />
+      ) : (
+      <>
       {/* ---- Overview stat cards ---- */}
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <OverviewStat
@@ -577,6 +599,8 @@ export function AnalyticsDashboard({ subdomain }: { subdomain?: string }) {
         {org.subdomain && <span className="font-mono">· {org.subdomain}.votewise.ng</span>}
         {data.generatedAt && <span>· {new Date(data.generatedAt).toLocaleString()}</span>}
       </p>
+      </>
+      )}
     </div>
   )
 }

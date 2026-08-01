@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
 
 // ---------------------------------------------------------------------------
@@ -214,8 +215,12 @@ export function VoterStatusPortal() {
 }
 
 function VoterStatusPortalInner() {
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
+  // Prefill is parsed so searchParams stays consistent with prior behaviour;
+  // the cross-org lookup intentionally ignores it (kept for log-compatibility).
   const prefillOrg = searchParams.get('org') || undefined
+  void prefillOrg
 
   const [identifier, setIdentifier] = useState('')
   const [loading, setLoading] = useState(false)
@@ -225,7 +230,7 @@ function VoterStatusPortalInner() {
   const runSearch = useCallback(async () => {
     const q = identifier.trim()
     if (!q) {
-      toast.error('Please enter an email, phone, or voter ID')
+      toast.error(t('voterStatus.identifier'))
       return
     }
     setLoading(true)
@@ -239,7 +244,7 @@ function VoterStatusPortalInner() {
     } finally {
       setLoading(false)
     }
-  }, [identifier])
+  }, [identifier, t])
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' && !loading) runSearch()
@@ -259,14 +264,14 @@ function VoterStatusPortalInner() {
         className="mb-8 text-center"
       >
         <Badge variant="secondary" className="mb-3 gap-1.5">
-          <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Voter Status Portal
+          <ShieldCheck className="h-3.5 w-3.5 text-primary" /> {t('voterStatus.portalTitle')}
         </Badge>
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          Check Your <span className="text-primary">Voter Status</span>
+          {t('voterStatus.title')} <span className="text-primary">{t('voterStatus.titleHighlight')}</span>
         </h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-          Check your registration status, voting history, and receipts.{' '}
-          <span className="font-medium text-foreground">Your vote choices are never revealed.</span>
+          {t('voterStatus.desc')}{' '}
+          <span className="font-medium text-foreground">{t('voterStatus.descHighlight')}</span>
         </p>
       </motion.div>
 
@@ -276,13 +281,13 @@ function VoterStatusPortalInner() {
       <Card className="votewise-card-glow mb-8 overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-display text-lg">
-            <Search className="h-5 w-5 text-primary" /> Look up your record
+            <Search className="h-5 w-5 text-primary" /> {t('voterStatus.lookUpRecord')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="voter-status-identifier" className="sr-only">
-              Email, phone, or voter ID
+              {t('voterStatus.identifier')}
             </Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
@@ -291,7 +296,7 @@ function VoterStatusPortalInner() {
                   id="voter-status-identifier"
                   type="text"
                   inputMode="email"
-                  placeholder="Enter your email, phone, or voter ID"
+                  placeholder={t('voterStatus.identifierPlaceholder')}
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   onKeyDown={onKeyDown}
@@ -308,26 +313,17 @@ function VoterStatusPortalInner() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Checking…
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t('voterStatus.checking')}
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="h-4 w-4" /> Check Status
+                    <ShieldCheck className="h-4 w-4" /> {t('voterStatus.checkStatus')}
                   </>
                 )}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              You can use any identifier you registered with —{' '}
-              <span className="font-medium">email</span>,{' '}
-              <span className="font-medium">phone number</span>, or{' '}
-              <span className="font-medium">matric / voter ID</span>.
-              {prefillOrg && (
-                <>
-                  {' '}Search runs across all organizations — your org prefill
-                  (<code className="font-mono">{prefillOrg}</code>) is ignored here.
-                </>
-              )}
+              {t('voterStatus.identifierHint')}
             </p>
           </div>
         </CardContent>
@@ -347,7 +343,7 @@ function VoterStatusPortalInner() {
           >
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Lookup failed</AlertTitle>
+              <AlertTitle>{t('voterStatus.voterNotFound')}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           </motion.div>
@@ -389,26 +385,26 @@ function VoterStatusPortalInner() {
         <Card className="border-primary/20 bg-primary/[0.03]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-base">
-              <Shield className="h-5 w-5 text-primary" /> Privacy Guarantees
+              <Shield className="h-5 w-5 text-primary" /> {t('voterStatus.privacyGuarantees')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                  What is shown
+                  {t('voterStatus.whatIsShown')}
                 </p>
-                <PrivacyLine ok icon={UserCheck} text="Your registration status is shown" />
-                <PrivacyLine ok icon={Vote} text="Your participation (voted / not voted) is shown" />
-                <PrivacyLine ok icon={FileText} text="Your receipt codes are shown (so you can verify them)" />
+                <PrivacyLine ok icon={UserCheck} text={t('voterStatus.shownRegistration')} />
+                <PrivacyLine ok icon={Vote} text={t('voterStatus.shownParticipation')} />
+                <PrivacyLine ok icon={FileText} text={t('voterStatus.shownReceipts')} />
               </div>
               <div className="space-y-2.5">
                 <p className="text-xs font-semibold uppercase tracking-wider text-red-700">
-                  What is never revealed
+                  {t('voterStatus.whatIsNeverRevealed')}
                 </p>
-                <PrivacyLine icon={Lock} text="Your vote choices are NEVER revealed" />
-                <PrivacyLine icon={EyeOff} text="No one can determine who you voted for" />
-                <PrivacyLine icon={KeyRound} text="Your receipt cannot be linked to your identity by third parties" />
+                <PrivacyLine icon={Lock} text={t('voterStatus.hiddenChoices')} />
+                <PrivacyLine icon={EyeOff} text={t('voterStatus.hiddenIdentity')} />
+                <PrivacyLine icon={KeyRound} text={t('voterStatus.hiddenLinking')} />
               </div>
             </div>
             <Separator className="my-4" />
@@ -464,6 +460,7 @@ function PrivacyLine({
 // ---------------------------------------------------------------------------
 
 function FoundResults({ matches, message }: { matches: VoterMatch[]; message?: string }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6">
       {/* Summary banner */}
@@ -475,7 +472,7 @@ function FoundResults({ matches, message }: { matches: VoterMatch[]; message?: s
         >
           <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100">
             <CheckCircle2 className="h-4 w-4" />
-            <AlertTitle>Record found</AlertTitle>
+            <AlertTitle>{t('voterStatus.recordFound')}</AlertTitle>
             <AlertDescription>{message}</AlertDescription>
           </Alert>
         </motion.div>
@@ -501,6 +498,7 @@ function FoundResults({ matches, message }: { matches: VoterMatch[]; message?: s
 // ---------------------------------------------------------------------------
 
 function VoterMatchCard({ match }: { match: VoterMatch }) {
+  const { t } = useTranslation()
   const { voter, elections, receipts, timeline } = match
 
   return (
@@ -548,7 +546,7 @@ function VoterMatchCard({ match }: { match: VoterMatch }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-display text-base">
-            <Vote className="h-4 w-4 text-primary" /> Elections
+            <Vote className="h-4 w-4 text-primary" /> {t('voterStatus.elections')}
             <Badge variant="outline" className="text-[10px]">{elections.length}</Badge>
           </CardTitle>
         </CardHeader>
@@ -556,7 +554,7 @@ function VoterMatchCard({ match }: { match: VoterMatch }) {
           {elections.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               <Vote className="mx-auto h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-2">No elections published by this organization yet.</p>
+              <p className="mt-2">{t('voterStatus.noElections')}</p>
             </div>
           ) : (
             <div className="max-h-96 space-y-3 overflow-y-auto pr-1">
@@ -573,7 +571,7 @@ function VoterMatchCard({ match }: { match: VoterMatch }) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-base">
-              <FileText className="h-4 w-4 text-primary" /> Your Receipts
+              <FileText className="h-4 w-4 text-primary" /> {t('voterStatus.yourReceipts')}
               <Badge variant="outline" className="text-[10px]">{receipts.length}</Badge>
             </CardTitle>
           </CardHeader>
@@ -592,17 +590,17 @@ function VoterMatchCard({ match }: { match: VoterMatch }) {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-display text-base">
-              <ScrollText className="h-4 w-4 text-primary" /> Recent Activity
+              <ScrollText className="h-4 w-4 text-primary" /> {t('voterStatus.recentActivity')}
               <Badge variant="outline" className="text-[10px]">{timeline.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ol className="relative space-y-4 border-l border-border/60 pl-5">
-              {timeline.map((t, i) => {
-                const { icon: Icon, cls } = timelineIconFor(t.eventType)
+              {timeline.map((tlEvt, i) => {
+                const { icon: Icon, cls } = timelineIconFor(tlEvt.eventType)
                 return (
                   <motion.li
-                    key={`${t.eventType}-${i}`}
+                    key={`${tlEvt.eventType}-${i}`}
                     initial={{ opacity: 0, x: -4 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.3) }}
@@ -619,18 +617,18 @@ function VoterMatchCard({ match }: { match: VoterMatch }) {
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold">
-                          {(t.eventType || 'EVENT').replace(/_/g, ' ')}
+                          {(tlEvt.eventType || 'EVENT').replace(/_/g, ' ')}
                         </span>
                         <Badge variant="outline" className="text-[10px] font-mono">
-                          {t.eventType}
+                          {tlEvt.eventType}
                         </Badge>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {fmtDate(t.createdAt)}
+                        {fmtDate(tlEvt.createdAt)}
                       </span>
                     </div>
-                    {t.description && (
-                      <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>
+                    {tlEvt.description && (
+                      <p className="mt-1 text-sm text-muted-foreground">{tlEvt.description}</p>
                     )}
                   </motion.li>
                 )
@@ -656,6 +654,7 @@ function ElectionRow({
   subdomain: string | null
   index: number
 }) {
+  const { t } = useTranslation()
   const now = Date.now()
   const startMs = new Date(election.startTime).getTime()
   const endMs = new Date(election.endTime).getTime()
@@ -696,34 +695,34 @@ function ElectionRow({
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
           {election.hasVoted ? (
             <Badge className="gap-1 bg-emerald-100 text-emerald-700">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Voted
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t('voterStatus.voted')}
             </Badge>
           ) : election.votingOpen ? (
             <Badge className="gap-1 bg-emerald-100 text-emerald-700">
-              <Vote className="h-3.5 w-3.5" /> Eligible — Open Now
+              <Vote className="h-3.5 w-3.5" /> {t('voterStatus.eligibleOpen')}
             </Badge>
           ) : upcoming ? (
             <Badge className="gap-1 bg-primary/10 text-primary">
-              <Clock className="h-3.5 w-3.5" /> Eligible — Upcoming
+              <Clock className="h-3.5 w-3.5" /> {t('voterStatus.eligibleUpcoming')}
             </Badge>
           ) : closed ? (
             <Badge className="gap-1 bg-amber-100 text-amber-700">
-              <Clock className="h-3.5 w-3.5" /> Did not vote
+              <Clock className="h-3.5 w-3.5" /> {t('voterStatus.didNotVote')}
             </Badge>
           ) : (
             <Badge variant="secondary" className="gap-1">
-              <Clock className="h-3.5 w-3.5" /> Pending
+              <Clock className="h-3.5 w-3.5" /> {t('voterStatus.pending')}
             </Badge>
           )}
           {election.hasVoted && election.votedAt && (
             <span className="text-[11px] text-muted-foreground">
-              Voted {fmtDate(election.votedAt)}
+              {t('voterStatus.voted')} {fmtDate(election.votedAt)}
             </span>
           )}
           {election.votingOpen && !election.hasVoted && (
             <Button asChild size="sm" className="gap-1.5">
               <Link href={voteHref}>
-                <Vote className="h-3.5 w-3.5" /> Vote Now
+                <Vote className="h-3.5 w-3.5" /> {t('voterStatus.voteNow')}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
@@ -739,6 +738,7 @@ function ElectionRow({
 // ---------------------------------------------------------------------------
 
 function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number }) {
+  const { t } = useTranslation()
   const [verifying, setVerifying] = useState(false)
   const [result, setResult] = useState<ReceiptVerifyResult | null>(null)
   const [verifyError, setVerifyError] = useState<string | null>(null)
@@ -753,7 +753,7 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
     } catch (e: any) {
       // 404 from the API returns { valid: false } — handled in the success
       // path. Only network/parse errors land here.
-      setVerifyError(e?.message || 'Could not verify receipt.')
+      setVerifyError(e?.message || t('voterStatus.verificationFailed'))
     } finally {
       setVerifying(false)
     }
@@ -773,7 +773,7 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
               {receipt.receiptCode}
             </code>
             <Badge variant="outline" className="gap-1 text-[10px]">
-              <FileText className="h-3 w-3" /> Receipt
+              <FileText className="h-3 w-3" /> {t('voterStatus.receipt')}
             </Badge>
           </div>
           <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
@@ -784,7 +784,7 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
               <Award className="h-3.5 w-3.5" /> {receipt.positionTitle}
             </p>
             <p className="flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5" /> Recorded {fmtDate(receipt.recordedAt)}
+              <Calendar className="h-3.5 w-3.5" /> {t('voterStatus.recorded')} {fmtDate(receipt.recordedAt)}
             </p>
           </div>
         </div>
@@ -797,11 +797,11 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
         >
           {verifying ? (
             <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verifying…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('voterStatus.verifying')}
             </>
           ) : (
             <>
-              <ShieldCheck className="h-3.5 w-3.5" /> Verify
+              <ShieldCheck className="h-3.5 w-3.5" /> {t('voterStatus.verify')}
             </>
           )}
         </Button>
@@ -830,17 +830,17 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
               ) : (
                 <XCircle className="h-4 w-4" />
               )}
-              <AlertTitle>{result.valid ? 'Vote confirmed & counted' : 'Receipt not found'}</AlertTitle>
+              <AlertTitle>{result.valid ? t('voterStatus.voteConfirmed') : t('voterStatus.receiptNotFound')}</AlertTitle>
               <AlertDescription className="text-xs">
                 {result.message}
                 {result.electionName && (
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                    <span>Election: <span className="font-medium">{result.electionName}</span></span>
+                    <span>{t('voterStatus.election')}: <span className="font-medium">{result.electionName}</span></span>
                     {result.positionTitle && (
-                      <span>Position: <span className="font-medium">{result.positionTitle}</span></span>
+                      <span>{t('voterStatus.position')}: <span className="font-medium">{result.positionTitle}</span></span>
                     )}
                     {result.recordedAt && (
-                      <span>Recorded: <span className="font-medium">{fmtDate(result.recordedAt)}</span></span>
+                      <span>{t('voterStatus.recorded')}: <span className="font-medium">{fmtDate(result.recordedAt)}</span></span>
                     )}
                   </div>
                 )}
@@ -861,7 +861,7 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
           >
             <Alert variant="destructive" className="mt-3">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Verification failed</AlertTitle>
+              <AlertTitle>{t('voterStatus.verificationFailed')}</AlertTitle>
               <AlertDescription>{verifyError}</AlertDescription>
             </Alert>
           </motion.div>
@@ -876,29 +876,30 @@ function ReceiptRow({ receipt, index }: { receipt: ReceiptSummary; index: number
 // ---------------------------------------------------------------------------
 
 function NotFoundResults({ message }: { message?: string }) {
+  const { t } = useTranslation()
   const suggestions = [
-    { icon: Search, text: 'Check your spelling and try again' },
-    { icon: Hash, text: 'Try a different identifier (email, phone, or voter ID)' },
-    { icon: Mail, text: 'If you usually log in by email, try your phone number instead' },
-    { icon: Phone, text: 'Make sure your phone includes the country code, e.g. +234…' },
-    { icon: Shield, text: "Contact your organization's electoral committee if you believe this is an error" },
+    { icon: Search, text: t('voterStatus.suggestion1') },
+    { icon: Hash, text: t('voterStatus.suggestion2') },
+    { icon: Mail, text: t('voterStatus.suggestion3') },
+    { icon: Phone, text: t('voterStatus.suggestion4') },
+    { icon: Shield, text: t('voterStatus.suggestion5') },
   ]
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-display text-base">
-          <AlertCircle className="h-5 w-5 text-amber-600" /> Voter not found
+          <AlertCircle className="h-5 w-5 text-amber-600" /> {t('voterStatus.voterNotFound')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
           {message ||
-            'No voter record matches that identifier. Please try again with a different identifier.'}
+            t('voterStatus.notFoundDesc')}
         </p>
         <Separator />
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Suggestions
+            {t('voterStatus.suggestions')}
           </p>
           <ul className="space-y-2">
             {suggestions.map((s, i) => (
@@ -918,13 +919,13 @@ function NotFoundResults({ message }: { message?: string }) {
         <Separator />
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <Lock className="h-3.5 w-3.5" /> Lookups are private — no record of your search is kept.
+            <Lock className="h-3.5 w-3.5" /> {t('voterStatus.lookupsPrivate')}
           </span>
           <Link
             href="/"
             className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
           >
-            <Sparkles className="h-3.5 w-3.5" /> Back to home
+            <Sparkles className="h-3.5 w-3.5" /> {t('voterStatus.backToHome')}
             <ExternalLink className="h-3 w-3" />
           </Link>
         </div>

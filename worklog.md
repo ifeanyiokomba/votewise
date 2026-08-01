@@ -7906,3 +7906,179 @@ Stage Summary:
   observer mobile companion, election comparison analytics, API rate
   limiting dashboard.
 
+
+---
+
+## Task ID: ELECTION-COMPARISON
+Agent: Election Comparison Builder
+Task: Build a side-by-side Election Comparison feature (metrics, turnout, results, integrity, incidents, winners, auto-insights) wired into the existing Analytics Dashboard.
+
+### Work Log
+
+**1. API endpoint — `src/app/api/workspace/elections/compare/route.ts`** (new)
+- `POST /api/workspace/elections/compare` — accepts `{ electionIds: string[] }`, de-dupes + clamps to 5, enforces org ownership via `requireOrganization`.
+- For each election returns:
+  - Basic info: `id, name, status, rawStatus, category, electionType, votingMethod, visibility, startTime, endTime, durationHours, durationLabel`.
+  - Participation: `eligibleVoters` (voter count), `votesCast` (VoteRecord count), `turnoutPct` (based on **unique voterHash** so multi-position voters aren't double-counted), `uniqueVoters`.
+  - Structure: `positionsCount, candidatesCount, avgCandidatesPerPosition`.
+  - Integrity: `isCertified` (status === CERTIFIED), `hasVerificationPackage` (ElectionVerification row — looked up separately because the model has no Prisma back-relation on ElectionSession), `auditLogCount`, `chainIntact` (via `verifyElectionAuditChain(electionId)` from `@/lib/sve`).
+  - Incidents: `totalIncidents, openIncidents, criticalIncidents` (queried in one batch and grouped by electionId).
+  - Results: `resultsVisible` (settings.showLiveResults || COMPLETED/CERTIFIED || visibility=Public), `winners` array (computed directly from the mirrored `VoteRecord.candidateId` column — no decryption needed), `closestMarginPct` (smallest victory margin across all positions, in percentage points).
+  - Timeline: `firstVoteAt, lastVoteAt, votingDurationHours` (from the ordered VoteRecord query).
+- Returns `{ comparisons: [...], summary: { totalElections, avgTurnout, totalVotes, totalEligible, bestTurnout, worstTurnout } }`.
+- Single round-trip for votes + incidents + verifications (each via `findMany` with `electionId: { in: ids }`); per-election audit chain verification parallelised with `Promise.all` (bounded to 5).
+
+**2. API client — `src/lib/api.ts`**
+- Added `compareElections: (electionIds: string[], subdomain?) => req('/api/workspace/elections/compare?x-vw-org=…', { method: 'POST', body: JSON.stringify({ electionIds }) })` next to `getAnalytics`.
+
+**3. UI component — `src/components/votewise/election-comparison.tsx`** (new, ~830 lines)
+- Props: `{ subdomain }`. Loads its own list of org elections via `api.electionCenter(subdomain)`.
+- **Header card** (`votewise-card-glow`): title "Election Comparison", description, live selection counter (`N/5 selected`), Clear button.
+- **Election selector**: scrollable table (`max-h-96 overflow-y-auto`) with sticky header, per-row Checkbox + status badge + category + voting window, search box, sortable by usefulness (completed/live first). Enforces MIN=2, MAX=5 client-side with toast feedback. Compare button is disabled until 2+ are picked.
+- **Comparison View** (after Compare is clicked):
+  - **Summary strip** (6 mini cards): Elections, Avg Turnout, Total Votes, Total Eligible, Best Turnout (emerald), Worst Turnout (amber).
+  - **Side-by-side cards** (1 per election): big color-coded turnout % (≥70% emerald / 40–70% amber / <40% zinc), custom progress bar (shadcn Progress hard-codes `bg-primary` so a small custom div is used), 4 mini stats (Eligible / Voted / Positions / Candidates), duration, integrity badge (Certified + Chain Intact = emerald, pending = amber, issues = red), incidents badge (red if critical, amber otherwise), winners preview (top 3 positions).
+  - **Detailed comparison table** (horizontally scrollable, sticky metric column + sticky header): Turnout %, Eligible, Votes Cast, Unique Voters, Positions, Candidates, Avg Candidates/Position, Voting Window, First Vote → Last Vote, Incidents, Certified (✓/✗), Audit Chain (✓/✗), Verification Package (✓/✗), Closest Margin. Each row carries its own icon.
+  - **Turnout Comparison chart** (Recharts `BarChart`): per-election emerald/amber/zinc bars colored by turnout band, with `Cell` for per-bar fills.
+  - **Eligible vs Voted chart** (grouped `BarChart`): amber = Eligible, emerald = Voted, with `Legend`.
+  - **Winners Comparison table**: only rendered when ≥2 elections have visible results. Positions matched by title across elections; each cell shows winner name + vote count + pct with a Crown icon. "Hidden" / "—" states for elections without that position or without visible results.
+  - **Auto-Generated Insights card**: `buildInsights()` produces up to ~7 plain-English insights, each with an icon + tone (success/warning/danger/info): highest turnout + delta vs runner-up, lowest turnout (<40% warning), most candidates, all-certified-with-intact-chains (or per-election integrity concerns), critical incidents, closest margin race (<5 pts), average turnout summary.
+- Mobile-first responsive (cards stack at `sm:`, table scrolls horizontally with sticky first column, charts stack at `lg:`).
+- Palette: emerald / gold / amber / zinc only — no indigo, no blue.
+
+**4. Analytics page integration — `src/components/votewise/analytics-dashboard.tsx`**
+- Added `tab` state (`'overview' | 'compare'`) + shadcn `Tabs` toggle below the header card (Overview / Compare Elections, each with an icon).
+- Overview tab renders the existing dashboard content (now wrapped in a fragment conditional on `tab === 'overview'`).
+- Compare tab mounts `<ElectionComparison subdomain={subdomain} />` — lazy-mounted only when the user switches tabs, so the elections-list fetch doesn't fire on first page load.
+
+**5. Verification**
+- `bun run lint` → exit 0, no errors.
+- Smoke-tested the API: `POST /api/workspace/elections/compare?x-vw-org=demo` with `["sve-demo"]` and `["sve-demo","sve-demo-2024"]` → 200 with full comparison payload (winners, integrity, timeline, summary all populated correctly).
+- Seeded a second archived election (`sve-demo-2024`) in the demo org so the multi-election comparison is testable end-to-end.
+- `/workspace/analytics?org=demo` returns 200; the new "Compare Elections" tab renders the selector and (after picking 2 elections) the full comparison view.
+
+### Stage Summary
+The Election Comparison feature is complete and end-to-end functional. Officials can now switch to the "Compare Elections" tab on the Analytics page, multi-select 2–5 elections, and instantly see side-by-side cards, a detailed metric table, turnout + eligible-vs-voted bar charts, a winners-by-position matrix, and auto-generated plain-English insights — all driven by a single org-scoped POST endpoint that returns full participation / structure / integrity / incidents / results / timeline data per election. The component reuses the existing emerald/gold/amber palette, `votewise-card-glow` header class, shadcn/ui primitives, and Recharts, and is fully responsive (sticky table columns, stacking cards, stacked charts).
+
+---
+Task ID: MULTI-LANGUAGE
+Agent: i18n Engineer (main)
+Task: Build Multi-Language Support (i18n) for the VoteWise platform — English, French, Yoruba, Hausa, Igbo.
+
+Work Log:
+- **Created `src/lib/i18n.ts`** (~2,970 lines):
+  - `Language` type: `'en' | 'fr' | 'yo' | 'ha' | 'ig'`.
+  - `LanguageMeta` + `LANGUAGES` array (flag emoji 🇬🇧🇫🇷🇳🇬, endonym,
+    English name, BCP-47 locale).
+  - `Translations` interface — 9 namespaces (`common`, `home`, `auth`,
+    `workspace`, `election`, `voting`, `voterPicker`, `publicResults`,
+    `verification`, `voterStatus`, `errors`) with ~200 keys total.
+  - Complete dictionaries for all 5 languages:
+    - **English** — full baseline.
+    - **French** — complete with proper accents.
+    - **Yoruba** — complete with diacritics (à, é, è, ì, ò, ṣ, ó).
+    - **Hausa** — complete with diacritics (ɓ, ɗ, ƙ, ƴ).
+    - **Igbo** — complete with diacritics (ṅ, Ọ, ụ, ị, ụ).
+  - `useTranslation()` Zustand-based hook — reads `language` from the
+    store, returns `{ t, language }`. `t('home.heroTitleLine1')`
+    resolves dotted keys; falls back to English then to the key itself.
+  - `formatDate(date, lang)` + `formatRelativeTime(date, lang)` —
+    locale-aware formatting via `Intl.DateTimeFormat` /
+    `Intl.RelativeTimeFormat` (e.g. `fr-FR`, `yo-NG`, `ig-NG`).
+
+- **Updated `src/lib/store.ts`**:
+  - Added `language: Language` (default `'en'`) and
+    `setLanguage(lang)` to the store interface + initial state.
+  - `setLanguage` writes to `localStorage['votewise.language']`.
+  - `hydrate()` reads the stored language on mount.
+
+- **Created `src/components/votewise/language-switcher.tsx`** (~100 lines):
+  - Compact shadcn `DropdownMenu` trigger showing 🌐 globe + current
+    flag + name.
+  - Lists all 5 languages with flag + endonym + English name.
+  - On select: `setLanguage(lang)` + toast confirmation in the NEW
+    language.
+  - Hydration-safe — relies on the store's `language` default of
+    `'en'` (same on server and client) so the trigger renders
+    identically before and after mount.
+
+- **Updated `src/components/votewise/shared.tsx`** (NavBar + Footer):
+  - Imported `LanguageSwitcher` and `useTranslation`.
+  - NavBar: moved `NAV_ITEMS` inside the component so labels re-render
+    with the current language; localized all 7 nav labels + auth
+    buttons.
+  - Added `<LanguageSwitcher />` to the desktop nav (between
+    `VoterNotifications` and `ThemeToggle`) and to the mobile menu.
+  - Footer: localized trust-bar labels, principle/section titles, and
+    copyright blurb.
+  - `Countdown` component: localized "Voting opens in / closes in /
+    has ended" labels.
+
+- **Updated `src/components/votewise/home.tsx`** (~1,530 lines, ~50
+  string replacements):
+  - Added `useTranslation` to `HomeView`, `VerifyElectionSection`,
+    `VoterStatusSection`.
+  - Translated all major sections: hero, trust indicators, how-it-
+    works, org types, products, features, hierarchy, roles, principles,
+    security, pricing, testimonials, organizations directory, demo
+    request form, live demo card, docs, contact, signup CTA, verify-
+    receipt, verify-election, voter-status.
+
+- **Updated high-visibility components**:
+  - `voter-picker.tsx` — title, subtitle, demo-mode alert, eligible-
+    voters card, voted badge, back-to-election button.
+  - `ballot-view.tsx` — loading / error / submitting states, top bar
+    (online/offline/auto-saved), election header, progress bar, per-
+    position cards, NOTA, review card, sticky submit bar, final
+    confirmation dialog, VoteSuccess receipts screen.
+  - `public-results.tsx` — loading / error states, header badges,
+    opened/closes/last-vote labels, time-remaining, stat cards,
+    turnout progress, candidate results, hidden-results notice,
+    cryptographic verification card, footer security blurb, per-
+    position winner badges, VerificationField copy button.
+  - `verification-portal.tsx` — loading / unavailable states,
+    HeaderCard badges + verification status, VerificationStatusBanner
+    titles + descriptions.
+  - `voter-status-portal.tsx` — portal title, hero, search card,
+    privacy-guarantees card, found/not-found results, election rows,
+    receipt rows, timeline.
+
+- **Verification**:
+  - Caught and fixed an unterminated-string-literal parse error in
+    the Igbo dictionary (one closing quote was `"` instead of `'`).
+  - Caught and fixed a `react-hooks/set-state-in-effect` ESLint error
+    in `language-switcher.tsx` — removed the `mounted` state entirely
+    (the store's `language` default of `'en'` is hydration-safe by
+    construction).
+  - **Lint**: `cd /home/z/my-project && bun run lint` → **0 errors,
+    0 warnings** (exit 0).
+
+Stage Summary:
+- ✅ **5 fully-translated languages** — English, French, Yoruba, Hausa,
+  Igbo. All UI namespaces translated with proper diacritics.
+- ✅ **Zustand-based `useTranslation` hook** — reads from the store,
+  falls back to English then to the key.
+- ✅ **Language state persisted** to localStorage (`votewise.language`)
+  and loaded on app init via `hydrate()`.
+- ✅ **Compact language switcher** in the navbar (desktop + mobile
+  menu) with flag + name + toast confirmation in the new language.
+- ✅ **Homepage fully translated** — every major section.
+- ✅ **High-visibility components translated** — ballot-view, voter-
+  picker, public-results, verification-portal, voter-status-portal.
+- ✅ **Locale-aware date formatting** — `formatDate` and
+  `formatRelativeTime` use `Intl.DateTimeFormat` /
+  `Intl.RelativeTimeFormat` with the correct BCP-47 locale.
+- ✅ **i18n.ts kept SEPARATE from terminology.ts** — i18n handles
+  language translation; terminology handles org-specific labels
+  (University/Company/Church). Orthogonal: an Igbo-speaking user in
+  a church org sees "Ụka" from terminology + "Nyochaa Vootu Gị"
+  (Verify Your Vote) from i18n.
+- ✅ **Lint: 0 errors, 0 warnings.**
+- **Next-phase recommendations**: (1) translate remaining components
+  (workspace dashboard, election workspace tabs, voter portal,
+  onboarding wizard, signup flow); (2) add `lang` attribute to
+  `<html>` that updates with the selected language for screen
+  readers; (3) add language-aware number/currency formatting;
+  (4) persist language choice server-side per user; (5) add a
+  crowdsourcing tool for native speakers to improve the
+  Yoruba/Hausa/Igbo dictionaries.

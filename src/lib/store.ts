@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { getVoterToken, setVoterToken as persistVoterToken } from '@/lib/api'
+import type { Language } from '@/lib/i18n'
 
 export type View =
   | 'home'
@@ -63,7 +64,34 @@ interface AppState {
   receiptChannel: string | null
   setReceiptChannel: (c: string | null) => void
 
+  // i18n — current UI language (persisted to localStorage under
+  // 'votewise.language'). Defaults to 'en'. Loaded on init by hydrate().
+  language: Language
+  setLanguage: (lang: Language) => void
+
   hydrate: () => void
+}
+
+const LANGUAGE_STORAGE_KEY = 'votewise.language'
+
+function readStoredLanguage(): Language {
+  if (typeof window === 'undefined') return 'en'
+  try {
+    const v = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
+    if (v === 'en' || v === 'fr' || v === 'yo' || v === 'ha' || v === 'ig') return v
+  } catch {
+    // localStorage may be unavailable (private mode, sandbox) — fall back to default.
+  }
+  return 'en'
+}
+
+function writeStoredLanguage(lang: Language) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+  } catch {
+    // ignore write failures (private mode, sandbox)
+  }
 }
 
 export const useApp = create<AppState>((set) => ({
@@ -93,9 +121,16 @@ export const useApp = create<AppState>((set) => ({
   receiptChannel: null,
   setReceiptChannel: (c) => set({ receiptChannel: c }),
 
+  language: 'en',
+  setLanguage: (lang) => {
+    writeStoredLanguage(lang)
+    set({ language: lang })
+  },
+
   hydrate: () => {
     set({
       voterToken: getVoterToken(),
+      language: readStoredLanguage(),
     })
   },
 }))

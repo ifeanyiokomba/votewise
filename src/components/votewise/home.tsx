@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useApp } from '@/lib/store'
+import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { Reveal } from '@/components/votewise/faq'
 import { toast } from 'sonner'
@@ -208,6 +209,7 @@ const DOC_LINKS = [
 
 export function HomeView() {
   const { setView, live } = useApp()
+  const { t } = useTranslation()
   const [orgs, setOrgs] = useState<any[]>([])
   const [demoForm, setDemoForm] = useState({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
   const [demoBusy, setDemoBusy] = useState(false)
@@ -274,36 +276,35 @@ export function HomeView() {
           <div className="flex flex-col justify-center">
             <Badge variant="secondary" className="mb-4 w-fit gap-1.5">
               <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              Africa&apos;s Election Management Platform
+              {t('home.heroBadge')}
             </Badge>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
-              Run Secure, Transparent &amp;<br />
-              <span className="text-primary">Real-Time Elections</span><br />
-              <span className="text-accent">for Any Organization.</span>
+              {t('home.heroTitleLine1')}<br />
+              <span className="text-primary">{t('home.heroTitleLine2')}</span><br />
+              <span className="text-accent">{t('home.heroTitleLine3')}</span>
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              From universities and associations to companies, churches and government agencies,
-              VoteWise helps you organize trusted elections in minutes.
+              {t('home.heroSubtitle')}
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={() => setView('signup')} className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Sparkles className="h-5 w-5" /> Register Organization
+                <Sparkles className="h-5 w-5" /> {t('home.registerOrg')}
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })} className="gap-2">
-                <Eye className="h-5 w-5" /> Request Live Demo
+                <Eye className="h-5 w-5" /> {t('home.requestDemo')}
               </Button>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-primary" /> Encrypted voting</span>
-              <span className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-primary" /> Receipt-anchored</span>
-              <span className="flex items-center gap-1.5"><FileCheck2 className="h-3.5 w-3.5 text-primary" /> Full audit trail</span>
-              <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-primary" /> Any organization</span>
+              <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-primary" /> {t('home.encryptedVoting')}</span>
+              <span className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-primary" /> {t('home.receiptAnchored')}</span>
+              <span className="flex items-center gap-1.5"><FileCheck2 className="h-3.5 w-3.5 text-primary" /> {t('home.fullAuditTrail')}</span>
+              <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-primary" /> {t('home.anyOrg')}</span>
             </div>
             {/* Live platform stats */}
             <div className="mt-8 grid grid-cols-3 gap-4">
-              <HeroStat value={orgs.length} label="Organizations" />
-              <HeroStat value={20} suffix="+" label="Org Types" />
-              <HeroStat value={6} label="User Roles" />
+              <HeroStat value={orgs.length} label={t('home.statOrganizations')} />
+              <HeroStat value={20} suffix="+" label={t('home.statOrgTypes')} />
+              <HeroStat value={6} label={t('home.statUserRoles')} />
             </div>
           </div>
 
@@ -327,8 +328,8 @@ export function HomeView() {
                     <Shield className="h-4 w-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold">Trusted &amp; Transparent</div>
-                    <div className="text-[10px] text-muted-foreground">Every vote verifiable. Every action audited.</div>
+                    <div className="text-xs font-semibold">{t('home.trustedTransparent')}</div>
+                    <div className="text-[10px] text-muted-foreground">{t('home.trustedTransparentSub')}</div>
                   </div>
                 </div>
               </CardContent>
@@ -350,16 +351,14 @@ export function HomeView() {
               className="space-y-4"
             >
               <Badge variant="secondary" className="gap-1">
-                <Shield className="h-3.5 w-3.5" /> Receipt-Anchored Verification
+                <Shield className="h-3.5 w-3.5" /> {t('home.receiptVerification')}
               </Badge>
               <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                Verify your vote was{' '}
-                <span className="text-primary">recorded &amp; counted.</span>
+                {t('home.verifyYourVoteTitle')}{' '}
+                <span className="text-primary">{t('home.verifyYourVoteTitleHighlight')}</span>
               </h2>
               <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-                Every voter receives a unique receipt code after casting their ballot.
-                Enter it below to confirm your vote was recorded — without revealing
-                which candidate you chose. That&apos;s receipt-anchored anonymity.
+                {t('home.verifyYourVoteDesc')}
               </p>
               <ul className="space-y-2.5 pt-1">
                 <li className="flex items-start gap-2.5 text-sm">
@@ -367,8 +366,8 @@ export function HomeView() {
                     <Shield className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong className="text-foreground">Ballot secrecy.</strong>{' '}
-                    Your choice is encrypted forever — only the receipt is verifiable.
+                    <strong className="text-foreground">{t('home.ballotSecrecy')}</strong>{' '}
+                    {t('home.ballotSecrecyDesc')}
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5 text-sm">
@@ -376,8 +375,8 @@ export function HomeView() {
                     <BadgeCheck className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong className="text-foreground">Receipt-anchored.</strong>{' '}
-                    Prove you voted without ever revealing how.
+                    <strong className="text-foreground">{t('home.receiptAnchoredLabel')}</strong>{' '}
+                    {t('home.receiptAnchoredDesc')}
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5 text-sm">
@@ -385,8 +384,8 @@ export function HomeView() {
                     <Lock className="h-4 w-4" />
                   </span>
                   <span>
-                    <strong className="text-foreground">Tamper-evident.</strong>{' '}
-                    A hash-chained audit log catches any modification, anywhere.
+                    <strong className="text-foreground">{t('home.tamperEvident')}</strong>{' '}
+                    {t('home.tamperEvidentDesc')}
                   </span>
                 </li>
               </ul>
@@ -402,12 +401,12 @@ export function HomeView() {
               <Card className="votewise-card-glow">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 font-display text-lg">
-                    <BadgeCheck className="h-5 w-5 text-primary" /> Check Your Receipt
+                    <BadgeCheck className="h-5 w-5 text-primary" /> {t('home.checkYourReceipt')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="home-receipt">Receipt code</Label>
+                    <Label htmlFor="home-receipt">{t('home.receiptCode')}</Label>
                     <Input
                       id="home-receipt"
                       placeholder="VW-2026-XXXXXXXX"
@@ -419,8 +418,7 @@ export function HomeView() {
                       spellCheck={false}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Format: <code className="font-mono">VW-YYYY-XXXXXXXX</code>. Find it in your
-                      confirmation screen or email.
+                      {t('home.receiptCodeFormat')}
                     </p>
                   </div>
                   <Button
@@ -433,7 +431,7 @@ export function HomeView() {
                     ) : (
                       <Shield className="h-4 w-4" />
                     )}
-                    Verify Receipt
+                    {t('home.verifyReceipt')}
                   </Button>
 
                   <AnimatePresence mode="wait">
@@ -449,7 +447,7 @@ export function HomeView() {
                           <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                             <AlertTitle className="text-emerald-800">
-                              Vote confirmed &amp; counted
+                              {t('home.voteConfirmed')}
                             </AlertTitle>
                             <AlertDescription className="text-emerald-700">
                               {verifyResult.electionName && (
@@ -484,10 +482,10 @@ export function HomeView() {
                         ) : (
                           <Alert variant="destructive">
                             <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Receipt not found</AlertTitle>
+                            <AlertTitle>{t('home.receiptNotFound')}</AlertTitle>
                             <AlertDescription>
                               {verifyResult.message ||
-                                'This receipt code does not match any recorded vote.'}
+                                t('home.receiptNotFound')}
                             </AlertDescription>
                           </Alert>
                         )}
@@ -496,14 +494,14 @@ export function HomeView() {
                   </AnimatePresence>
 
                   <div className="flex items-center justify-between border-t border-border/60 pt-3">
-                    <p className="text-xs text-muted-foreground">Need the full view?</p>
+                    <p className="text-xs text-muted-foreground">{t('home.needFullView')}</p>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setView('verify-receipt')}
                       className="gap-1.5"
                     >
-                      Open full page <ArrowRight className="h-3.5 w-3.5" />
+                      {t('home.openFullPage')} <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </CardContent>
@@ -524,26 +522,26 @@ export function HomeView() {
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
             {[
-              { icon: ScrollText, label: 'End-to-End Audit Trails' },
-              { icon: TrendingUp, label: 'Live Result Dashboard' },
-              { icon: Shield, label: 'Multi-Factor Authentication' },
-              { icon: KeyRound, label: 'OTP Verified Voting' },
-              { icon: Building2, label: 'White-Label Portal' },
-              { icon: Activity, label: 'Real-Time Monitoring' },
-              { icon: Lock, label: 'Enterprise Security' },
-            ].map((t) => (
-              <div key={t.label} className="flex items-center gap-2">
+              { icon: ScrollText, label: t('home.trustAudit') },
+              { icon: TrendingUp, label: t('home.trustLiveDashboard') },
+              { icon: Shield, label: t('home.trustMFA') },
+              { icon: KeyRound, label: t('home.trustOTP') },
+              { icon: Building2, label: t('home.trustWhiteLabel') },
+              { icon: Activity, label: t('home.trustMonitoring') },
+              { icon: Lock, label: t('home.trustSecurity') },
+            ].map((tr) => (
+              <div key={tr.label} className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span className="text-xs font-medium">{t.label}</span>
+                <span className="text-xs font-medium">{tr.label}</span>
               </div>
             ))}
           </div>
           <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-6 sm:grid-cols-4">
             {[
-              { value: '100+', label: 'Organizations' },
-              { value: '250+', label: 'Elections Hosted' },
-              { value: '500,000+', label: 'Votes Cast' },
-              { value: '99.98%', label: 'Platform Uptime' },
+              { value: '100+', label: t('home.statOrgsCount') },
+              { value: '250+', label: t('home.statElectionsHosted') },
+              { value: '500,000+', label: t('home.statVotesCast') },
+              { value: '99.98%', label: t('home.statUptime') },
             ].map((m) => (
               <div key={m.label} className="text-center">
                 <div className="font-display text-2xl font-bold text-primary sm:text-3xl">{m.value}</div>
@@ -558,17 +556,17 @@ export function HomeView() {
       <section id="how" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-10 text-center">
-            <Badge variant="secondary" className="mb-2">4 Simple Steps</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">How VoteWise Works</h2>
-            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">From registration to live election in minutes.</p>
+            <Badge variant="secondary" className="mb-2">{t('home.howBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.howTitle')}</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">{t('home.howSubtitle')}</p>
           </div>
         </Reveal>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {[
-            { icon: Building2, title: '1. Create Organization', desc: 'Register your organization, choose a subdomain, and set up branding in under 5 minutes.' },
-            { icon: Vote, title: '2. Setup Election', desc: 'Create an election, add positions and candidates, configure voting window.' },
-            { icon: Users, title: '3. Invite Voters', desc: 'Import your voter register via CSV or manual entry. Dynamic fields adapt to your org type.' },
-            { icon: Zap, title: '4. Go Live', desc: 'When all readiness checks pass, click Go Live. Your election opens for voting instantly.' },
+            { icon: Building2, title: t('home.howStep1Title'), desc: t('home.howStep1Desc') },
+            { icon: Vote, title: t('home.howStep2Title'), desc: t('home.howStep2Desc') },
+            { icon: Users, title: t('home.howStep3Title'), desc: t('home.howStep3Desc') },
+            { icon: Zap, title: t('home.howStep4Title'), desc: t('home.howStep4Desc') },
           ].map((s, i) => (
             <Reveal key={s.title} delay={i * 100}>
               <Card className="votewise-card-glow relative h-full overflow-hidden">
@@ -590,10 +588,10 @@ export function HomeView() {
         <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
           <Reveal>
             <div className="mb-6 text-center">
-              <Badge variant="secondary" className="mb-2 gap-1"><Building2 className="h-3.5 w-3.5" /> Built for ANY Organization</Badge>
-              <h2 className="font-display text-2xl font-bold sm:text-3xl">The system never knows or cares which one it is.</h2>
+              <Badge variant="secondary" className="mb-2 gap-1"><Building2 className="h-3.5 w-3.5" /> {t('home.orgsBuiltForAny')}</Badge>
+              <h2 className="font-display text-2xl font-bold sm:text-3xl">{t('home.orgsTitle')}</h2>
               <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">
-                They&apos;re all simply <strong className="text-foreground">Organizations</strong>. VoteWise works for every one of them.
+                {t('home.orgsSubtitle')}
               </p>
             </div>
           </Reveal>
@@ -614,10 +612,10 @@ export function HomeView() {
       <section id="products" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-10 text-center">
-            <Badge variant="secondary" className="mb-2 gap-1"><Layers className="h-3.5 w-3.5" /> Three Products</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">The VoteWise Platform</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Layers className="h-3.5 w-3.5" /> {t('home.productsBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.productsTitle')}</h2>
             <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-              Three distinct products, one trusted platform. Clear separation of concerns.
+              {t('home.productsSubtitle')}
             </p>
           </div>
         </Reveal>
@@ -645,10 +643,10 @@ export function HomeView() {
       <section id="features" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-10 text-center">
-            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> Platform Features</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Everything You Need to Run a Secure Election</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> {t('home.featuresBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.featuresTitle')}</h2>
             <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-              A complete election management toolkit — from voter registration to certified results.
+              {t('home.featuresSubtitle')}
             </p>
           </div>
         </Reveal>
@@ -677,12 +675,11 @@ export function HomeView() {
           <Reveal>
             <div className="mb-8 text-center">
               <Badge className="mb-2 gap-1 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/20">
-                <Sparkles className="h-3.5 w-3.5" /> The Biggest Architectural Shift
+                <Sparkles className="h-3.5 w-3.5" /> {t('home.hierarchyBadge')}
               </Badge>
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">A Universal Hierarchy</h2>
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.hierarchyTitle')}</h2>
               <p className="mx-auto mt-2 max-w-3xl text-sm text-primary-foreground/80">
-                Not <em>University → Faculty → Department → Student → Election</em>. That only works for one org type.
-                VoteWise uses a generic hierarchy that works for <strong>every</strong> organization.
+                {t('home.hierarchySubtitle')}
               </p>
             </div>
           </Reveal>
@@ -704,7 +701,7 @@ export function HomeView() {
           </div>
           <Reveal delay={600}>
             <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-primary-foreground/20 bg-primary-foreground/5 p-4 text-center text-sm text-primary-foreground/80">
-              <strong className="text-primary-foreground">This single change makes the platform universal.</strong> A university configures its terminology as Organization=University, Workspace=Faculty, Voter Group=Department. A church configures Organization=Church, Workspace=Parish, Voter Group=Fellowship. The system treats them identically.
+              {t('home.hierarchyNote')}
             </div>
           </Reveal>
         </div>
@@ -714,10 +711,10 @@ export function HomeView() {
       <section id="roles" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-10 text-center">
-            <Badge variant="secondary" className="mb-2 gap-1"><Users className="h-3.5 w-3.5" /> Six User Roles</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Exactly Six. Not Twenty. Not Fifty.</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Users className="h-3.5 w-3.5" /> {t('home.rolesBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.rolesTitle')}</h2>
             <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-              Every person on VoteWise fits one of these six categories. Clear permissions, clear boundaries.
+              {t('home.rolesSubtitle')}
             </p>
           </div>
         </Reveal>
@@ -738,7 +735,7 @@ export function HomeView() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Can</div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600">{t('home.rolesCan')}</div>
                     <ul className="space-y-1">
                       {r.can.map((c) => (
                         <li key={c} className="flex items-start gap-1.5 text-xs text-muted-foreground">
@@ -749,7 +746,7 @@ export function HomeView() {
                   </div>
                   {r.cannot[0] !== '—' && (
                     <div>
-                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-destructive">Cannot</div>
+                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-destructive">{t('home.rolesCannot')}</div>
                       <ul className="space-y-1">
                         {r.cannot.map((c) => (
                           <li key={c} className="flex items-start gap-1.5 text-xs text-muted-foreground">
@@ -771,10 +768,10 @@ export function HomeView() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
           <Reveal>
             <div className="mb-10 text-center">
-              <Badge variant="secondary" className="mb-2 gap-1"><Shield className="h-3.5 w-3.5" /> Six Platform Principles</Badge>
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Every Feature Must Satisfy These</h2>
+              <Badge variant="secondary" className="mb-2 gap-1"><Shield className="h-3.5 w-3.5" /> {t('home.principlesBadge')}</Badge>
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.principlesTitle')}</h2>
               <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-                If a design decision can&apos;t answer &ldquo;Can this work for ANY organization?&rdquo; with yes, we don&apos;t build it.
+                {t('home.principlesSubtitle')}
               </p>
             </div>
           </Reveal>
@@ -803,10 +800,10 @@ export function HomeView() {
       <section id="security" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-10 text-center">
-            <Badge variant="secondary" className="mb-2 gap-1"><Lock className="h-3.5 w-3.5" /> Security First</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Built for Trust</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Lock className="h-3.5 w-3.5" /> {t('home.securityBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.securityTitle')}</h2>
             <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-              Every action produces an audit trail. Every vote is encrypted. Every result is verifiable.
+              {t('home.securitySubtitle')}
             </p>
           </div>
         </Reveal>
@@ -832,10 +829,10 @@ export function HomeView() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
           <Reveal>
             <div className="mb-10 text-center">
-              <Badge variant="secondary" className="mb-2 gap-1"><DollarSign className="h-3.5 w-3.5" /> Simple Pricing</Badge>
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Pay Only for What You Use</h2>
+              <Badge variant="secondary" className="mb-2 gap-1"><DollarSign className="h-3.5 w-3.5" /> {t('home.pricingBadge')}</Badge>
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.pricingTitle')}</h2>
               <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-                Start free. Pay to go live. No hidden fees. Negotiation available for large organizations.
+                {t('home.pricingSubtitle')}
               </p>
             </div>
           </Reveal>
@@ -845,7 +842,7 @@ export function HomeView() {
                 <Card className={cn('h-full', p.highlight && 'ring-2 ring-primary')}>
                   {p.highlight && (
                     <div className="rounded-t-xl bg-primary px-6 py-1.5 text-center text-xs font-semibold text-primary-foreground">
-                      Most Popular
+                      {t('home.pricingMostPopular')}
                     </div>
                   )}
                   <CardContent className="p-6">
@@ -881,10 +878,10 @@ export function HomeView() {
       <section id="testimonials" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-10 text-center">
-            <Badge variant="secondary" className="mb-2 gap-1"><Star className="h-3.5 w-3.5" /> Testimonials</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Trusted by Organizations Across Africa</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Star className="h-3.5 w-3.5" /> {t('home.testimonialsBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.testimonialsTitle')}</h2>
             <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-              From professional bodies to cooperatives to universities — organizations run their elections on VoteWise.
+              {t('home.testimonialsSubtitle')}
             </p>
           </div>
         </Reveal>
@@ -921,10 +918,10 @@ export function HomeView() {
           <Reveal>
             <div className="mb-8 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
               <div>
-                <Badge variant="secondary" className="mb-2 gap-1"><Globe className="h-3.5 w-3.5" /> Live Directory</Badge>
-                <h2 className="font-display text-3xl font-bold sm:text-4xl">Organizations on VoteWise</h2>
+                <Badge variant="secondary" className="mb-2 gap-1"><Globe className="h-3.5 w-3.5" /> {t('home.orgsDirectoryBadge')}</Badge>
+                <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.orgsDirectoryTitle')}</h2>
                 <p className="mt-2 max-w-2xl text-muted-foreground">
-                  Real organizations already running their elections on VoteWise.
+                  {t('home.orgsDirectorySubtitle')}
                 </p>
               </div>
             </div>
@@ -969,55 +966,55 @@ export function HomeView() {
           <Reveal>
             <Card className="votewise-card-glow h-full">
               <CardHeader>
-                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Mail className="h-3.5 w-3.5" /> Demo Request</Badge>
-                <CardTitle className="font-display text-2xl">Request a Personalized Demo</CardTitle>
+                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.demoBadge')}</Badge>
+                <CardTitle className="font-display text-2xl">{t('home.demoTitle')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Tell us about your organization and our team will set up a tailored demo within 24 hours.
+                  {t('home.demoSubtitle')}
                 </p>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-name">Contact Person <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="demo-name">{t('home.demoContactPerson')} <span className="text-destructive">*</span></Label>
                     <Input id="demo-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-email">Email <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="demo-email">{t('home.demoEmail')} <span className="text-destructive">*</span></Label>
                     <Input id="demo-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-phone">Phone</Label>
+                    <Label htmlFor="demo-phone">{t('home.demoPhone')}</Label>
                     <Input id="demo-phone" value={demoForm.phone} onChange={(e) => setDemoForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+234 801 234 5678" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-orgtype">Organization Type</Label>
+                    <Label htmlFor="demo-orgtype">{t('home.demoOrgType')}</Label>
                     <Input list="orgtypes-demo" id="demo-orgtype" value={demoForm.orgType} onChange={(e) => setDemoForm((f) => ({ ...f, orgType: e.target.value }))} placeholder="University" />
                     <datalist id="orgtypes-demo"><option>University</option><option>Company</option><option>Church</option><option>Association</option><option>Government</option><option>NGO</option><option>Cooperative</option><option>Other</option></datalist>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="demo-org">Organization Name <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="demo-org">{t('home.demoOrgName')} <span className="text-destructive">*</span></Label>
                   <Input id="demo-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="e.g. Lagos Medical Association" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-voters">Estimated Voters</Label>
+                    <Label htmlFor="demo-voters">{t('home.demoEstimatedVoters')}</Label>
                     <Input id="demo-voters" type="number" value={demoForm.estimatedVoters} onChange={(e) => setDemoForm((f) => ({ ...f, estimatedVoters: e.target.value }))} placeholder="5000" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-date">Preferred Date</Label>
+                    <Label htmlFor="demo-date">{t('home.demoPreferredDate')}</Label>
                     <Input id="demo-date" type="date" value={demoForm.preferredDate} onChange={(e) => setDemoForm((f) => ({ ...f, preferredDate: e.target.value }))} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="demo-msg">Message (optional)</Label>
+                  <Label htmlFor="demo-msg">{t('home.demoMessage')}</Label>
                   <Textarea id="demo-msg" rows={2} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
                 </div>
                 <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
                   {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  {demoBusy ? 'Sending…' : 'Request Demo'}
+                  {demoBusy ? t('home.demoSending') : t('home.demoRequestBtn')}
                 </Button>
-                <p className="text-center text-xs text-muted-foreground">No commitment required. We&apos;ll never share your details.</p>
+                <p className="text-center text-xs text-muted-foreground">{t('home.demoNoCommitment')}</p>
               </CardContent>
             </Card>
           </Reveal>
@@ -1025,34 +1022,34 @@ export function HomeView() {
           <Reveal delay={120}>
             <Card className="votewise-card-glow h-full overflow-hidden">
               <CardHeader>
-                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Play className="h-3.5 w-3.5" /> Live Demo</Badge>
-                <CardTitle className="font-display text-2xl">See It In Action</CardTitle>
+                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Play className="h-3.5 w-3.5" /> {t('home.liveDemoBadge')}</Badge>
+                <CardTitle className="font-display text-2xl">{t('home.liveDemoTitle')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Explore a live demo election with real encrypted votes, live results, and the full voter journey. No registration required.
+                  {t('home.liveDemoSubtitle')}
                 </p>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Try the voter journey</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.tryVoterJourney')}</div>
                   <div className="mt-2 flex flex-col gap-2">
                     <Button onClick={() => setView('verify')} className="w-full gap-2">
-                      <Vote className="h-5 w-5" /> Try Voting Now
+                      <Vote className="h-5 w-5" /> {t('home.tryVotingNow')}
                     </Button>
                     <div className="grid grid-cols-2 gap-2">
                       <Button variant="outline" size="sm" onClick={() => setView('about')} className="gap-1.5">
-                        <Building2 className="h-4 w-4" /> About
+                        <Building2 className="h-4 w-4" /> {t('home.about')}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setView('guide')} className="gap-1.5">
-                        <BookOpen className="h-4 w-4" /> Guide
+                        <BookOpen className="h-4 w-4" /> {t('home.guide')}
                       </Button>
                     </div>
                   </div>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">View public results</div>
-                  <p className="mt-1 text-xs text-muted-foreground">Live results, turnout maps, and certified certificates — all publicly viewable.</p>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.viewPublicResults')}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{t('home.orgsDirectorySubtitle')}</p>
                   <Button variant="outline" size="sm" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="mt-2 w-full gap-1.5">
-                    <Eye className="h-4 w-4" /> View Live Results
+                    <Eye className="h-4 w-4" /> {t('home.viewLiveResults')}
                   </Button>
                 </div>
               </CardContent>
@@ -1066,10 +1063,10 @@ export function HomeView() {
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
           <Reveal>
             <div className="mb-10 text-center">
-              <Badge variant="secondary" className="mb-2 gap-1"><FileText className="h-3.5 w-3.5" /> Documentation</Badge>
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">Read the Docs</h2>
+              <Badge variant="secondary" className="mb-2 gap-1"><FileText className="h-3.5 w-3.5" /> {t('home.docsBadge')}</Badge>
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.docsTitle')}</h2>
               <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-                Everything you need to understand, trust, and use VoteWise — for voters, admins, and observers.
+                {t('home.docsSubtitle')}
               </p>
             </div>
           </Reveal>
@@ -1092,7 +1089,7 @@ export function HomeView() {
                       <h3 className="mt-3 font-display text-sm font-semibold">{d.title}</h3>
                       <p className="mt-1.5 text-xs text-muted-foreground">{d.desc}</p>
                       <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary">
-                        Read more <ArrowRight className="h-3 w-3" />
+                        {t('home.readMore')} <ArrowRight className="h-3 w-3" />
                       </div>
                     </CardContent>
                   </Card>
@@ -1107,10 +1104,10 @@ export function HomeView() {
       <section id="contact" className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 scroll-mt-20">
         <Reveal>
           <div className="mb-8 text-center">
-            <Badge variant="secondary" className="mb-2 gap-1"><Mail className="h-3.5 w-3.5" /> Contact</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Get In Touch</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.contactBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.contactTitle')}</h2>
             <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
-              Questions? Partnerships? Press? We&apos;d love to hear from you.
+              {t('home.contactSubtitle')}
             </p>
           </div>
         </Reveal>
@@ -1119,25 +1116,25 @@ export function HomeView() {
             <CardContent className="space-y-3 p-6">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="contact-name">Your Name</Label>
+                  <Label htmlFor="contact-name">{t('home.contactName')}</Label>
                   <Input id="contact-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="contact-email">Email</Label>
+                  <Label htmlFor="contact-email">{t('home.demoEmail')}</Label>
                   <Input id="contact-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contact-org">Organization (optional)</Label>
+                <Label htmlFor="contact-org">{t('home.contactOrgOptional')}</Label>
                 <Input id="contact-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="Your organization" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contact-msg">Message</Label>
+                <Label htmlFor="contact-msg">{t('home.contactMessage')}</Label>
                 <Textarea id="contact-msg" rows={4} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="How can we help?" />
               </div>
               <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
                 {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {demoBusy ? 'Sending…' : 'Send Message'}
+                {demoBusy ? t('home.contactSending') : t('home.contactSend')}
               </Button>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.ng</span>
@@ -1152,18 +1149,17 @@ export function HomeView() {
       <section className="border-t border-border/60 bg-gradient-to-br from-accent/10 via-primary/5 to-transparent">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center">
           <div>
-            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> Simple Onboarding</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Set Up Your Election in Under 5 Minutes</h2>
+            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> {t('home.signupBadge')}</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.signupTitle')}</h2>
             <p className="mt-2 max-w-lg text-muted-foreground">
-              Register your organization, configure your terminology, and launch your first election.
-              No technical expertise required. No hidden complexity.
+              {t('home.signupSubtitle')}
             </p>
             <div className="mt-4 space-y-1.5">
               {[
-                'Works for any organization type',
-                'Configure your own terminology (Faculty / Branch / Parish / Unit)',
-                'Custom branding with your logo & colors',
-                'Pay only when you go live',
+                t('home.signupFeature1'),
+                t('home.signupFeature2'),
+                t('home.signupFeature3'),
+                t('home.signupFeature4'),
               ].map((f) => (
                 <div key={f} className="flex items-center gap-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
@@ -1171,7 +1167,7 @@ export function HomeView() {
               ))}
             </div>
             <Button size="lg" onClick={() => setView('signup')} className="mt-6 gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
-              <Building2 className="h-5 w-5" /> Register Your Organization
+              <Building2 className="h-5 w-5" /> {t('home.registerYourOrg')}
             </Button>
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -1235,6 +1231,7 @@ function cn(...classes: (string | false | undefined | null)[]): string {
 // ---------------------------------------------------------------------------
 function VerifyElectionSection() {
   const [input, setInput] = useState('')
+  const { t } = useTranslation()
 
   function resolveElectionId(raw: string): string | null {
     const v = raw.trim()
@@ -1259,7 +1256,7 @@ function VerifyElectionSection() {
   function go() {
     const id = resolveElectionId(input)
     if (!id) {
-      toast.error('Enter an election ID or verification URL')
+      toast.error(t('home.electionIdOrUrl'))
       return
     }
     window.location.href = `/verify/${encodeURIComponent(id)}`
@@ -1278,18 +1275,14 @@ function VerifyElectionSection() {
             className="space-y-4"
           >
             <Badge variant="secondary" className="gap-1">
-              <ShieldCheck className="h-3.5 w-3.5" /> Public Verification Portal
+              <ShieldCheck className="h-3.5 w-3.5" /> {t('home.verifyElectionBadge')}
             </Badge>
             <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-              Verify an{' '}
-              <span className="text-primary">entire election.</span>
+              {t('home.verifyElectionTitle')}{' '}
+              <span className="text-primary">{t('home.verifyElectionTitleHighlight')}</span>
             </h2>
             <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-              Anyone — voters, journalists, observers, auditors — can
-              independently verify the integrity of a certified VoteWise
-              election. Check the audit hash, walk the hash-chained audit log,
-              and confirm the integrity signature. If anything was tampered
-              with, the portal will tell you.
+              {t('home.verifyElectionDesc')}
             </p>
             <ul className="space-y-2.5 pt-1">
               <li className="flex items-start gap-2.5 text-sm">
@@ -1297,9 +1290,8 @@ function VerifyElectionSection() {
                   <ShieldCheck className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">Certified only.</strong>{' '}
-                  Verification portals are available only after the electoral
-                  committee certifies the results.
+                  <strong className="text-foreground">{t('home.verifyElectionCertified')}</strong>{' '}
+                  {t('home.verifyElectionCertifiedDesc')}
                 </span>
               </li>
               <li className="flex items-start gap-2.5 text-sm">
@@ -1307,9 +1299,8 @@ function VerifyElectionSection() {
                   <Lock className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">Cryptographic.</strong>{' '}
-                  Recompute the SHA-256 audit hash and verify the HMAC-SHA256
-                  signature yourself.
+                  <strong className="text-foreground">{t('home.verifyElectionCrypto')}</strong>{' '}
+                  {t('home.verifyElectionCryptoDesc')}
                 </span>
               </li>
               <li className="flex items-start gap-2.5 text-sm">
@@ -1317,9 +1308,8 @@ function VerifyElectionSection() {
                   <ScrollText className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">Tamper-evident.</strong>{' '}
-                  The hash-chained audit log catches any modification —
-                  anywhere, anytime.
+                  <strong className="text-foreground">{t('home.verifyElectionTamper')}</strong>{' '}
+                  {t('home.verifyElectionTamperDesc')}
                 </span>
               </li>
             </ul>
@@ -1335,15 +1325,15 @@ function VerifyElectionSection() {
             <Card className="votewise-card-glow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-display text-lg">
-                  <ShieldCheck className="h-5 w-5 text-primary" /> Open a Verification Portal
+                  <ShieldCheck className="h-5 w-5 text-primary" /> {t('home.openVerificationPortal')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="verify-election-input">Election ID or URL</Label>
+                  <Label htmlFor="verify-election-input">{t('home.electionIdOrUrl')}</Label>
                   <Input
                     id="verify-election-input"
-                    placeholder="Paste an election ID or /verify/… link"
+                    placeholder={t('home.electionIdPlaceholder')}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') go() }}
@@ -1352,19 +1342,18 @@ function VerifyElectionSection() {
                     spellCheck={false}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Accepts an election ID, a <code className="font-mono">/verify/&lt;id&gt;</code>{' '}
-                    URL, or a <code className="font-mono">/results/&lt;id&gt;</code> URL.
+                    {t('home.electionIdHint')}
                   </p>
                 </div>
                 <Button onClick={go} disabled={!input.trim()} className="w-full gap-2">
-                  <ExternalLink className="h-4 w-4" /> Open Verification Portal
+                  <ExternalLink className="h-4 w-4" /> {t('home.openPortalBtn')}
                 </Button>
                 <div className="flex items-center justify-between border-t border-border/60 pt-3">
                   <p className="text-xs text-muted-foreground">
-                    Don&apos;t have an ID?
+                    {t('home.dontHaveId')}
                   </p>
                   <span className="text-xs text-muted-foreground">
-                    Ask the election organizers for the verification link.
+                    {t('home.askOrganizers')}
                   </span>
                 </div>
               </CardContent>
@@ -1382,6 +1371,7 @@ function VerifyElectionSection() {
 // receipts WITHOUT revealing vote choices. Links to /status.
 // ---------------------------------------------------------------------------
 function VoterStatusSection() {
+  const { t } = useTranslation()
   return (
     <section
       id="voter-status"
@@ -1398,18 +1388,14 @@ function VoterStatusSection() {
             className="space-y-4"
           >
             <Badge variant="secondary" className="gap-1">
-              <UserCheck className="h-3.5 w-3.5" /> Voter Self-Service
+              <UserCheck className="h-3.5 w-3.5" /> {t('home.voterStatusBadge')}
             </Badge>
             <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-              Check your{' '}
-              <span className="text-primary">voter status.</span>
+              {t('home.voterStatusTitle')}{' '}
+              <span className="text-primary">{t('home.voterStatusTitleHighlight')}</span>
             </h2>
             <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
-              Enter your email, phone, or voter ID and we&apos;ll show you
-              your registration status, the elections you&apos;re eligible
-              for, the receipts you hold, and your recent activity timeline —
-              all without ever revealing how you voted. Cross-organization:
-              one lookup, every org you&apos;re registered with.
+              {t('home.voterStatusDesc')}
             </p>
             <ul className="space-y-2.5 pt-1">
               <li className="flex items-start gap-2.5 text-sm">
@@ -1417,9 +1403,8 @@ function VoterStatusSection() {
                   <UserCheck className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">Registration status.</strong>{' '}
-                  Confirm you&apos;re ACTIVE and VERIFIED across all the
-                  organizations you&apos;re registered with.
+                  <strong className="text-foreground">{t('home.voterStatusRegistration')}</strong>{' '}
+                  {t('home.voterStatusRegistrationDesc')}
                 </span>
               </li>
               <li className="flex items-start gap-2.5 text-sm">
@@ -1427,9 +1412,8 @@ function VoterStatusSection() {
                   <Vote className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">Participation history.</strong>{' '}
-                  See which elections you&apos;ve voted in, which are live,
-                  and which are upcoming — with a one-tap &ldquo;Vote Now&rdquo; button.
+                  <strong className="text-foreground">{t('home.voterStatusParticipation')}</strong>{' '}
+                  {t('home.voterStatusParticipationDesc')}
                 </span>
               </li>
               <li className="flex items-start gap-2.5 text-sm">
@@ -1437,9 +1421,8 @@ function VoterStatusSection() {
                   <Lock className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">Ballot secrecy guaranteed.</strong>{' '}
-                  Receipt codes confirm your vote was counted but cannot
-                  reveal which candidate you selected.
+                  <strong className="text-foreground">{t('home.voterStatusSecrecy')}</strong>{' '}
+                  {t('home.voterStatusSecrecyDesc')}
                 </span>
               </li>
               <li className="flex items-start gap-2.5 text-sm">
@@ -1447,9 +1430,8 @@ function VoterStatusSection() {
                   <Hash className="h-4 w-4" />
                 </span>
                 <span>
-                  <strong className="text-foreground">One-way hashing.</strong>{' '}
-                  Your voter hash is one-way encrypted — no one can link a
-                  receipt back to your identity.
+                  <strong className="text-foreground">{t('home.voterStatusHashing')}</strong>{' '}
+                  {t('home.voterStatusHashingDesc')}
                 </span>
               </li>
             </ul>
@@ -1465,39 +1447,36 @@ function VoterStatusSection() {
             <Card className="votewise-card-glow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-display text-lg">
-                  <ShieldCheck className="h-5 w-5 text-primary" /> What you&apos;ll see
+                  <ShieldCheck className="h-5 w-5 text-primary" /> {t('home.whatYouWillSee')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <IdentifierChip icon={Mail} label="Email" />
-                  <IdentifierChip icon={Phone} label="Phone" />
-                  <IdentifierChip icon={Hash} label="Voter ID / Matric" />
-                  <IdentifierChip icon={UserCheck} label="Any identifier" />
+                  <IdentifierChip icon={Mail} label={t('home.identifierEmail')} />
+                  <IdentifierChip icon={Phone} label={t('home.identifierPhone')} />
+                  <IdentifierChip icon={Hash} label={t('home.identifierVoterId')} />
+                  <IdentifierChip icon={UserCheck} label={t('home.identifierAny')} />
                 </div>
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
                   <p className="flex items-start gap-2">
                     <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <span>
-                      Lookups are{' '}
-                      <strong>private and anonymous</strong> — no search
-                      history is kept, and your vote choices are{' '}
-                      <strong>never</strong> revealed.
+                      {t('home.voterStatusDesc')}
                     </span>
                   </p>
                 </div>
                 <Button asChild className="w-full gap-2">
                   <Link href="/status">
-                    <UserCheck className="h-4 w-4" /> Check Voter Status
+                    <UserCheck className="h-4 w-4" /> {t('home.checkVoterStatus')}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
                 <div className="flex items-center justify-between border-t border-border/60 pt-3">
                   <p className="text-xs text-muted-foreground">
-                    Don&apos;t have your voter ID?
+                    {t('home.dontHaveVoterId')}
                   </p>
                   <span className="text-xs text-muted-foreground">
-                    Use your registration email or phone instead.
+                    {t('home.useEmailOrPhone')}
                   </span>
                 </div>
               </CardContent>

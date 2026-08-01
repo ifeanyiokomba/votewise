@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/collapsible'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -123,6 +124,7 @@ function timeAgo(iso?: string | null): string {
 }
 
 export function PublicResultsView({ electionId }: { electionId: string }) {
+  const { t } = useTranslation()
   const [data, setData] = useState<PublicResults | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -200,9 +202,9 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
   async function onShare() {
     try {
       await navigator.clipboard.writeText(window.location.href)
-      toast.success('Link copied — share it with anyone!')
+      toast.success(t('publicResults.copyLink'))
     } catch {
-      toast.error('Could not copy link. Copy from the address bar.')
+      toast.error(t('publicResults.couldntLoadResults'))
     }
   }
 
@@ -211,7 +213,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
       <div className="grid min-h-[60vh] place-items-center px-4">
         <div className="flex flex-col items-center gap-3 text-center">
           <Loader2 className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading live results…</p>
+          <p className="text-sm text-muted-foreground">{t('publicResults.loadingResults')}</p>
         </div>
       </div>
     )
@@ -222,9 +224,9 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
       <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Couldn&apos;t load results</AlertTitle>
+          <AlertTitle>{t('publicResults.couldntLoadResults')}</AlertTitle>
           <AlertDescription>
-            {error}. Please check the link and try again.
+            {error}.
           </AlertDescription>
         </Alert>
       </div>
@@ -244,7 +246,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                 {statusBadge(data.status, data.isLive)}
                 {data.status && data.status.toUpperCase() === 'CERTIFIED' && (
                   <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                    <ShieldCheck className="h-3 w-3" /> Verified
+                    <ShieldCheck className="h-3 w-3" /> {t('publicResults.verified')}
                   </Badge>
                 )}
                 {data.organizationName && (
@@ -253,7 +255,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                   </Badge>
                 )}
                 <Badge variant="secondary" className="gap-1">
-                  <Radio className="h-3 w-3" /> Public Results
+                  <Radio className="h-3 w-3" /> {t('publicResults.publicResults')}
                 </Badge>
               </div>
               <h1 className="mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl">
@@ -267,16 +269,16 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5 text-primary" />
-                  Opened: {new Date(data.votingWindow.start).toLocaleString()}
+                  {t('publicResults.opened')} {new Date(data.votingWindow.start).toLocaleString()}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5 text-primary" />
-                  Closes: {new Date(data.votingWindow.end).toLocaleString()}
+                  {t('publicResults.closes')} {new Date(data.votingWindow.end).toLocaleString()}
                 </span>
                 {data.lastVoteAt && (
                   <span className="flex items-center gap-1">
                     <Vote className="h-3.5 w-3.5 text-primary" />
-                    Last vote: {timeAgo(data.lastVoteAt)}
+                    {t('publicResults.lastVote')} {timeAgo(data.lastVoteAt)}
                   </span>
                 )}
               </div>
@@ -294,7 +296,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                   {data.isLive && (
                     <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                   )}
-                  {data.isLive ? 'Time Remaining' : 'Voting Closed'}
+                  {data.isLive ? t('publicResults.timeRemaining') : t('publicResults.votingClosed')}
                 </div>
                 <div className={cn(
                   'mt-0.5 font-mono text-xl font-bold tabular-nums',
@@ -309,17 +311,17 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                     href={`/verify/${data.electionId}`}
                     className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
                   >
-                    <ShieldCheck className="h-4 w-4" /> View Full Verification
+                    <ShieldCheck className="h-4 w-4" /> {t('publicResults.viewFullVerification')}
                   </Link>
                 )}
                 <Button variant="outline" size="sm" onClick={onShare} className="gap-1.5">
-                  <Share2 className="h-4 w-4" /> Share
+                  <Share2 className="h-4 w-4" /> {t('publicResults.share')}
                 </Button>
                 <a
                   href="/"
                   className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  <BadgeCheck className="h-4 w-4" /> Verify Your Vote
+                  <BadgeCheck className="h-4 w-4" /> {t('publicResults.verifyYourVote')}
                 </a>
               </div>
             </div>
@@ -331,27 +333,27 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           icon={Users}
-          label="Eligible Voters"
+          label={t('publicResults.eligibleVoters')}
           value={data.eligibleVoters.toLocaleString()}
           tint="bg-emerald-50 text-emerald-700"
         />
         <StatCard
           icon={Vote}
-          label="Votes Cast"
+          label={t('publicResults.votesCast')}
           value={data.votesCast.toLocaleString()}
           tint="bg-primary/10 text-primary"
           pulse={pulse}
         />
         <StatCard
           icon={TrendingUp}
-          label="Turnout"
+          label={t('publicResults.turnout')}
           value={`${data.turnoutPct.toFixed(1)}%`}
           tint="bg-amber-50 text-amber-700"
         />
         <StatCard
           icon={Clock}
-          label="Time Remaining"
-          value={data.isLive ? formatDuration(remainingMs) : 'Closed'}
+          label={t('publicResults.timeRemaining')}
+          value={data.isLive ? formatDuration(remainingMs) : t('publicResults.votingClosed')}
           tint="bg-secondary text-secondary-foreground"
           mono
         />
@@ -361,7 +363,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
       <Card className="mt-4">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-primary" /> Turnout Progress
+            <TrendingUp className="h-4 w-4 text-primary" /> {t('publicResults.turnoutProgress')}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-2">
@@ -374,19 +376,19 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
           </motion.div>
           <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
             <span>
-              <strong className="text-foreground">{data.votesCast.toLocaleString()}</strong> of{' '}
-              <strong className="text-foreground">{data.eligibleVoters.toLocaleString()}</strong> voters
+              <strong className="text-foreground">{data.votesCast.toLocaleString()}</strong> {t('publicResults.of')}{' '}
+              <strong className="text-foreground">{data.eligibleVoters.toLocaleString()}</strong> {t('publicResults.voters')}
             </span>
             <span>
               <strong className="text-foreground">
                 {Math.max(0, data.eligibleVoters - data.votesCast).toLocaleString()}
               </strong>{' '}
-              remaining
+              {t('publicResults.remaining')}
             </span>
           </div>
           {data.lastVoteAt && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Last vote recorded {timeAgo(data.lastVoteAt)}
+              {t('publicResults.lastVoteRecorded')} {timeAgo(data.lastVoteAt)}
             </p>
           )}
         </CardContent>
@@ -397,17 +399,17 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
         <div className="mt-4 space-y-4">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-primary" />
-            <h2 className="font-display text-lg font-semibold">Live Candidate Results</h2>
+            <h2 className="font-display text-lg font-semibold">{t('publicResults.liveCandidateResults')}</h2>
             <Badge variant="secondary" className="ml-auto gap-1">
               <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              {data.isLive ? 'Updating live' : 'Final'}
+              {data.isLive ? t('publicResults.updatingLive') : t('publicResults.final')}
             </Badge>
           </div>
 
           {data.positions.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                No positions configured for this election.
+                {t('publicResults.noPositions')}
               </CardContent>
             </Card>
           ) : (
@@ -426,11 +428,10 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
             </div>
             <div>
               <h3 className="font-display text-sm font-semibold text-amber-900">
-                Results are hidden until voting closes.
+                {t('publicResults.resultsHidden')}
               </h3>
               <p className="mt-1 text-sm text-amber-800/80">
-                Showing aggregate turnout only. Candidate-level results will be published
-                once the election window closes and the tally is certified.
+                {t('publicResults.resultsHiddenDesc')}
               </p>
             </div>
           </CardContent>
@@ -445,7 +446,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
               <CardHeader className="cursor-pointer hover:bg-muted/40">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-sm">
-                    <Shield className="h-4 w-4 text-primary" /> Cryptographic Verification
+                    <Shield className="h-4 w-4 text-primary" /> {t('publicResults.cryptographicVerification')}
                   </CardTitle>
                   <ChevronDown
                     className={cn(
@@ -459,20 +460,17 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
             <CollapsibleContent>
               <CardContent className="space-y-4 pt-0">
                 <p className="text-xs text-muted-foreground">
-                  Every election in VoteWise produces a signed verification package.
-                  The audit hash is a SHA-256 of all vote records; the integrity signature
-                  is an HMAC-SHA256 over the tally. Independent observers can recompute
-                  these to prove the published results match the recorded ballots.
+                  {t('publicResults.cryptoDesc')}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <VerificationField
                     icon={Hash}
-                    label="Audit Hash (SHA-256)"
+                    label={t('publicResults.auditHash')}
                     value={data.verification.auditHash}
                   />
                   <VerificationField
                     icon={Lock}
-                    label="Integrity Signature (HMAC-SHA256)"
+                    label={t('publicResults.integritySignature')}
                     value={data.verification.integritySignature}
                   />
                 </div>
@@ -483,7 +481,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                       {data.verification.totalVotes.toLocaleString()}
                     </div>
                     <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                      Total Votes
+                      {t('publicResults.totalVotes')}
                     </div>
                   </div>
                   <div>
@@ -491,12 +489,12 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                       {data.verification.turnoutPct.toFixed(1)}%
                     </div>
                     <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                      Verified Turnout
+                      {t('publicResults.verifiedTurnout')}
                     </div>
                   </div>
                   <div className="col-span-2 sm:col-span-1">
                     <div className="flex h-full items-center justify-center gap-1.5 text-sm font-medium text-emerald-700">
-                      <CheckCircle2 className="h-5 w-5" /> Signature Valid
+                      <CheckCircle2 className="h-5 w-5" /> {t('publicResults.signatureValid')}
                     </div>
                   </div>
                 </div>
@@ -511,19 +509,18 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-4 w-4 shrink-0 text-primary" />
           <span>
-            Every vote is encrypted at rest (AES-256-GCM) and recorded with a hash-chained
-            audit log. Receipt-anchored anonymity — verify participation, never choices.
+            {t('publicResults.footerSecurity')}
           </span>
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={onShare} className="gap-1.5">
-            <Share2 className="h-4 w-4" /> Copy Link
+            <Share2 className="h-4 w-4" /> {t('publicResults.copyLink')}
           </Button>
           <a
             href="/"
             className="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground hover:bg-accent/90"
           >
-            <BadgeCheck className="h-4 w-4" /> Verify Receipt
+            <BadgeCheck className="h-4 w-4" /> {t('publicResults.verifyReceipt')}
           </a>
         </div>
       </div>
@@ -532,6 +529,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
 }
 
 function PositionCard({ position }: { position: PositionResult }) {
+  const { t } = useTranslation()
   const hasResults = position.results && position.results.length > 0
   const maxVotes = hasResults
     ? Math.max(...position.results!.map((r) => r.votes), 0)
@@ -574,7 +572,7 @@ function PositionCard({ position }: { position: PositionResult }) {
       <CardContent className="space-y-3 pt-2">
         {!hasResults ? (
           <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-4 text-center text-sm text-muted-foreground">
-            No votes recorded for this position yet.
+            {t('publicResults.noVotesRecorded')}
           </div>
         ) : (
           sortedResults.map((r, idx) => {
@@ -623,7 +621,7 @@ function PositionCard({ position }: { position: PositionResult }) {
                       </span>
                       {isWinner && (
                         <Badge className="shrink-0 gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
-                          <Trophy className="h-3 w-3" /> Winner
+                          <Trophy className="h-3 w-3" /> {t('publicResults.winner')}
                         </Badge>
                       )}
                     </div>
@@ -709,12 +707,13 @@ function VerificationField({
   label: string
   value: string
 }) {
+  const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   function copy() {
     navigator.clipboard?.writeText(value)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-    toast.success('Copied to clipboard')
+    toast.success(t('common.copied'))
   }
   return (
     <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
@@ -731,7 +730,7 @@ function VerificationField({
           onClick={copy}
           className="h-7 shrink-0 px-2 text-xs"
         >
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('common.copied') : t('common.copy')}
         </Button>
       </div>
     </div>

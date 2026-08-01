@@ -22,6 +22,7 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,6 +132,7 @@ function copyToClipboard(value: string, label: string) {
 // Component
 // ---------------------------------------------------------------------------
 export function VerificationPortal({ electionId }: { electionId: string }) {
+  const { t } = useTranslation()
   const [data, setData] = useState<PortalData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -158,7 +160,7 @@ export function VerificationPortal({ electionId }: { electionId: string }) {
         <div className="flex flex-col items-center gap-3 text-center">
           <Loader2 className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">
-            Loading verification package…
+            {t('verification.loadingVerification')}
           </p>
         </div>
       </div>
@@ -170,20 +172,18 @@ export function VerificationPortal({ electionId }: { electionId: string }) {
       <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Verification unavailable</AlertTitle>
+          <AlertTitle>{t('verification.verificationUnavailable')}</AlertTitle>
           <AlertDescription className="space-y-2">
             <p>{error}</p>
             <p className="text-xs">
-              The public verification portal is only available for elections
-              that have been officially certified. If you have a receipt code,
-              you can still verify your individual vote below.
+              {t('verification.verificationUnavailableDesc')}
             </p>
           </AlertDescription>
         </Alert>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/">
             <Button variant="outline" size="sm" className="gap-1.5">
-              <ExternalLink className="h-4 w-4" /> Back to VoteWise
+              <ExternalLink className="h-4 w-4" /> {t('verification.backToVoteWise')}
             </Button>
           </Link>
           <ReceiptVerifyInline />
@@ -225,6 +225,7 @@ export function VerificationPortal({ electionId }: { electionId: string }) {
 // Header card
 // ---------------------------------------------------------------------------
 function HeaderCard({ data }: { data: PortalData }) {
+  const { t } = useTranslation()
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -237,10 +238,10 @@ function HeaderCard({ data }: { data: PortalData }) {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="gap-1 bg-primary/10 text-primary hover:bg-primary/10">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Election Verification Portal
+                  <ShieldCheck className="h-3.5 w-3.5" /> {t('verification.portalTitle')}
                 </Badge>
                 <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100">
-                  <BadgeCheck className="h-3.5 w-3.5" /> Certified
+                  <BadgeCheck className="h-3.5 w-3.5" /> {t('verification.certified')}
                 </Badge>
                 {data.organizationName && (
                   <Badge variant="outline" className="gap-1">
@@ -285,7 +286,7 @@ function HeaderCard({ data }: { data: PortalData }) {
             <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
                 <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-                  <ShieldCheck className="h-3.5 w-3.5" /> Verification Status
+                  <ShieldCheck className="h-3.5 w-3.5" /> {t('verification.verificationStatus')}
                 </div>
                 <div
                   className={cn(
@@ -293,12 +294,12 @@ function HeaderCard({ data }: { data: PortalData }) {
                     data.verified ? 'text-emerald-700' : 'text-red-600',
                   )}
                 >
-                  {data.verified ? 'Verified' : 'Failed'}
+                  {data.verified ? t('verification.verified') : t('verification.failed')}
                 </div>
               </div>
               <Link href={data.publicResultsUrl}>
                 <Button variant="outline" size="sm" className="gap-1.5">
-                  <Eye className="h-4 w-4" /> Public Results
+                  <Eye className="h-4 w-4" /> {t('verification.publicResults')}
                 </Button>
               </Link>
             </div>
@@ -313,6 +314,7 @@ function HeaderCard({ data }: { data: PortalData }) {
 // Verification status banner
 // ---------------------------------------------------------------------------
 function VerificationStatusBanner({ data }: { data: PortalData }) {
+  const { t } = useTranslation()
   const allPass = data.verified
   return (
     <motion.div
@@ -351,8 +353,8 @@ function VerificationStatusBanner({ data }: { data: PortalData }) {
                 )}
               >
                 {allPass
-                  ? '✓ This election is verified'
-                  : '✗ Verification failed'}
+                  ? t('verification.electionVerified')
+                  : t('verification.verificationFailed')}
               </h2>
               <p
                 className={cn(
@@ -361,8 +363,8 @@ function VerificationStatusBanner({ data }: { data: PortalData }) {
                 )}
               >
                 {allPass
-                  ? 'All integrity checks passed. The certified results match the recorded ballots, the audit chain is intact, and the integrity signature is valid.'
-                  : 'One or more integrity checks did not pass. Review the details below before trusting these results.'}
+                  ? t('verification.electionVerifiedDesc')
+                  : t('verification.verificationFailedDesc')}
               </p>
             </div>
           </div>

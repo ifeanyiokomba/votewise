@@ -10,9 +10,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/votewise/theme-toggle'
+import { LanguageSwitcher } from '@/components/votewise/language-switcher'
 import { VoterNotifications } from '@/components/votewise/voter-notifications'
 import { cn } from '@/lib/utils'
 import { useApp, View } from '@/lib/store'
+import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
 
 export function Logo({ className }: { className?: string }) {
@@ -27,19 +29,22 @@ export function Logo({ className }: { className?: string }) {
   )
 }
 
-const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
-  { label: 'Features', target: 'features' },
-  { label: 'Platform', target: 'products' },
-  { label: 'Pricing', target: 'pricing' },
-  { label: 'Testimonials', target: 'testimonials' },
-  { label: 'Security', target: 'security' },
-  { label: 'Docs', target: 'docs' },
-  { label: 'Contact', target: 'contact' },
-]
-
 export function NavBar() {
   const { view, setView, official, voterProfile } = useApp()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+
+  // Localized nav items — recomputed per render so they pick up the
+  // current language from the store (e.g. when the user switches to French).
+  const NAV_ITEMS: { label: string; target: string }[] = [
+    { label: t('home.featuresBadge'), target: 'features' },
+    { label: t('home.productsBadge'), target: 'products' },
+    { label: t('home.pricingBadge'), target: 'pricing' },
+    { label: t('home.testimonialsBadge'), target: 'testimonials' },
+    { label: t('home.securityBadge'), target: 'security' },
+    { label: t('home.docsBadge'), target: 'docs' },
+    { label: t('home.contactBadge'), target: 'contact' },
+  ]
 
   function scrollTo(id: string) {
     setOpen(false)
@@ -69,25 +74,26 @@ export function NavBar() {
         <div className="hidden items-center gap-2 md:flex">
           {voterProfile && (
             <Button onClick={() => setView('voter-dashboard')} size="sm" className="gap-1.5">
-              <BadgeCheck className="h-4 w-4" /> My Dashboard
+              <BadgeCheck className="h-4 w-4" /> {t('auth.myDashboard')}
             </Button>
           )}
           {!official && (
             <Button variant="outline" size="sm" onClick={() => setView('official-login')} className="gap-1.5">
-              <Lock className="h-4 w-4" /> Org Login
+              <Lock className="h-4 w-4" /> {t('auth.orgLogin')}
             </Button>
           )}
           {!official && (
             <Button size="sm" onClick={() => setView('signup')} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
-              <Sparkles className="h-4 w-4" /> Register Org
+              <Sparkles className="h-4 w-4" /> {t('auth.registerOrg')}
             </Button>
           )}
           {official && (
             <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5">
-              <BarChart3 className="h-4 w-4" /> Dashboard
+              <BarChart3 className="h-4 w-4" /> {t('auth.dashboard')}
             </Button>
           )}
           {voterProfile && <VoterNotifications />}
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
 
@@ -107,27 +113,30 @@ export function NavBar() {
             <div className="my-1 h-px bg-border" />
             {voterProfile && (
               <Button onClick={() => { setView('voter-dashboard'); setOpen(false) }} size="sm" className="gap-1.5">
-                <BadgeCheck className="h-4 w-4" /> My Dashboard
+                <BadgeCheck className="h-4 w-4" /> {t('auth.myDashboard')}
               </Button>
             )}
             {!official && (
               <Button variant="outline" size="sm" onClick={() => { setView('official-login'); setOpen(false) }} className="gap-1.5">
-                <Lock className="h-4 w-4" /> Organization Login
+                <Lock className="h-4 w-4" /> {t('auth.organizationPortal')}
               </Button>
             )}
             {!official && (
               <Button size="sm" onClick={() => { setView('signup'); setOpen(false) }} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Sparkles className="h-4 w-4" /> Register Your Organization
+                <Sparkles className="h-4 w-4" /> {t('home.registerYourOrg')}
               </Button>
             )}
             {official && (
               <Button variant="outline" size="sm" onClick={() => { setView('official'); setOpen(false) }} className="gap-1.5">
-                <BarChart3 className="h-4 w-4" /> Organization Portal
+                <BarChart3 className="h-4 w-4" /> {t('auth.organizationPortal')}
               </Button>
             )}
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-muted-foreground">Theme</span>
-              <ThemeToggle />
+              <span className="text-xs text-muted-foreground">{t('common.theme')}</span>
+              <div className="flex items-center gap-2">
+                <LanguageSwitcher />
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>
@@ -138,24 +147,25 @@ export function NavBar() {
 
 export function Footer() {
   const { setView } = useApp()
+  const { t } = useTranslation()
   return (
     <footer className="mt-auto border-t border-border/60 bg-secondary/40">
       {/* Trust bar */}
       <div className="border-b border-border/60 bg-primary/5">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 px-4 py-6 sm:grid-cols-4 sm:px-6">
           {[
-            { icon: Shield, label: 'Voter ID + OTP', sub: 'Verified' },
-            { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted' },
-            { icon: BadgeCheck, label: 'Receipt', sub: 'Anchored' },
-            { icon: ScrollText, label: 'Hash-Chained', sub: 'Audit Log' },
-          ].map((t) => (
-            <div key={t.label} className="flex items-center gap-2">
+            { icon: Shield, label: 'Voter ID + OTP', sub: t('publicResults.verified') },
+            { icon: Lock, label: 'AES-256-GCM', sub: t('home.encryptedVoting') },
+            { icon: BadgeCheck, label: t('voting.receipt'), sub: t('home.receiptAnchored') },
+            { icon: ScrollText, label: 'Hash-Chained', sub: t('workspace.audit') },
+          ].map((trust) => (
+            <div key={trust.label} className="flex items-center gap-2">
               <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
-                <t.icon className="h-4 w-4" />
+                <trust.icon className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold">{t.label}</div>
-                <div className="text-[10px] text-muted-foreground">{t.sub}</div>
+                <div className="text-xs font-semibold">{trust.label}</div>
+                <div className="text-[10px] text-muted-foreground">{trust.sub}</div>
               </div>
             </div>
           ))}
@@ -165,42 +175,41 @@ export function Footer() {
         <div className="md:col-span-2">
           <Logo />
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-            Africa&apos;s most trusted Election Management Platform. We&apos;re not building a voting app —
-            we&apos;re building a platform that happens to conduct elections. For any organization.
+            {t('home.heroBadge')}. {t('home.orgsSubtitle')}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> Encrypted Voting</Badge>
-            <Badge variant="secondary" className="gap-1"><Lock className="h-3 w-3" /> Ballot Secrecy</Badge>
-            <Badge variant="secondary" className="gap-1"><BadgeCheck className="h-3 w-3" /> Receipt-Anchored</Badge>
-            <Badge variant="secondary" className="gap-1"><ScrollText className="h-3 w-3" /> Audit Trail</Badge>
+            <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> {t('home.encryptedVoting')}</Badge>
+            <Badge variant="secondary" className="gap-1"><Lock className="h-3 w-3" /> {t('voting.ballotSecrecyProtected')}</Badge>
+            <Badge variant="secondary" className="gap-1"><BadgeCheck className="h-3 w-3" /> {t('home.receiptAnchoredLabel')}</Badge>
+            <Badge variant="secondary" className="gap-1"><ScrollText className="h-3 w-3" /> {t('workspace.audit')}</Badge>
           </div>
         </div>
         <div>
-          <h4 className="font-display text-sm font-semibold">Platform</h4>
+          <h4 className="font-display text-sm font-semibold">{t('home.productsBadge')}</h4>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li><button onClick={() => setView('home')} className="hover:text-foreground">Public Website</button></li>
-            <li><button onClick={() => setView('official-login')} className="hover:text-foreground">Organization Portal</button></li>
-            <li><button onClick={() => setView('signup')} className="hover:text-foreground">Register Organization</button></li>
+            <li><button onClick={() => setView('home')} className="hover:text-foreground">{t('home.heroBadge')}</button></li>
+            <li><button onClick={() => setView('official-login')} className="hover:text-foreground">{t('auth.organizationPortal')}</button></li>
+            <li><button onClick={() => setView('signup')} className="hover:text-foreground">{t('home.registerYourOrg')}</button></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-display text-sm font-semibold">Principles</h4>
+          <h4 className="font-display text-sm font-semibold">{t('home.principlesBadge')}</h4>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-            <li>Organizations own their data</li>
-            <li>Tenant isolation</li>
-            <li>Security first</li>
-            <li>Everything configurable</li>
-            <li>Simple onboarding</li>
-            <li>No hidden complexity</li>
+            <li>{t('home.signupFeature1')}</li>
+            <li>{t('home.orgsTitle')}</li>
+            <li>{t('home.securityBadge')}</li>
+            <li>{t('home.hierarchyBadge')}</li>
+            <li>{t('home.signupBadge')}</li>
+            <li>{t('home.principlesSubtitle')}</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-border/60">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
-          <p>© {new Date().getFullYear()} VoteWise. Built for transparent organizational democracy — for any organization.</p>
+          <p>© {new Date().getFullYear()} VoteWise. {t('home.heroSubtitle')}</p>
           <p className="flex items-center gap-1.5">
             <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
-            Africa&apos;s Election Management Platform
+            {t('home.heroBadge')}
           </p>
         </div>
       </div>
@@ -235,16 +244,18 @@ export function Countdown({ start, end, status }: { start: Date | string; end: D
   const startD = new Date(start)
   const endD = new Date(end)
   const [now, setNow] = useState(Date.now())
+  const { t } = useTranslation()
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
   }, [])
   const target = now < startD.getTime() ? startD : endD
   const diff = Math.max(0, target.getTime() - now)
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
   const s = Math.floor((diff % 60_000) / 1000)
-  const label = now < startD.getTime() ? 'Voting opens in' : now < endD.getTime() ? 'Voting closes in' : 'Voting has ended'
+  const label = now < startD.getTime() ? t('election.votingOpensIn') : now < endD.getTime() ? t('election.votingClosesIn') : t('election.votingEnded')
+  void status
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 text-center">

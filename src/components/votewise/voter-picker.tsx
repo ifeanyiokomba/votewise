@@ -10,8 +10,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 export function VoterPicker({ electionId, subdomain, onSelected }: { electionId: string; subdomain?: string; onSelected: (voterId: string) => void }) {
+  const { t } = useTranslation()
   const [voters, setVoters] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState<string | null>(null)
@@ -28,7 +30,7 @@ export function VoterPicker({ electionId, subdomain, onSelected }: { electionId:
     try {
       // Start a voting session for this voter.
       const session = await api.startVotingSession(electionId, voterId, subdomain)
-      toast.success(`Voting session started for ${voterName}`)
+      toast.success(`${t('voterPicker.sessionStarted')} ${voterName}`)
       // Store the session token for the ballot API.
       localStorage.setItem('votewise_voter_token', session.sessionToken)
       onSelected(voterId)
@@ -42,28 +44,26 @@ export function VoterPicker({ electionId, subdomain, onSelected }: { electionId:
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
       <Button variant="ghost" size="sm" onClick={() => window.location.href = `/workspace/elections/${electionId}?org=${subdomain || ''}`} className="mb-4 gap-1.5">
-        <ArrowLeft className="h-4 w-4" /> Back to Election
+        <ArrowLeft className="h-4 w-4" /> {t('voterPicker.backToElection')}
       </Button>
 
       <Card className="votewise-card-glow mb-6">
         <CardContent className="p-5">
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5 text-primary" />
-            <h1 className="font-display text-xl font-bold">Secure Voter Authentication</h1>
+            <h1 className="font-display text-xl font-bold">{t('voterPicker.title')}</h1>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Select your voter profile to begin. A secure voting session will be created for you.
-            Your session expires in 30 minutes.
+            {t('voterPicker.subtitle')}
           </p>
         </CardContent>
       </Card>
 
       <Alert className="mb-4">
         <Vote className="h-4 w-4" />
-        <AlertTitle>Demo Mode</AlertTitle>
+        <AlertTitle>{t('voterPicker.demoMode')}</AlertTitle>
         <AlertDescription>
-          This is a demo election. In production, voters authenticate via email/SMS OTP or institutional SSO.
-          Here you can pick any voter to simulate the experience.
+          {t('voterPicker.demoModeDesc')}
         </AlertDescription>
       </Alert>
 
@@ -73,13 +73,13 @@ export function VoterPicker({ electionId, subdomain, onSelected }: { electionId:
 
       {!loading && voters.length === 0 && (
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">
-          No eligible voters found for this election.
+          {t('voterPicker.noVoters')}
         </CardContent></Card>
       )}
 
       {!loading && voters.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Eligible Voters ({voters.length})</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('voterPicker.eligibleVoters')} ({voters.length})</CardTitle></CardHeader>
           <CardContent className="space-y-2 max-h-96 overflow-y-auto">
             {voters.map((v) => (
               <button
@@ -103,7 +103,7 @@ export function VoterPicker({ electionId, subdomain, onSelected }: { electionId:
                 </div>
                 {v.hasVoted ? (
                   <Badge variant="outline" className="gap-1 text-emerald-600">
-                    <CheckCircle2 className="h-3 w-3" /> Voted
+                    <CheckCircle2 className="h-3 w-3" /> {t('voterPicker.voted')}
                   </Badge>
                 ) : starting === v.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
