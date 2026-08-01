@@ -297,7 +297,7 @@ export function ReceiptVerifyView() {
   async function onVerify() {
     setLoading(true); setResult(null)
     try {
-      const d = await api.verifyReceipt(code)
+      const d = await api.publicVerifyReceipt(code)
       setResult(d)
     } catch (e: any) {
       setResult({ valid: false, message: e.message })
@@ -317,7 +317,7 @@ export function ReceiptVerifyView() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="receipt">Enter your receipt code</Label>
-            <Input id="receipt" placeholder="AV-XXXX-XXXX-XXXX" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="font-mono" />
+            <Input id="receipt" placeholder="VW-2026-XXXXXXXX" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} className="font-mono" />
           </div>
           <Button onClick={onVerify} disabled={loading || !code} className="w-full gap-2">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
@@ -328,11 +328,28 @@ export function ReceiptVerifyView() {
               {result.valid ? (
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" />
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="font-semibold text-emerald-800">Vote confirmed &amp; counted</div>
-                    <p className="mt-1 text-sm text-emerald-700">Position: <span className="font-medium">{result.position}</span></p>
-                    <p className="text-sm text-emerald-700">Recorded at: <span className="font-mono">{new Date(result.votedAt).toLocaleString()}</span></p>
-                    <p className="mt-2 text-xs text-emerald-600">{result.note}</p>
+                    {result.electionName && (
+                      <p className="mt-1 text-sm text-emerald-700">Election: <span className="font-medium">{result.electionName}</span></p>
+                    )}
+                    {(result.positionTitle || result.position) && (
+                      <p className="text-sm text-emerald-700">Position: <span className="font-medium">{result.positionTitle || result.position}</span></p>
+                    )}
+                    {result.recordedAt && (
+                      <p className="text-sm text-emerald-700">Recorded at: <span className="font-mono">{new Date(result.recordedAt).toLocaleString()}</span></p>
+                    )}
+                    {result.isSimulation && (
+                      <p className="mt-2 inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        <AlertCircle className="h-3 w-3" /> Simulation vote (not counted)
+                      </p>
+                    )}
+                    {result.message && (
+                      <p className="mt-2 text-xs text-emerald-600">{result.message}</p>
+                    )}
+                    {result.note && !result.message && (
+                      <p className="mt-2 text-xs text-emerald-600">{result.note}</p>
+                    )}
                   </div>
                 </div>
               ) : (

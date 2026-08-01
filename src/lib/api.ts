@@ -82,6 +82,7 @@ export const api = {
   duplicateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/duplicate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
   validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getElectionAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
 
   // Chapter 8: Voter Management
   voterRegistry: (params: string, subdomain?: string) => req(`/api/workspace/voters${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
@@ -114,6 +115,12 @@ export const api = {
   getElectionTally: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getElectionVerification: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/verification${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getDemoVoters: (electionId: string, subdomain?: string) => req(`/api/workspace/ballot/demo-voters?electionId=${electionId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Chapter 10: Voter Portal SVE data (voting status, receipts, timeline)
+  getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
+  // Public receipt verification (no org context needed)
+  publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Public live results (shareable URL)
+  getPublicResults: (electionId: string) => req(`/api/elections/${electionId}/public-results`),
 
 
   // Platform (super-admin)

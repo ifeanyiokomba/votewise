@@ -3575,3 +3575,365 @@ Stage Summary:
   cryptographic verification, blockchain-backed audit proofs, HSM integration,
   risk-limiting audits, public verification portals).
 
+
+---
+Task ID: 2
+Agent: Frontend Developer (UI for Chapter 10 SVE — public receipt verification + public live results)
+
+Task: Build two public-facing UI features on top of the existing Chapter 10
+Secure Voting Engine APIs (publicVerifyReceipt + getPublicResults):
+
+1. A public receipt verification section on the homepage (between hero and
+   trust indicators).
+2. A new public live results page at /results/[id] — a shareable URL anyone
+   can open to follow an election in real time.
+
+Also updated the existing ReceiptVerifyView (in src/components/votewise/vote.tsx)
+to use the new publicVerifyReceipt() API and the new response shape.
+
+Work Log:
+
+- Updated `src/components/votewise/vote.tsx` (ReceiptVerifyView, line 291):
+  - Switched `api.verifyReceipt(code)` → `api.publicVerifyReceipt(code)`.
+    The new endpoint is fully public (no org context / auth required) and
+    searches BOTH the new SVE VoteRecord table and the legacy EncryptedVote
+    table.
+  - Updated the success result rendering to use the new response shape:
+    `result.electionName`, `result.positionTitle` (with fallback to the
+    legacy `result.position` field), `result.recordedAt` (with fallback to
+    `result.votedAt`), `result.isSimulation`, `result.message`.
+  - Added a small amber "Simulation vote (not counted)" badge when
+    `result.isSimulation === true` — important for admins who preview
+    ballots via the simulation flow and need to be reminded their test
+    votes are not part of the real tally.
+  - Updated the input placeholder from the legacy `AV-XXXX-XXXX-XXXX`
+    format to the new SVE receipt format `VW-2026-XXXXXXXX`.
+  - Kept the visual design identical (Card + CardHeader + CardTitle,
+    emerald success / destructive error alert, monospace receipt input,
+    BadgeCheck hero icon).
+
+- Added a prominent "Verify Your Vote" section to the homepage
+  (`src/components/votewise/home.tsx`):
+  - Inserted AFTER the hero section and BEFORE the trust indicators
+    section (around line 339). The section has a distinct `bg-secondary/30`
+    background (the trust indicators section already uses `bg-primary/5`,
+    so the two adjacent sections remain visually distinguishable).
+  - Two-column responsive layout: explanation on the left (with the three
+    receipt-anchored verification pillars — Ballot secrecy, Receipt-anchored,
+    Tamper-evident — each paired with a Shield / BadgeCheck / Lock lucide
+    icon), input + verify button on the right.
+  - The input accepts receipt codes (auto-uppercased), with `VW-2026-XXXXXXXX`
+    as the placeholder and Enter-to-submit.
+  - Calls `api.publicVerifyReceipt(code)`. On 404 (receipt not found),
+    the structured `{ valid: false, message }` body is extracted from
+    `err.data` (the api helper attaches the parsed JSON there) and rendered
+    inline — so users see the same friendly message regardless of whether
+    verification succeeded or failed.
+  - Success: emerald Alert with CheckCircle2 icon, election name, position
+    title, recorded-at timestamp (monospace), simulation badge if applicable,
+    and the server's confirmation message.
+  - Failure: destructive Alert with AlertCircle icon + the server's message.
+  - Subtle Framer Motion entrance animations on both columns (left slides
+    in from x:-16, right from x:16, viewport once). The result Alert
+    animates in/out via AnimatePresence with mode="wait" so a fresh
+    verification cleanly replaces the previous result.
+  - Includes a "Open full page →" ghost button that calls
+    `setView('verify-receipt')` to launch the dedicated ReceiptVerifyView
+    for users who want the larger verification surface.
+  - New imports added: `AlertCircle` from lucide-react,
+    `Alert, AlertDescription, AlertTitle` from '@/components/ui/alert',
+    `motion, AnimatePresence` from 'framer-motion'.
+  - New state on HomeView: `receiptCode`, `verifying`, `verifyResult`.
+  - New async method `verifyReceipt()` with proper try/catch that handles
+    both successful (200) and not-found (404 with structured body)
+    responses.
+
+- Created `src/components/votewise/public-results.tsx` (~725 lines):
+  - Strictly-typed component `PublicResultsView({ electionId })` with full
+    TypeScript interfaces for every shape returned by
+    `GET /api/elections/[id]/public-results`:
+    `PublicResults`, `PositionResult`, `CandidateInfo`, `CandidateResult`,
+    `VerificationPackage`.
+  - Initial load via `api.getPublicResults(electionId)` + 5-second polling
+    fallback (matches the LiveVoteMonitor pattern).
+  - Live countdown timer ticks every second when the election isLive.
+  - WebSocket integration: connects to `io('/?XTransformPort=3030',
+    { path: '/', transports: ['websocket', 'polling'], reconnection: true })`,
+    emits `subscribe` with `{ electionId }` on connect, listens for
+    `sve:live` events to merge aggregate stats (votesCast, turnoutPct,
+    eligibleVoters, lastVoteAt) into the existing data and trigger a brief
+    emerald pulse ring on the header card. Also listens for `sve:vote-cast`
+    as a fallback signal to re-fetch.
+  - Header card (`votewise-card-glow`): election name, organization name
+    badge, status badge (Live / Completed / Certified / Setup — colour-coded
+    with emerald/amber/secondary), description, voting window timestamps
+    (open + close + last vote time-ago). Big live countdown timer box on
+    the right that switches to "Closed" once `isLive` is false.
+  - Share button: copies `window.location.href` to the clipboard with a
+    sonner toast. This is what makes the URL shareable — anyone with the
+    link can paste it into a browser and follow the election.
+  - "Verify Your Vote" anchor link to `/` (the homepage receipt
+    verification section) so viewers can jump straight to receipt
+    verification from the live results page.
+  - Four stat cards: Eligible Voters (emerald tint), Votes Cast (primary
+    tint, pulses on websocket update), Turnout % (amber tint), Time
+    Remaining (secondary tint, monospace value).
+  - Turnout progress bar (Progress component) with "X of Y voters" and
+    "Z remaining" sub-label, plus last-vote time-ago.
+  - Candidate results section (only when `showCandidateResults === true`):
+    per-position cards with candidate photo (next/image, fallback to
+    initials when no photo), name, slogan, vote count (monospace), vote
+    percentage, and animated horizontal bar (Framer Motion width animation
+    from 0 → %). Winners highlighted in emerald with a Winner badge and
+    Trophy icon; non-winners use the primary/60 bar colour. Each card
+    shows total position vote count + (if maximumVotes > 1) a "N winners"
+    badge. Empty-state shown when no votes recorded yet.
+  - Hidden-results state (when `showCandidateResults === false`): a
+    prominent amber notice "Results are hidden until voting closes.
+    Showing aggregate turnout only." with a Lock icon — matches the
+    privacy guarantee for non-public elections before tally.
+  - Cryptographic verification section at the bottom (Collapsible, default
+    collapsed): audit hash (SHA-256) + integrity signature (HMAC-SHA256)
+    displayed in monospace with copy-to-clipboard buttons, plus three
+    summary tiles (Total Votes, Verified Turnout %, Signature Valid badge
+    with CheckCircle2). Explanatory text describes how independent
+    observers can recompute these to prove published results match
+    recorded ballots.
+  - Footer info bar with Share + Verify Receipt action buttons and a
+    trust message about AES-256-GCM encryption + hash-chained audit log
+    + receipt-anchored anonymity.
+  - Loading state: full-height Loader2 spinner with primary colour.
+  - Error state: destructive Alert with the error message.
+  - Mobile-first responsive: stat grid is 2 cols on mobile, 4 cols on lg;
+    header stacks on mobile, side-by-side on lg; verification fields 1 col
+    on mobile, 2 cols on sm.
+
+- Created `src/app/results/[id]/page.tsx`:
+  - Next.js 16 App Router pattern with `params: Promise<{ id: string }>`.
+  - Wraps the PublicResultsView in a Suspense boundary with a Loader2
+    fallback (uses `use(params)` to unwrap the Promise).
+  - Full-height layout: NavBar (sticky) + main flex-1 + Footer (mt-auto
+    → sticky-to-bottom when content is short).
+  - The URL `/results/sve-demo` is now publicly shareable — anyone with
+    the link can follow the live SUG General Elections 2025 (SVE Demo)
+    election in real time.
+
+- Lint result: `bun run lint` → 0 errors, 2 warnings. Both warnings are
+  in unrelated pre-existing files (audit-logs.tsx line 159 and
+  voter-portal.tsx line 155 — "Unused eslint-disable directive") and have
+  nothing to do with this task's changes.
+
+Stage Summary:
+- ✅ Homepage now has a prominent, animated "Verify Your Vote" section
+  between the hero and the trust indicators — voters can verify their
+  receipt code in seconds without leaving the homepage, with an option
+  to open the full ReceiptVerifyView page if needed.
+- ✅ New shareable public live results page at `/results/[id]` — opens
+  with NavBar + Footer, shows election header + 4 stat cards + turnout
+  progress + per-position candidate results (or hidden-results notice) +
+  collapsible cryptographic verification package. Auto-refreshes every
+  5s with WebSocket real-time pulse updates on `sve:live` / `sve:vote-cast`
+  events. Share button copies the URL for distribution. The election
+  `sve-demo` is reachable at `/results/sve-demo`.
+- ✅ Existing ReceiptVerifyView updated to use the new public
+  `api.publicVerifyReceipt()` endpoint (no org context needed) and the
+  new response shape (electionName, positionTitle, recordedAt,
+  isSimulation, message). Placeholder updated to VW-2026-XXXXXXXX.
+- ✅ All UI uses the emerald/gold/amber palette — NO indigo or blue.
+- ✅ `votewise-card-glow` used on the homepage hero card and the
+  public-results header card.
+- ✅ `votewise-live-dot` used for live status indicators (animated pulse
+  dot).
+- ✅ Mobile-first responsive throughout, sticky footer via shared
+  Footer component, consistent p-4/p-6 padding and gap-4/gap-6 spacing.
+- ✅ All shadcn/ui components reused (Card, CardContent, CardHeader,
+  CardTitle, Button, Input, Label, Alert, AlertDescription, AlertTitle,
+  Badge, Progress, Separator, Collapsible, CollapsibleTrigger,
+  CollapsibleContent).
+- ✅ Lint: 0 errors.
+- **Unresolved / next-phase:** End-to-end browser smoke-test of the new
+  `/results/sve-demo` URL via agent-browser (the dev server was
+  unresponsive during this session — appears unrelated to my changes
+  since lint passes and the code follows the exact same patterns as the
+  existing LiveVoteMonitor). Chapter 11 Integrity Engine (blockchain-
+  backed audit proofs, public verification portals with third-party
+  independent observers) remains the next major chapter.
+
+---
+Task ID: 3
+Agent: SVE Chapter 10 — Audit Logs & Voter Portal Integration
+Task: Build two Chapter 10 SVE features — (1) Audit Logs tab in the Election
+Workspace with hash-chain verification, and (2) Voter Portal SVE integration
+(voting status, receipts history, eligible elections, timeline).
+
+Work Log:
+
+### Feature 1 — Audit Logs Tab (Election Workspace)
+
+- **API: `GET /api/workspace/elections/[id]/audit`**
+  (`src/app/api/workspace/elections/[id]/audit/route.ts`)
+  - Uses `requireOrganization` from `@/lib/org-context` for org scoping.
+  - Verifies the election belongs to the resolved org (404 otherwise).
+  - Fetches every `AuditLog` row for this election in chronological order.
+  - Walks the hash chain in chronological order:
+    1. Link check — each row's `prevHash` must equal the previous row's `hash`
+       (genesis anchor = `AUDIT_GENESIS` constant from `@/lib/crypto`).
+    2. Self-integrity check — recompute the row's hash via
+       `computeAuditHash({ prevHash, actorId, action, details, createdAt, nonce })`
+       and compare to the stored `hash`.
+    - Stops at the first broken link and reports `brokenAt`.
+  - Returns `{ logs: [...], chainIntact, totalChecked, brokenAt?, electionId, electionName }`
+    with logs sorted newest-first for display.
+
+- **UI: `src/components/votewise/audit-logs.tsx`**
+  - **Chain integrity banner** at the top:
+    - Green (`Alert` with `border-emerald-500/40 bg-emerald-50`):
+      "Audit Chain Intact — N entries verified".
+    - Red (`variant="destructive"`):
+      "Chain Broken at entry XXXXXXXX — investigate immediately".
+  - **Toolbar card** (`votewise-card-glow`): title + entry count badge +
+    `Verify Chain`, `Refresh`, `Export` buttons.
+  - **Search input** — filters by action, actor name, role, details, IP, or hash.
+  - **Action filter chips** — `ALL`, `VOTE_CAST`, `GO_LIVE`,
+    `VOTING_SESSION_STARTED`, `ELECTION_UPDATED`, `ELECTION_CREATED`,
+    `RESULTS_GENERATED`, `TALLY_LOCKED`, `CERTIFIED`. Dynamically extended
+    with any action types actually present in the data.
+  - **Scrollable list** (`max-h-[600px] overflow-y-auto`) of audit entries,
+    each showing:
+    - Timestamp + action badge (color-coded by type — emerald/amber/accent/
+      red, never indigo/blue) + actor name + role badge.
+    - Hash (truncated monospace), IP, device, resource + resource ID.
+    - Expandable details pane — full hash, previous hash, nonce, browser UA,
+      JSON-formatted details (parsed + pretty-printed).
+    - Broken-link rows are highlighted with `ring-1 ring-red-500/60`.
+  - **Framer Motion** entry animations (staggered, capped at 0.2s delay).
+  - **Export** — downloads the entire audit log + verification result as
+    `votewise-audit-{electionId}.json`.
+  - Icons: `ScrollText`, `Shield`, `CheckCircle2`, `AlertCircle`, `Search`,
+    `Hash`, `Fingerprint`, `Clock`, `User`, `Filter`, `Download`,
+    `RefreshCw`, `Loader2`, `ChevronRight`, `ChevronDown`, `Globe`, `Cpu`.
+
+- **Wiring**:
+  - `src/components/votewise/election-workspace.tsx`: imported `AuditLogs`
+    component, added `{tab === 'Audit Logs' && <AuditLogs electionId={electionId} subdomain={subdomain} />}`
+    branch, and added `'Audit Logs'` to the excluded list in the catch-all
+    placeholder conditional. Now the Audit Logs tab renders the real UI
+    instead of the placeholder card.
+  - `src/lib/api.ts`: added
+    `getElectionAudit: (electionId: string, subdomain?: string) => req(\`/api/workspace/elections/${electionId}/audit${subdomain ? \`?x-vw-org=\${encodeURIComponent(subdomain)}\` : ''}\`)`.
+
+### Feature 2 — Voter Portal SVE Integration
+
+- **API: `GET /api/workspace/voter-portal`**
+  (`src/app/api/workspace/voter-portal/route.ts`)
+  - Requires org context via `requireOrganization`.
+  - **Voter resolution** (two paths):
+    1. `x-voter-token` header → looks up `VotingSession.sessionToken`,
+       validates org membership + expiry, then resolves `voterId`.
+    2. `?voterId=` query param — demo / admin preview convenience.
+  - Returns the voter's full SVE dashboard data:
+    - `voter`: `{ id, fullName, email, matric, hasVoted, votedAt, status, verificationStatus }`.
+    - `elections[]`: every election in this org with per-election voting
+      status. Computed by hashing the voter's ID with `hashVoterIdentity`
+      (one-way peppered SVE hash), looking up all `VoteRecord` rows matching
+      that hash, then mapping each election to:
+      `{ electionId, name, status, hasVoted, votedAt, eligible, votingOpen, startTime, endTime, votingStatus: 'voted' | 'eligible' | 'pending' }`.
+    - `receipts[]`: every `VoteRecord` matching the voterHash — but
+      **deliberately** only `receiptCode`, `electionName`, `positionTitle`,
+      `recordedAt`. NEVER `candidateId`, `encryptedChoice`, `iv`,
+      `voterHash`, or `ipAddress`. This preserves receipt-anchored anonymity:
+      the voter can prove they voted, but no one can determine who they
+      voted for. Election names + position titles are looked up in bulk.
+    - `timeline[]`: `VoterTimelineEvent` rows (last 100) — imported,
+      verified, accredited, OTVP issued, vote cast, etc.
+
+- **UI: `src/components/votewise/voter-portal.tsx`** (rewritten):
+  - **Tabs** (renamed + extended): My Profile, My Elections, Voting Status,
+    My Receipts (renamed from "Past Elections"), Timeline (new), Support,
+    Notifications.
+  - **Header**: avatar initial, full name, voter ID badge, voted/not-voted
+    badge, verification badge. Falls back to legacy `voterProfile` from the
+    store when the SVE endpoint is unavailable.
+  - **Voting Status tab**:
+    - 3 summary stat cards: Voted / Eligible / Pending (emerald / primary /
+      amber).
+    - Overall Vote Status card (`votewise-card-glow`).
+    - Per-election list (`max-h-[600px] overflow-y-auto`) with status badges:
+      - Voted → emerald "Voted" + votedAt timestamp + "Done" badge.
+      - Eligible + voting open → emerald "Voting Open" + green "Vote Now"
+        button linking to
+        `/workspace/elections/[id]/vote?org=[subdomain]`.
+      - Eligible + voting not open → primary "Eligible" + status badge.
+      - Pending (closed without vote) → amber "Pending".
+  - **My Receipts tab**:
+    - Manual verify card (`votewise-card-glow`) — input for arbitrary
+      receipt code + Verify button calling `api.publicVerifyReceipt()`.
+    - Receipt list (`max-h-[600px] overflow-y-auto`) — each receipt shows
+      code (monospace), copy button, election name, position title,
+      recordedAt. "Verify" button calls `api.publicVerifyReceipt(receiptCode)`
+      and shows inline result (green Alert for valid, red for invalid).
+    - Verification result reveals election name + position title +
+      recordedAt — but NEVER the candidate choice. Mirrors the SVE receipt
+      module's design.
+  - **Timeline tab** (new): voter's lifecycle events (imported, verified,
+    accredited, vote cast, etc.) with color-coded icons (emerald/amber/
+    accent), description, actor name, timestamp. Scrollable list.
+  - **Framer Motion** `AnimatePresence mode="wait"` for tab transitions +
+    staggered list item entry animations.
+  - **Responsive**: mobile-first, `grid-cols-2 sm:grid-cols-3`,
+    `flex-col sm:flex-row` layouts, touch-friendly 44px+ targets.
+  - **Error handling**: each tab handles loading, error, and empty states
+    with retry button. If no org context or voter token, the API returns
+    401/404 and the tabs show a friendly error with Retry.
+  - Accepts an optional `subdomain` prop. If absent, reads `?org=` from the
+    URL via `useSearchParams` (wrapped in a `Suspense` boundary). Also
+    supports `?voterId=` for the demo path.
+
+- **API client methods added** (`src/lib/api.ts`):
+  - `getVoterPortal: (subdomain?: string) => req(\`/api/workspace/voter-portal${subdomain ? \`?x-vw-org=\${encodeURIComponent(subdomain)}\` : ''}\`, {}, getVoterToken())`
+    — sends the voter token via the `x-voter-token` header so the API can
+    resolve the voter's session.
+
+### Styling Compliance
+
+- Emerald green primary, warm gold accent, amber for warnings — NO indigo
+  or blue anywhere.
+- `votewise-card-glow` on prominent cards (chain toolbar, voter status,
+  receipt manual-verify).
+- Mobile-first responsive design with consistent `p-3` / `p-4` / `p-6`
+  padding and `gap-2` / `gap-3` / `gap-4` spacing.
+- Scrollable lists use `max-h-[600px] overflow-y-auto` (project's existing
+  custom scrollbar styling applies).
+- Semantic HTML (`main`, `header`, `section`, `article` via Card
+  components) and ARIA labels on icon-only buttons.
+- Loading spinners (`Loader2 animate-spin`) for every async action.
+- Toast notifications (sonner) for user feedback (verify success/failure,
+  export, refresh).
+
+### Verification
+
+- `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings**.
+- Dev server log reviewed — no errors after the new files were added.
+- All shadcn/ui components used: `Card`, `CardContent`, `CardHeader`,
+  `CardTitle`, `Button`, `Input`, `Badge`, `Alert`, `AlertDescription`,
+  `AlertTitle`, `Separator`.
+- All lucide-react icons listed in the task spec are used: `ScrollText`,
+  `Shield`, `CheckCircle2`, `AlertCircle`, `Search`, `Hash`, `Fingerprint`,
+  `Clock`, `User`, `Filter`, `Download` (audit-logs); `User`, `Vote`,
+  `ShieldCheck`, `Headphones`, `Bell`, `Award`, `Clock`, `CheckCircle2`,
+  `Loader2`, `ArrowLeft`, `Receipt`, `BadgeCheck`, `AlertCircle`, `Search`,
+  `Copy`, `CalendarClock`, `ListChecks`, `FileText`, `ShieldAlert`,
+  `Hourglass` (voter-portal).
+
+Stage Summary:
+- ✅ Feature 1 — Audit Logs tab: hash-chained audit log viewer wired into
+  the Election Workspace's "Audit Logs" tab. Verifies chain integrity
+  (link + self-hash), shows a green/red banner, supports search + action
+  filters + per-entry expandable details, and exports the full log as JSON.
+- ✅ Feature 2 — Voter Portal SVE integration: the voter portal now pulls
+  live SVE data — voting status across all org elections (with "Vote Now"
+  deep-links for open elections), receipt history with inline verify
+  (without revealing choices), and a voter lifecycle timeline.
+- Both features honor the emerald/gold/amber palette (no indigo/blue), use
+  Framer Motion for animations, are mobile-first responsive, and pass
+  `bun run lint` with zero errors.

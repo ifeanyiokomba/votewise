@@ -15,6 +15,7 @@ import { StatusBadge } from '@/components/votewise/shared'
 import { BallotSimulation } from '@/components/votewise/ballot-simulation'
 import { LiveVoteMonitor } from '@/components/votewise/live-vote-monitor'
 import { ElectionVerification } from '@/components/votewise/election-verification'
+import { AuditLogs } from '@/components/votewise/audit-logs'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -91,6 +92,7 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={e.status} />
+          <Button size="sm" variant="ghost" onClick={() => window.open(`/results/${electionId}`, '_blank')} className="gap-1"><Eye className="h-3.5 w-3.5" /> Public Results</Button>
           <Button size="sm" variant="ghost" onClick={duplicate} className="gap-1"><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
         </div>
       </div>
@@ -242,7 +244,11 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         <ElectionVerification electionId={electionId} subdomain={subdomain} canTally={false} />
       )}
 
-      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && (
+      {tab === 'Audit Logs' && (
+        <AuditLogs electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && (
         <Card><CardContent className="py-12 text-center">
           {(() => { const Icon = TABS.find(t => t.label === tab)?.icon || Vote; return <Icon className="mx-auto h-12 w-12 text-muted-foreground/40" /> })()}
           <p className="mt-3 text-sm text-muted-foreground">{tab} — this section is part of the election workspace.</p>

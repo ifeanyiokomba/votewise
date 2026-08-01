@@ -9,6 +9,7 @@ import {
   Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
   Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
   ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2, Phone,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,10 +17,12 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
 import { Reveal } from '@/components/votewise/faq'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 
 // The 20+ organization types VoteWise serves. The system never knows or cares
 // which one it is — they're all simply "Organizations".
@@ -207,6 +210,9 @@ export function HomeView() {
   const [orgs, setOrgs] = useState<any[]>([])
   const [demoForm, setDemoForm] = useState({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
   const [demoBusy, setDemoBusy] = useState(false)
+  const [receiptCode, setReceiptCode] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [verifyResult, setVerifyResult] = useState<any>(null)
 
   useEffect(() => {
     api.listOrganizations().then((d) => setOrgs(d.organizations || [])).catch(() => {})
@@ -231,6 +237,28 @@ export function HomeView() {
       toast.success('Demo request received! Our team will contact you within 24 hours.')
       setDemoForm({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
     } finally { setDemoBusy(false) }
+  }
+
+  async function verifyReceipt() {
+    if (!receiptCode.trim()) {
+      toast.error('Please enter your receipt code first.')
+      return
+    }
+    setVerifying(true); setVerifyResult(null)
+    try {
+      const d = await api.publicVerifyReceipt(receiptCode.trim())
+      setVerifyResult(d)
+      if (d.valid) toast.success('Receipt verified — your vote was counted!')
+    } catch (e: any) {
+      // The public endpoint returns 404 with a body for "not found" — the
+      // api helper throws on non-2xx, but the body is attached to err.data.
+      const payload = e?.data
+      if (payload && typeof payload === 'object' && 'valid' in payload) {
+        setVerifyResult(payload)
+      } else {
+        setVerifyResult({ valid: false, message: e?.message || 'Receipt not found.' })
+      }
+    } finally { setVerifying(false) }
   }
 
   return (
@@ -304,6 +332,182 @@ export function HomeView() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* VERIFY YOUR VOTE — receipt-anchored transparency */}
+      <section id="verify" className="border-b border-border/60 bg-secondary/30 scroll-mt-20">
+        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+            {/* Left: explanation */}
+            <motion.div
+              initial={{ opacity: 0, x: -16 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5 }}
+              className="space-y-4"
+            >
+              <Badge variant="secondary" className="gap-1">
+                <Shield className="h-3.5 w-3.5" /> Receipt-Anchored Verification
+              </Badge>
+              <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Verify your vote was{' '}
+                <span className="text-primary">recorded &amp; counted.</span>
+              </h2>
+              <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+                Every voter receives a unique receipt code after casting their ballot.
+                Enter it below to confirm your vote was recorded — without revealing
+                which candidate you chose. That&apos;s receipt-anchored anonymity.
+              </p>
+              <ul className="space-y-2.5 pt-1">
+                <li className="flex items-start gap-2.5 text-sm">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <Shield className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong className="text-foreground">Ballot secrecy.</strong>{' '}
+                    Your choice is encrypted forever — only the receipt is verifiable.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <BadgeCheck className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong className="text-foreground">Receipt-anchored.</strong>{' '}
+                    Prove you voted without ever revealing how.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5 text-sm">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <Lock className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <strong className="text-foreground">Tamper-evident.</strong>{' '}
+                    A hash-chained audit log catches any modification, anywhere.
+                  </span>
+                </li>
+              </ul>
+            </motion.div>
+
+            {/* Right: input + verify */}
+            <motion.div
+              initial={{ opacity: 0, x: 16 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card className="votewise-card-glow">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 font-display text-lg">
+                    <BadgeCheck className="h-5 w-5 text-primary" /> Check Your Receipt
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="home-receipt">Receipt code</Label>
+                    <Input
+                      id="home-receipt"
+                      placeholder="VW-2026-XXXXXXXX"
+                      value={receiptCode}
+                      onChange={(e) => setReceiptCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => { if (e.key === 'Enter') verifyReceipt() }}
+                      className="font-mono"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Format: <code className="font-mono">VW-YYYY-XXXXXXXX</code>. Find it in your
+                      confirmation screen or email.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={verifyReceipt}
+                    disabled={verifying || !receiptCode.trim()}
+                    className="w-full gap-2"
+                  >
+                    {verifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Shield className="h-4 w-4" />
+                    )}
+                    Verify Receipt
+                  </Button>
+
+                  <AnimatePresence mode="wait">
+                    {verifyResult && (
+                      <motion.div
+                        key={verifyResult.valid ? 'valid' : 'invalid'}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        {verifyResult.valid ? (
+                          <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            <AlertTitle className="text-emerald-800">
+                              Vote confirmed &amp; counted
+                            </AlertTitle>
+                            <AlertDescription className="text-emerald-700">
+                              {verifyResult.electionName && (
+                                <p>Election: <strong>{verifyResult.electionName}</strong></p>
+                              )}
+                              {(verifyResult.positionTitle || verifyResult.position) && (
+                                <p>
+                                  Position:{' '}
+                                  <strong>
+                                    {verifyResult.positionTitle || verifyResult.position}
+                                  </strong>
+                                </p>
+                              )}
+                              {verifyResult.recordedAt && (
+                                <p>
+                                  Recorded at:{' '}
+                                  <span className="font-mono">
+                                    {new Date(verifyResult.recordedAt).toLocaleString()}
+                                  </span>
+                                </p>
+                              )}
+                              {verifyResult.isSimulation && (
+                                <p className="mt-1 inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                  <AlertCircle className="h-3 w-3" /> Simulation vote (not counted)
+                                </p>
+                              )}
+                              {verifyResult.message && (
+                                <p className="mt-1 text-xs">{verifyResult.message}</p>
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        ) : (
+                          <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Receipt not found</AlertTitle>
+                            <AlertDescription>
+                              {verifyResult.message ||
+                                'This receipt code does not match any recorded vote.'}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                    <p className="text-xs text-muted-foreground">Need the full view?</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setView('verify-receipt')}
+                      className="gap-1.5"
+                    >
+                      Open full page <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </section>
