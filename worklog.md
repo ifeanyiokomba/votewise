@@ -8198,3 +8198,62 @@ Stage Summary:
   API rate limiting dashboard, election result widgets (embeddable),
   voter feedback system.
 
+
+---
+Task ID: PRIORITY-REMEDIATION
+Agent: Lead Developer (main)
+Task: Priority remediation brief — 7 tasks (vote path reconciliation, maintained counters, security, hygiene, WAL, device-fingerprint verify).
+
+Work Log:
+- **TASK 3 (Security): Remove hardcoded fallback secrets** ✅
+  - New `src/lib/secrets.ts`: central env-var validation. All 5 secrets
+    (VOTE_ENC_KEY, VOTER_HASH_PEPPER, HMAC_SECRET, SVE_BALLOT_PEPPER,
+    SVE_VOTER_PEPPER) must come from env — process fails at startup if missing.
+  - Updated `src/lib/crypto.ts` and `src/lib/sve/crypto.ts` to import from secrets.ts.
+  - Updated `results-service/index.ts` with its own requireSecret() (can't import from src/lib).
+  - Created `.env.example` documenting all required secrets.
+  - Generated real secrets for dev environment (.env no longer tracked).
+- **TASK 4 (Security): Lock down Caddy proxy + internal port** ✅
+  - Caddyfile: replaced dynamic XTransformPort rule with fixed routes (only
+    port 3030 for Socket.io, port 3000 for Next.js). Port 3031 never proxied.
+  - results-service: both servers (3030 + 3031) bind to 127.0.0.1 only.
+- **TASK 5 (Hygiene): Stop committing secrets-adjacent files** ✅
+  - `git rm --cached .env db/custom.db` (files remain locally, no longer tracked).
+  - Added db/*.db-wal and db/*.db-shm to .gitignore (WAL sidecar files).
+- **TASK 7 (Verify): Device-fingerprint auto-flag** ✅
+  - grep for otherVotersOnDevice/fingerprint.*shared/device.*collusion in
+    src/lib/sve/ returned no matches. Confirmed clean.
+- **TASK 1 (P0 Correctness): Reconcile two vote-casting paths** ✅
+  - Retired legacy /api/vote/cast endpoint (returns 410 Gone with redirect).
+  - Homepage 'verify' and 'vote' views redirect to organizations directory.
+  - Marked api.castVote() as @deprecated.
+  - All vote casting now through workspace flow → VoteRecord.
+- **TASK 2 (P0 Scalability): Maintained CandidateTally counters** ✅
+  - New CandidateTally model with @@unique([electionId, positionId, candidateId]).
+  - vote-recorder.ts: atomically increments tally inside the same transaction.
+  - results-service computeSveLive(): reads CandidateTally.findMany() instead
+    of VoteRecord.findMany() + in-memory filtering. Read cost O(positions ×
+    candidates), NOT O(votes).
+  - Unique voter count uses groupBy. Last vote uses findFirst with orderBy.
+  - showLiveResults gate preserved.
+- **TASK 6 (P1): WAL journal mode** ✅
+  - db.ts makeClient(): executes PRAGMA journal_mode=WAL on connection.
+
+Acceptance Checks:
+- ✅ Full vote flow works with new secrets: session → ballot → submit → 4 receipts.
+- ✅ CandidateTally maintained correctly: 4 tallies, count=1 each.
+- ✅ Live monitor shows correct per-position counts from tally.
+- ✅ Receipt verification works with new encryption key.
+- ✅ Results-service starts and binds to 127.0.0.1 only.
+- ✅ Starting with missing env var fails immediately with clear error.
+- ✅ Lint: 0 errors.
+
+Stage Summary:
+- ✅ All 7 tasks from the priority remediation brief completed.
+- ✅ Single source of truth for votes: VoteRecord (legacy EncryptedVote path retired).
+- ✅ Live results scale: O(positions × candidates) read cost, not O(votes).
+- ✅ No hardcoded secrets: process fails loud if env vars missing.
+- ✅ Caddy proxy locked down: only 3030 + 3000 exposed, 3031 loopback only.
+- ✅ WAL mode enabled for concurrent read/write performance.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+
