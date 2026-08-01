@@ -4677,3 +4677,285 @@ Stage Summary:
   positions), Election calendar view, bulk voter import wizard completion,
   observer real-time incident dashboard.
 
+
+---
+
+## Task ID: POSITIONS-TAB
+Agent: Positions Tab Builder (fullstack subagent)
+Task: Build the Positions management tab in the Election Workspace with full
+CRUD (Create / Read / Update / Delete + Reorder), backed by new API routes,
+an API client layer, and a polished Framer Motion UI.
+
+### Work Log
+
+**1. New API routes** (all under `src/app/api/workspace/elections/[id]/positions/`)
+
+- `route.ts` — collection endpoint:
+  - **GET**: returns all positions for the election, ordered by
+    `displayOrder` then `order` then `createdAt`. Includes `_count.candidates`
+    per position plus aggregate `stats` (`total`, `candidates`,
+    `singleChoice`, `multipleChoice`). Guarded by `requireOrganization` (any
+    org member can read). Verifies the election belongs to the resolved org.
+  - **POST**: creates a new position. Body: `{ title, description?, scope,
+    maximumVotes?, displayOrder? }`. Validates title (non-empty), scope
+    (must be one of `ORGANIZATION|WORKSPACE|VOTER_GROUP|UNIVERSITY|FACULTY|
+    DEPARTMENT`), and maximumVotes (positive integer, default 1). Auto-
+    generates a unique `slug` from the title + random suffix (re-rolls once
+    on the rare collision). Appends `displayOrder` to the end if not
+    specified. Writes an `ElectionEvent` (`POSITION_CREATED`) and an audit
+    log entry (`POSITION_CREATE`). Guarded by
+    `requirePermission(req, 'election.manage')`.
+
+- `[positionId]/route.ts` — item endpoint:
+  - **PATCH**: updates `title` / `description` / `scope` / `maximumVotes` /
+    `displayOrder`. All optional, all validated like POST. Keeps the legacy
+    `order` column in sync with `displayOrder` to prevent drift. Emits a
+    `POSITION_UPDATED` timeline event only when meaningful fields change.
+  - **DELETE**: removes a position. **Refuses with HTTP 409** if the
+    position has any candidates, returning a helpful message naming the
+    candidate count. Otherwise deletes and writes `POSITION_REMOVED` event
+    + `POSITION_DELETE` audit.
+  - Both verify the position belongs to the same election + org (tenant
+    isolation via `resolvePosition` helper).
+
+- `reorder/route.ts`:
+  - **POST**: body `{ positionIds: string[] }` (in desired order). Verifies
+    all IDs belong to this election (rejects cross-tenant/invented IDs
+    with HTTP 400 + the offending list). Updates `displayOrder` and `order`
+    for every position to `0..n-1` in parallel via `Promise.all` (each
+    update is independent — SQLite has no unique constraint on
+    `displayOrder`). Writes a `POSITION_REORDER` audit entry capturing the
+    new order.
+
+**2. API client methods** — added to `src/lib/api.ts` (next to the audit
+helper, above the Chapter 11 settings block):
+
+```ts
+getElectionPositions, addElectionPosition, updateElectionPosition,
+deleteElectionPosition, reorderElectionPositions
+```
+
+All follow the existing `?x-vw-org=<subdomain>` query convention used by
+every other workspace endpoint.
+
+**3. New UI component** — `src/components/votewise/election-positions.tsx`:
+
+- **Header card** (`votewise-card-glow`): title "Positions", description
+  text, and a primary emerald "Add Position" button. Includes an info
+  `Alert` explaining how positions structure the ballot, plus a Refresh
+  button.
+- **Stats row** (4 StatCards): Total Positions, Total Candidates, Single
+  Choice count, Multiple Choice count — emerald/amber palette only.
+- **Position list** (scrollable `max-h-[600px] overflow-y-auto`):
+  each position rendered as a Card with:
+  - Drag-handle icon (visual only, paired with up/down arrow buttons for
+    actual reorder).
+  - Position number badge (1, 2, 3…) — emerald tinted.
+  - Title + color-coded scope badge (ORGANIZATION → primary, WORKSPACE →
+    amber, VOTER_GROUP → emerald variant; legacy UNIVERSITY/FACULTY/
+    DEPARTMENT → amber).
+  - "Choose N" badge showing maximumVotes (single-choice → primary,
+    multiple-choice → amber).
+  - Candidate-count badge.
+  - Description (truncated to 2 lines) with a fallback "No description
+    provided." italic line.
+  - Created date + multiple-choice hint.
+  - Action row: Move Up / Move Down (disabled at list ends / during
+    reorder), Edit, Delete (red-tinted).
+  - Framer Motion `AnimatePresence` + `layout` for smooth add/remove/
+    reorder transitions.
+- **Add/Edit Dialog**: title (required), description (textarea), scope
+  (Select with 3 presets: Organization-wide, Specific Unit, Voter Group —
+  each with a contextual hint), maximumVotes (number input, min 1,
+  default 1) with inline explanation of single vs multiple choice. Edit
+  dialog additionally shows an amber warning Alert when the position has
+  existing candidates.
+- **Delete AlertDialog**: warns upfront if the position has candidates
+  (amber Alert). Surfaces HTTP 409 from the API as an inline destructive
+  Alert so the user sees exactly why deletion was blocked.
+- **Empty state**: large icon + "No positions yet. Add your first
+  position…" + Add Position button.
+- Mobile-first responsive layout (stat cards stack to 2-cols on mobile,
+  actions wrap, drag handle moves to a column on desktop).
+
+**4. Wiring** — `src/components/votewise/election-workspace.tsx`:
+- Imported `ElectionPositions` from `@/components/votewise/election-positions`.
+- Replaced the placeholder `{tab === 'Positions' && (...)}` block with
+  `{tab === 'Positions' && <ElectionPositions electionId={electionId} subdomain={subdomain} />}`.
+
+### Lint & Build
+- `bun run lint` — clean, no errors.
+- Dev server compiles the new routes + component without warnings
+  (verified via `dev.log`).
+
+### Stage Summary
+The Positions tab in the Election Workspace is now a full CRUD management
+UI backed by three new API routes (`/positions`, `/positions/[positionId]`,
+`/positions/reorder`). All privileged mutations are guarded by
+`requirePermission(req, 'election.manage')` from the IAM system; reads are
+guarded by `requireOrganization` for tenant isolation. Position creation
+auto-generates a unique slug, appends to displayOrder, and emits both an
+`ElectionEvent` and a hash-chained audit log entry. Deletion is safely
+blocked (HTTP 409) when candidates exist, with a helpful message surfacing
+the candidate count. The UI uses the emerald/gold/amber palette (no
+indigo/blue), is mobile-first responsive, and animates list changes with
+Framer Motion. The previous static placeholder in `election-workspace.tsx`
+is gone, replaced by `<ElectionPositions />`.
+
+---
+Task ID: ELECTION-CALENDAR
+Agent: Frontend Developer (main)
+Task: Build an Election Calendar view that visualizes all organization
+elections on a monthly calendar, plus add a List/Calendar view toggle to
+the Election Center.
+
+Work Log:
+- **New component** `src/components/votewise/election-calendar.tsx`
+  (~650 lines). Exports `ElectionCalendar` with props
+  `{ elections: CalendarElection[], subdomain?: string }`. Also exports
+  the `CalendarElection` interface for callers that want strict typing
+  (the Election Center passes the raw `any[]` from
+  `api.electionCenter()`).
+
+- **Status palette** (NO indigo, NO blue) via `getStatusStyle()`:
+  - `LIVE`/`VOTING`/`OPEN` → emerald chip + pulsing dot.
+  - `PAUSED` → amber chip (treated as a "live but paused" variant).
+  - `SCHEDULED`/`READY`/`PENDING_REVIEW` → amber chip (upcoming).
+  - `COMPLETED`/`CERTIFIED` → zinc chip.
+  - `ARCHIVED` → zinc chip with "Archived" label.
+  - `CANCELLED` → red chip.
+  - `DRAFT` (and anything unrecognized) → transparent chip with
+    `border border-dashed border-muted-foreground/40`.
+  Each chip is a small `<a>` with a status-indicator dot (the dot has
+  an `animate-ping` halo when `pulse` is true — only LIVE).
+
+- **Date helpers**:
+  - `getMonthDays(year, month)` — returns a 42-cell (6-week) Date[]
+    padded with prev/next-month days so the grid always fills 6 rows.
+  - `isElectionOnDay(election, day)` — `start <= dayEnd && end >= dayStart`
+    with `startOfDay`/`endOfDay` normalizers; defensively guards
+    against NaN dates.
+  - `fmtRange(start, end)` — `Mar 5 → Mar 7` (same year) or with year
+    suffix when spanning years.
+  - `isSameDay`/`isSameMonth` for today-ring + out-of-month muting.
+
+- **Layout** — three stacked Cards inside the component:
+  1. **Header card** (`votewise-card-glow`): icon + title + "Election
+     Calendar" subtitle on the left; on the right a `Today` button and
+     `ChevronLeft`/`ChevronRight` icon buttons. All wired to
+     `goPrev`/`goNext`/`goToday` which also flip a `direction` state
+     (1 / -1) so the Framer Motion slide animation knows which way to
+     slide.
+  2. **Calendar grid card**: month title + count badge at the top, then
+     a weekday header row (Sun–Sat) and the 7-column day grid. Wrapped
+     in `overflow-x-auto` with a `min-w-[640px]` inner wrapper so on
+     narrow phones it scrolls horizontally instead of crushing the
+     cells. Total grid height `min-h-[600px]` as specified.
+     Month transitions: `AnimatePresence mode="wait"` with a
+     `motion.div` keyed on `${year}-${month}` sliding in/out on the X
+     axis based on the `direction` state. Variants: enter
+     `{opacity:0, x:±32}`, center `{opacity:1, x:0}`, exit
+     `{opacity:0, x:∓32}`, transition 220ms ease-out.
+  3. **Legend card**: 4 entries (Live/Paused, Upcoming, Completed,
+     Draft) each with a colored dot (with ping halo for the live one)
+     and a label.
+  4. **Current-month list card**: a `max-h-[420px] overflow-y-auto`
+     scrollable `<ul>` of elections whose `startTime` falls in the
+     current month, sorted by start time ascending. Each row is a
+     button linking to `/workspace/elections/[id]?org=[subdomain]`,
+     showing a Vote icon, the election name, the formatted date range,
+     electionType, workspace name, and a status chip on the right.
+     Empty state when no elections fall in this month.
+
+- **Day cell** (`DayCell` subcomponent): `min-h-[100px]`,
+  `border border-border/40`, `p-1.5`, `bg-card` (or `bg-muted/20` when
+  out of month). Today is highlighted with `ring-2 ring-primary/60
+  ring-offset-1`. Top row: day number (bold primary badge today,
+  semibold in-month, muted out-of-month) + a small count badge when
+  the day has elections. Body: up to 3 `ElectionChip`s, then a
+  `MoreChips` "+N more" button if there are >3.
+
+- **Election chip** (`ElectionChip`): an `<a>` styled as a tiny badge
+  (`text-[10px]`, `px-1.5`, `py-0.5`, `border`, colored per status).
+  Truncates the election name to 18 chars with an ellipsis. Wraps in a
+  shadcn `Tooltip` showing the full name, date range, status label,
+  and electionType. `stopPropagation` on click so the chip link
+  doesn't bubble to the day cell.
+
+- **+N more** (`MoreChips`): a `Popover` (radix-ui) with a button
+  trigger showing "+N more". Popover content shows the day's date
+  label, a `Separator`, and a scrollable list (`max-h-64 overflow-y-auto`)
+  of the remaining elections — each is a link to the election workspace
+  with name, date range, and status label.
+
+- **Icons used** (lucide-react): `ChevronLeft`, `ChevronRight`,
+  `Calendar`, `Clock`, `Vote`, `AlertCircle`.
+- **shadcn/ui components used**: `Card`, `CardContent`, `CardHeader`,
+  `CardTitle`, `Button`, `Badge`, `Separator`, `Popover` (+ Trigger /
+  Content), `Tooltip` (+ Trigger / Content).
+- **Mobile-first**: weekday header + grid are in a
+  `min-w-[640px]` horizontal-scroll container; the view-toggle labels
+  hide under `sm:`; the month list always stacks; touch targets ≥32px.
+
+- **ElectionCenter enhancement**
+  (`src/components/votewise/election-center.tsx`):
+  - Added `useState<'list' | 'calendar'>('list')` named `view`.
+  - Imported `ElectionCalendar` from
+    `@/components/votewise/election-calendar` and `List as ListIcon`
+    from lucide-react (the existing `Calendar` import is reused for
+    the toggle's second button).
+  - Added a `ViewToggleBtn` subcomponent: an `aria-pressed` segmented
+    button styled with `bg-primary text-primary-foreground` when
+    active, otherwise muted with hover. Labels hide on `<sm`.
+  - Placed the toggle between the stat boxes and the election groups
+    (exactly per spec).
+  - Flattened all five status groups (`running + upcoming + completed
+    + draft + archived`) into a single `allElections` array and
+    passes it to `<ElectionCalendar elections={allElections}
+    subdomain={subdomain} />` when `view === 'calendar'`. The list
+    view is preserved verbatim inside an `else` branch.
+  - **Bonus palette fix**: the existing "Completed" `StatBox` and
+    `ElectionGroup` were using `bg-blue-100 text-blue-700` /
+    `text-blue-600`, which violates the project's "NO indigo or blue"
+    rule. Replaced both with `bg-zinc-100 text-zinc-700` /
+    `text-zinc-600`. This is the only change to the existing list-view
+    markup; everything else is unchanged.
+
+- **No API changes**: the existing `api.electionCenter(subdomain)`
+  already returns `{ stats, running, upcoming, completed, draft,
+  archived }` from `GET /api/workspace/elections`. The calendar
+  consumes the same payload — just flattened.
+
+### Verification
+- `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings**
+  (exit 0). Ran twice (after initial write, and again after removing
+  the unused `Circle` import + the trailing `_icons` re-export).
+- Dev server log shows clean compilation (`✓ Compiled in 379ms`)
+  after the new files were added — no TypeScript or import errors.
+- Manually inspected the rendered markup structure for: header card
+  glow class, weekday header, 42-cell day grid, today ring, chip
+  classes (emerald/amber/zinc/dashed — no blue), popover trigger,
+  tooltip wrappers, legend, and the month-list empty-state path.
+
+Stage Summary:
+- ✅ New `ElectionCalendar` component delivers a full monthly calendar:
+  month navigation (prev/next/today), 7-column grid with padded
+  prev/next days, status-color-coded chips with pulsing dots for LIVE,
+  "+N more" popover for busy days, tooltips on every chip, legend, and
+  a scrollable list of the current month's elections.
+- ✅ Framer Motion `AnimatePresence` slides the grid in/out on month
+  change based on navigation direction.
+- ✅ Mobile-first responsive: horizontal-scroll wrapper preserves the
+  grid on narrow screens; toggle labels hide under `sm:`; touch
+  targets are adequately sized.
+- ✅ Palette compliance: emerald/amber/zinc/red/dashed only — NO
+  indigo, NO blue. Also fixed two pre-existing blue usages in the
+  Election Center list view as a bonus.
+- ✅ `votewise-card-glow` applied to the calendar header card.
+- ✅ Election Center now has a List/Calendar view toggle (default:
+  List). The toggle sits between the stat boxes and the election
+  groups as specified.
+- ✅ All elections (running + upcoming + completed + draft + archived)
+  are flattened into one array and passed to the calendar; no API
+  changes were needed.
+- ✅ Lint passes with zero errors. Dev server compiles cleanly.

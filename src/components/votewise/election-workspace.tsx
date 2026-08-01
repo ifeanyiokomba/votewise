@@ -19,6 +19,7 @@ import { AuditLogs } from '@/components/votewise/audit-logs'
 import { ElectionSettings } from '@/components/votewise/election-settings'
 import { ElectionSupport } from '@/components/votewise/election-support'
 import { ElectionCandidates } from '@/components/votewise/election-candidates'
+import { ElectionPositions } from '@/components/votewise/election-positions'
 import { ElectionObservers } from '@/components/votewise/election-observers'
 import { ElectionVoters } from '@/components/votewise/election-voters'
 import { cn } from '@/lib/utils'
@@ -200,17 +201,7 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
       )}
 
       {tab === 'Positions' && (
-        <Card><CardContent className="py-8 text-center">
-          <Vote className="mx-auto h-12 w-12 text-muted-foreground/40" />
-          <p className="mt-2 text-sm font-medium">{e.positions?.length || 0} positions configured</p>
-          {e.positions?.map((p: any) => (
-            <div key={p.id} className="mt-2 flex items-center justify-between rounded-lg border border-border/60 p-2 text-sm">
-              <span className="font-medium">{p.title}</span>
-              <Badge variant="outline" className="text-[10px]">{p._count?.candidates || 0} candidates</Badge>
-            </div>
-          ))}
-          {(e.positions?.length || 0) === 0 && <p className="mt-2 text-xs text-muted-foreground">No positions yet. Add positions to define what voters are electing.</p>}
-        </CardContent></Card>
+        <ElectionPositions electionId={electionId} subdomain={subdomain} />
       )}
 
       {tab === 'Candidates' && (

@@ -83,6 +83,12 @@ export const api = {
   validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getElectionAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Positions — within an election workspace
+  getElectionPositions: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  addElectionPosition: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateElectionPosition: (electionId: string, positionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions/${positionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteElectionPosition: (electionId: string, positionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions/${positionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  reorderElectionPositions: (electionId: string, positionIds: string[], subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions/reorder${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ positionIds }) }),
   // Chapter 11: Settings + Support tabs (Election Workspace)
   getElectionSettings: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   updateElectionSettings: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
