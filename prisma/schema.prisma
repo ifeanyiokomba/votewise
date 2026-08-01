@@ -35,6 +35,8 @@ model Organization {
   name            String   // "University of Lagos" / "MTN Nigeria" / "Red Cross Nigeria"
   slug            String   @unique
   subdomain       String?  @unique // e.g. "unilag" → unilag.votewise.ng
+  customDomain    String?  @unique // e.g. "vote.unilag.edu.ng" (Chapter 3 spec field)
+  organizationType String? // Chapter 3 spec field (alias for category)
   // Branding
   logoUrl         String?
   darkModeLogoUrl String?
@@ -45,6 +47,7 @@ model Organization {
   ownerEmail      String
   ownerName       String
   ownerPhone      String?
+  createdBy       String?  // Chapter 3: who created this org (userId)
   // Location + locale
   country         String?  // e.g. "Nigeria"
   state           String?  // e.g. "Lagos"
@@ -417,6 +420,7 @@ model VotingSession {
 model SupportMessage {
   id              String   @id @default(cuid())
   ticketId        String
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   senderId        String?
   senderName      String
   senderRole      String   // VOTER | OBSERVER | ADMIN | SUPPORT | SYSTEM
@@ -651,13 +655,17 @@ model PoliticalParty {
 // ---------------------------------------------------------------------------
 model Position {
   id            String      @id @default(cuid())
+  // Chapter 3: generic org scoping
+  organizationId String?
   electionSessionId String?
   electionSession ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
   title         String
   slug          String      @unique
   description   String?
-  scope         String      // UNIVERSITY|FACULTY|DEPARTMENT
-  order         Int         @default(0)
+  scope         String      // UNIVERSITY|FACULTY|DEPARTMENT (legacy) → ORGANIZATION|WORKSPACE|VOTER_GROUP
+  maximumVotes  Int         @default(1)  // Chapter 3: how many candidates a voter can select
+  displayOrder  Int         @default(0)  // Chapter 3: replaces legacy `order`
+  order         Int         @default(0)  // legacy alias
   facultyId     String?
   faculty       Faculty?    @relation("FacultyPosition", fields: [facultyId], references: [id], onDelete: Cascade)
   departmentId  String?
@@ -667,6 +675,7 @@ model Position {
   createdAt     DateTime    @default(now())
 
   @@index([electionSessionId])
+  @@index([organizationId])
 }
 
 model Candidate {
@@ -822,6 +831,8 @@ model Accreditation {
 // ---------------------------------------------------------------------------
 model EncryptedVote {
   id                String   @id @default(cuid())
+  // Chapter 3: generic org scoping (tenant isolation for votes)
+  organizationId    String?
   electionSessionId String?
   electionSession   ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
   voterHash         String   // sha256(matric + pepper), opaque, not a FK
@@ -832,6 +843,8 @@ model EncryptedVote {
                              // the public results snapshot, never before.
   candidate         Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
   isNota            Boolean  @default(false) // also encrypted in ciphertext; mirrored here only post-certify
+  // Chapter 3: encryptedReceipt (the spec's field name — alias for ciphertext + receiptCode)
+  encryptedReceipt  String?  // JSON: { ciphertext, iv, keyId, receiptCode }
   ciphertext        String   // AES-256-GCM of JSON {candidateId, isNota}
   iv                String   // base64 IV
   keyId             String   // which envelope key was used (for rotation)
@@ -841,6 +854,7 @@ model EncryptedVote {
 
   @@index([positionId])
   @@index([electionSessionId])
+  @@index([organizationId])
   @@index([voterHash])
 }
 
@@ -945,20 +959,29 @@ model RefreshToken {
 // ---------------------------------------------------------------------------
 model AuditLog {
   id           String    @id @default(cuid())
+  // Chapter 3: generic org scoping + resource tracking
+  organizationId String?
   electionId   String?
   election     ElectionSession? @relation(fields: [electionId], references: [id], onDelete: Cascade)
   actorId      String
   actorRole    String    // SUPER_ADMIN|ELECTORAL_COMMITTEE|FACULTY_OFFICER|DEPARTMENT_OFFICER|OBSERVER|VOTER|SYSTEM
   actorName    String
   action       String
+  // Chapter 3: resource + resourceId for granular audit tracking
+  resource     String?   // "election" | "voter" | "candidate" | "domain" | "settings" | ...
+  resourceId   String?   // the ID of the affected resource
   details      String?   // JSON string
   ip           String?
+  // Chapter 3: device + browser for forensic audit
+  device       String?   // device label/fingerprint
+  browser      String?   // user-agent
   prevHash     String    // hash of the previous row (genesis = "GENESIS")
   hash         String    // sha256(prevHash + actorId + action + details + createdAt + nonce)
   nonce        String
   createdAt    DateTime  @default(now())
 
   @@index([actorId])
+  @@index([organizationId])
   @@index([createdAt])
   @@index([action])
 }
@@ -990,10 +1013,15 @@ model SecurityEvent {
 // ---------------------------------------------------------------------------
 model SupportTicket {
   id           String    @id @default(cuid())
+  // Chapter 3: generic org scoping + assignment tracking
+  organizationId String?
   voterId      String?
   voter        Voter?    @relation(fields: [voterId], references: [id], onDelete: SetNull)
   voterMatric  String
   voterName    String
+  openedBy     String?   // Chapter 3: who opened the ticket
+  assignedTo   String?   // Chapter 3: who is assigned to handle it
+  category     String?   // Chapter 3: "TECHNICAL" | "OTP" | "VERIFICATION" | "BILLING" | "OTHER"
   issueType    String
   description  String
   status       String    @default("OPEN")
@@ -1004,8 +1032,10 @@ model SupportTicket {
   resolvedById String?
   resolvedBy   ElectionOfficial? @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
   resolution   String?
+  messages     SupportMessage[]
 
   @@index([status])
+  @@index([organizationId])
 }
 
 model Notification {
