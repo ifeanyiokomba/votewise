@@ -44,10 +44,13 @@ const NULL_ORG: ResolvedOrganization | null = null
 
 // Extract the host from the request, stripping port + protocol.
 function getHost(req: NextRequest | Request): string {
+  const headers = (req as any)?.headers
+  if (!headers) return ''
+  const get = typeof headers.get === 'function' ? headers.get.bind(headers) : (k: string) => headers[k]
   return (
-    req.headers.get('x-forwarded-host') ||
-    req.headers.get('host') ||
-    req.headers.get('x-original-host') ||
+    get('x-forwarded-host') ||
+    get('host') ||
+    get('x-original-host') ||
     ''
   ).toLowerCase()
 }
@@ -86,9 +89,15 @@ export async function resolveOrganization(req: NextRequest | Request): Promise<R
   // Dev fallback: allow `?x-vw-org=<subdomain>` or `x-vw-org` header so the
   // sandbox (which proxies everything through localhost:3000) can still resolve
   // orgs during development.
-  const explicitOrg =
-    (req instanceof NextRequest ? req.nextUrl.searchParams.get('x-vw-org') : null) ||
-    req.headers.get('x-vw-org')
+  const headers = (req as any)?.headers
+  const getHeader = headers && typeof headers.get === 'function' ? headers.get.bind(headers) : (k: string) => headers?.[k]
+  let explicitOrg: string | null = null
+  try {
+    if (req instanceof NextRequest) {
+      explicitOrg = req.nextUrl.searchParams.get('x-vw-org')
+    }
+  } catch { /* not a NextRequest */ }
+  if (!explicitOrg) explicitOrg = getHeader('x-vw-org')
   if (explicitOrg) {
     const cached = await lookupBySubdomain(explicitOrg.toLowerCase())
     if (cached) return cached
