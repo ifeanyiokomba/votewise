@@ -1950,3 +1950,45 @@ Stage Summary:
 - ✅ Loader redesigned: minimal (just the logo mark), fast (~1.3s total),
   professional (single smooth scale-in + checkmark draw + fade-out). No bulky
   extras.
+
+---
+Task ID: LOGO-LOADER-PRO
+Agent: Lead Developer (main)
+Task: Redesign the logo loader to be professionally crafted, using the homepage
+hero image — the image spins and the ballot box "ticks" (checkmark stamps on).
+
+Work Log:
+- **Redesigned `src/components/votewise/logo-loader.tsx`** — a cinematic,
+  branded loader reusing the homepage hero image (diverse people around a
+  ballot box). Concept: the image spins, and as it settles, a gold checkmark
+  "stamps" onto the center (the ballot box), then the VoteWise wordmark fades
+  in.
+- **Animation sequence (total ~1.9s):**
+  1. **0s**: Ambient backdrop glow (primary/8, blur-3xl) fades + scales in.
+  2. **0s**: Logo container scales in (0.6 → 1) + fades in (0.5s, smooth ease).
+  3. **0.15s**: Circular-masked hero image (140px, rounded-full, ring-4
+     primary/15, shadow-2xl) spins 360° over 1.4s. The image is scaled to
+     125% + darkened with a primary/35 overlay so the checkmark pops.
+  4. **1.0s**: White checkmark "stamps" onto the center — scales in (0 → 1)
+     with a back-out overshoot ease ([0.34, 1.56, 0.64, 1]) + slight rotate
+     (-25° → 0°) for a physical stamp feel. Has a glow halo behind it.
+  5. **1.0s**: Stamp impact ring expands outward (0.8 → 2.6 scale) + fades —
+     reinforces the "tick" impact.
+  6. **1.25s**: "VoteWise" wordmark fades in + slides up (Vote in foreground,
+     Wise in primary green).
+  7. **1.45s**: "Election Platform" tagline fades in (uppercase, tracked).
+  8. **1.9s**: Entire loader fades out (0.45s) + the logo container scales
+     down slightly (1 → 0.9) to reveal the app.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - At 0.5s: VLM confirmed "circular green image spinning" with "stylized
+    people figures" + "white box/ballot box icon in the middle."
+  - At 1.35s: VLM confirmed "white checkmark stamped in the center" of the
+    circular image.
+  - At 1.5s: VLM confirmed "circular image with a checkmark" + "Vote Wise"
+    text below.
+  - Loader gone after ~1.9s, app visible. Zero errors.
+
+Stage Summary:
+- ✅ Professionally crafted loader using the homepage hero image. The image
+  spins 360°, a checkmark stamps onto the ballot box with an impact ring, and
+  the VoteWise brand reveals. Cinematic, branded, ~1.9s total.
