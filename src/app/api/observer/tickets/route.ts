@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { json, getClientIp, writeAudit } from '@/lib/election'
 import { requireOfficial } from '@/lib/guards'
+import { getOrgScope } from '@/lib/org-scope'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,9 @@ export async function GET(req: NextRequest) {
   if (auth instanceof Response) return auth
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
+  const { org } = await getOrgScope(req)
   const where: Record<string, unknown> = {}
+  if (org) where.voter = { electionSession: { organizationId: org.id } }
   if (status) where.status = status
   const tickets = await db.supportTicket.findMany({ where, orderBy: [{ status: 'asc' }, { createdAt: 'desc' }], take: 200 })
   return json({ tickets })

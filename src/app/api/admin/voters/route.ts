@@ -3,10 +3,11 @@ import { db } from '@/lib/db'
 import { json, errorJson, getClientIp, writeAudit } from '@/lib/election'
 import { requireOfficial } from '@/lib/guards'
 import { scopeCovers } from '@/lib/rbac'
+import { getOrgScope } from '@/lib/org-scope'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/admin/voters — scoped list + search.
+// GET /api/admin/voters — scoped list + search. Tenant-scoped by organizationId.
 export async function GET(req: NextRequest) {
   const auth = await requireOfficial(req, 'voter.manage')
   if (auth instanceof Response) return auth
@@ -18,7 +19,11 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const pageSize = Math.min(100, parseInt(searchParams.get('pageSize') || '50', 10))
 
+  // Chapter 2: tenant isolation — scope by organizationId when in a workspace.
+  const { org } = await getOrgScope(req)
+
   const where: Record<string, unknown> = {}
+  if (org) where.electionSession = { organizationId: org.id }
   if (q) where.OR = [{ matric: { contains: q } }, { fullName: { contains: q } }, { institutionEmail: { contains: q } }, { personalEmail: { contains: q } }, { phone: { contains: q } }]
   if (status === 'voted') where.hasVoted = true
   if (status === 'pending') where.hasVoted = false

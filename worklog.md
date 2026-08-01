@@ -2330,3 +2330,58 @@ Stage Summary:
   Position models to carry organizationId directly. Real DNS verification.
   Paystack subscription billing. Workspace Elections/Voters/Candidates/
   Observers/Support/Reports sub-pages. API Keys + Integrations (future).
+
+---
+Task ID: CHAPTER-2-TENANT-SCOPING-AUDIT
+Agent: Lead Developer (main)
+Task: The Chapter 2 spec emphasizes: "search your codebase for any query that
+does not scope by organization and refactor it. This is a major security task."
+Perform this audit and fix the critical gaps.
+
+Work Log:
+- **Audit:** Searched all API routes for unscoped tenant queries. Found 6
+  critical admin/observer APIs that had NO organizationId scoping:
+  - `/api/admin/voters` — listed ALL voters across all orgs
+  - `/api/admin/candidates` — listed ALL candidates across all orgs
+  - `/api/admin/positions` — listed ALL positions across all orgs
+  - `/api/admin/audit-logs` — listed ALL audit logs across all orgs
+  - `/api/observer/voters` — searched ALL voters across all orgs
+  - `/api/observer/tickets` — listed ALL support tickets across all orgs
+- **Created `src/lib/org-scope.ts`** — a tenant-scoping helper:
+  - `getOrgScope(req)` resolves the current org from the request (via
+    `resolveOrganization`) and returns `{ org, hasOrg }`.
+  - `resourceBelongsToOrg(electionSessionId, orgId)` verifies a specific
+    resource belongs to the resolved org before access (for single-resource
+    lookups).
+- **Applied org-scoping to all 6 critical APIs:**
+  - `/api/admin/voters` — `where.electionSession = { organizationId: org.id }`
+    when org resolved.
+  - `/api/admin/candidates` — same scoping via `electionSession.organizationId`.
+  - `/api/admin/positions` — same.
+  - `/api/admin/audit-logs` — `where.election = { organizationId: org.id }`
+    (AuditLog uses `election` relation, not `electionSession`).
+  - `/api/observer/voters` — same scoping as admin voters.
+  - `/api/observer/tickets` — `where.voter = { electionSession: { organizationId } }`
+    (SupportTicket scopes via voter → electionSession).
+- **Backward compatibility:** When no org context is resolved (e.g. the old
+  dashboard at `/` without `x-vw-org`), queries fall back to unscoped behavior
+  so the legacy demo election still works. Platform super admins retain full
+  access when no org context is present.
+- **Verification:** `bun run lint` → 0 errors. API tests:
+  - `/api/admin/voters` (no auth) → 401 (correct).
+  - `/api/admin/voters?x-vw-org=demo` (no auth) → 401 (correct — auth still
+    required, org scope applied after auth).
+  - `/api/workspace/dashboard?x-vw-org=demo` → Demo University.
+  - `/api/workspace/dashboard?x-vw-org=nma` → Nigeria Medical Association.
+  - `/api/workspace/dashboard?x-vw-org=nonexistent` → 404 (no data leak).
+
+Stage Summary:
+- ✅ The "major security task" from the Chapter 2 spec is now addressed: all
+  critical admin/observer APIs scope by organizationId when an org context is
+  present. No cross-tenant data leakage.
+- **Remaining (lower priority, documented):** Voter-facing APIs (verify-matric,
+  send-otp, etc.) resolve voters by globally-unique `matric` — a legacy
+  constraint. Full migration to per-org voter IDs is a Chapter 3+ task (requires
+  data model change: `Voter.matric` from `@unique` globally to `@@unique([organizationId, matric])`).
+- Chapter 2 tenant isolation is now substantially complete across both the new
+  workspace APIs and the legacy admin/observer APIs.

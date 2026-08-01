@@ -2,14 +2,17 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { json, errorJson, getClientIp, writeAudit } from '@/lib/election'
 import { requireOfficial } from '@/lib/guards'
+import { getOrgScope } from '@/lib/org-scope'
 
 export const dynamic = 'force-dynamic'
 
-// GET /api/admin/candidates
+// GET /api/admin/candidates — tenant-scoped by organizationId.
 export async function GET(req: NextRequest) {
   const auth = await requireOfficial(req, 'candidate.screen')
   if (auth instanceof Response) return auth
+  const { org } = await getOrgScope(req)
   const candidates = await db.candidate.findMany({
+    where: org ? { electionSession: { organizationId: org.id } } : {},
     orderBy: [{ position: { order: 'asc' } }, { displayOrder: 'asc' }],
     include: {
       position: { select: { id: true, title: true, slug: true, scope: true } },
