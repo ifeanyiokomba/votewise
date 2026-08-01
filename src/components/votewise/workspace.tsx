@@ -126,8 +126,9 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
                 {data.elections.length === 0 ? (
                   <div className="py-8 text-center">
                     <Vote className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                    <p className="mt-2 text-sm text-muted-foreground">No elections yet. Create your first election to get started.</p>
-                    <Button size="sm" className="mt-3 gap-1.5"><Plus className="h-3.5 w-3.5" /> Create Election</Button>
+                    <p className="mt-2 text-sm font-medium">You haven&apos;t created an election yet.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Create your first election in less than 5 minutes. Just a name, date, and voting window — that&apos;s it.</p>
+                    <Button size="sm" className="mt-3 gap-1.5"><Plus className="h-3.5 w-3.5" /> Create Your First Election</Button>
                   </div>
                 ) : (
                   data.elections.map((e) => (

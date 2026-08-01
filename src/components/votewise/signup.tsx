@@ -123,6 +123,7 @@ export function SignupView() {
         state: form.state,
         timezone: form.timezone,
         subdomain,
+        template: form.template || category.toLowerCase(),
       })
       setOfficial(d.official)
       setCreated(d)
@@ -228,12 +229,21 @@ export function SignupView() {
               <Label className="mb-2 block">Organization Type</Label>
               <div className="votewise-scroll grid max-h-48 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
                 {ORG_CATEGORIES.map((c) => (
-                  <button key={c.value} onClick={() => setCategory(c.value)}
+                  <button key={c.value} onClick={() => { setCategory(c.value); set('template', c.value.toLowerCase()) }}
                     className={cn('flex flex-col items-center gap-1 rounded-lg border p-2.5 text-center transition-all', category === c.value ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border hover:bg-muted/50')}>
                     <c.icon className={cn('h-4 w-4', category === c.value ? 'text-primary' : 'text-muted-foreground')} />
                     <span className="text-[10px] font-medium leading-tight">{c.label}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+            {/* Chapter 6: Workspace Template selection */}
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+              <Label className="mb-1 block text-xs font-semibold text-blue-700 dark:text-blue-400">Workspace Template</Label>
+              <p className="mb-2 text-xs text-muted-foreground">Preconfigures voter fields, org units, and terminology based on your type. You can change everything later.</p>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" /> {category === 'UNIVERSITY' ? 'University template' : category === 'COMPANY' ? 'Company template' : category === 'CHURCH' ? 'Church template' : category === 'NGO' ? 'NGO template' : category === 'MARKET_ASSOCIATION' ? 'Market template' : category === 'GOVERNMENT' ? 'Government template' : category === 'OTHER' ? 'Blank workspace' : 'Auto-selected'}</Badge>
+                <Button size="sm" variant="ghost" onClick={() => set('template', 'blank')} className="text-xs">Use Blank Instead</Button>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

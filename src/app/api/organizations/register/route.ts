@@ -4,6 +4,7 @@ import { json, errorJson, writeAudit, getClientIp } from '@/lib/election'
 import { hashPassword } from '@/lib/crypto'
 import { signAccessToken, newRefreshToken, setAuthCookies } from '@/lib/auth'
 import { validatePassword } from '@/lib/password-policy'
+import { getTemplate } from '@/lib/workspace-templates'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   const { name, category, description, primaryColour, accentColour, secondaryColour, logoUrl,
     ownerName, ownerEmail, ownerPassword, ownerPhone,
     country, state, timezone, language, subdomain: requestedSubdomain,
-    terminology } = body
+    terminology, template: templateId } = body
 
   if (!name || typeof name !== 'string' || name.trim().length < 2)
     return errorJson('Organization name is required', 400)
@@ -112,18 +113,22 @@ export async function POST(req: NextRequest) {
         phone: ownerPhone || null,
       },
     })
+    // Chapter 6: apply workspace template if selected.
+    const template = templateId ? getTemplate(templateId) : null
+    const mergedTerm = { ...terminology, ...(template?.terminology || {}) }
+
     await tx.organizationTerminology.create({
       data: {
         organizationId: newOrg.id,
-        organizationLabel: terminology?.organizationLabel || 'Organization',
-        workspaceLabel: terminology?.workspaceLabel || 'Workspace',
-        voterGroupLabel: terminology?.voterGroupLabel || 'Voter Group',
-        voterLabel: terminology?.voterLabel || 'Voter',
-        candidateLabel: terminology?.candidateLabel || 'Candidate',
-        electionLabel: terminology?.electionLabel || 'Election',
-        positionLabel: terminology?.positionLabel || 'Position',
-        officialLabel: terminology?.officialLabel || 'Electoral Officer',
-        observerLabel: terminology?.observerLabel || 'Observer',
+        organizationLabel: mergedTerm.organizationLabel || 'Organization',
+        workspaceLabel: mergedTerm.workspaceLabel || 'Workspace',
+        voterGroupLabel: mergedTerm.voterGroupLabel || 'Voter Group',
+        voterLabel: mergedTerm.voterLabel || 'Voter',
+        candidateLabel: mergedTerm.candidateLabel || 'Candidate',
+        electionLabel: mergedTerm.electionLabel || 'Election',
+        positionLabel: mergedTerm.positionLabel || 'Position',
+        officialLabel: mergedTerm.officialLabel || 'Electoral Officer',
+        observerLabel: mergedTerm.observerLabel || 'Observer',
       },
     })
     // Create default workspace settings (OTP prefs, notification channels, election defaults).
@@ -134,6 +139,37 @@ export async function POST(req: NextRequest) {
     await tx.organizationSubscription.create({
       data: { organizationId: newOrg.id, plan: 'PAYG', status: 'TRIAL' },
     })
+    // Chapter 6: precreate voter fields from template.
+    if (template?.voterFields) {
+      for (const vf of template.voterFields) {
+        await tx.voterField.create({
+          data: {
+            organizationId: newOrg.id,
+            label: vf.label,
+            key: vf.key,
+            fieldType: vf.fieldType,
+            required: vf.required,
+            displayOrder: template.voterFields.indexOf(vf) + 1,
+          },
+        })
+      }
+    }
+    // Chapter 6: precreate organization units from template.
+    if (template?.sampleUnits) {
+      for (const u of template.sampleUnits) {
+        const slug = u.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        await tx.workspace.create({
+          data: {
+            organizationId: newOrg.id,
+            name: u.name,
+            slug,
+            unitType: u.unitType,
+            code: u.code || null,
+            createdBy: member.id,
+          },
+        })
+      }
+    }
     // Bridging ElectionOfficial so the existing cookie-based auth + org portal
     // work immediately. Role mapped ORG_OWNER → SUPER_ADMIN (legacy equivalent).
     // The OrganizationMember remains the source of truth for the new hierarchy.
