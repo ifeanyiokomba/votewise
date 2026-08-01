@@ -6670,3 +6670,62 @@ registration status and voting history WITHOUT revealing who they voted for.
   "download my data" button that exports the voter's full record as a
   JSON/PDF for portability; consider surfacing a "contact my electoral
   committee" deep link per org.
+
+---
+Task ID: ANALYTICS-VOTER-PORTAL-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — Election Analytics Dashboard + Voter Status Portal.
+
+Work Log:
+- **QA Assessment**: Platform stable — all services running, lint 0 errors.
+  Previous round built Public Verification Portal + Import Wizard enhancement
+  + Duplicate with date shifting. This round built 2 new features.
+- **Election Analytics Dashboard** (new page + API + component):
+  - New API: GET /api/workspace/analytics — returns 8 metric groups:
+    overview (totalElections, totalVoters, totalVotesCast, avgTurnout,
+    mostActiveElection, openIncidents, verifiedVoters), election comparison
+    (per-election stats), turnout trend (for line chart), participation by
+    status, top elections by turnout, vote timeline (30 days), incident
+    summary, voter engagement.
+  - New page: /workspace/analytics — AnalyticsDashboard component with:
+    - 6 overview stat cards with icons + trend indicators
+    - Recharts turnout trend line chart (emerald, 0-100% Y-axis)
+    - Recharts participation donut chart (5 segments)
+    - Recharts vote timeline bar chart (30 days)
+    - Sortable election comparison table (10 columns)
+    - Top elections by turnout (top 5 with progress bars)
+    - Incident summary (4 tiles + resolved rate)
+    - Voter engagement breakdown
+  - Sidebar "Reports" now links to /workspace/analytics.
+- **Voter Status Portal** (new page + API + component):
+  - New API: POST /api/voter-status — public endpoint (no auth, no org
+    context). Searches voters across ALL orgs by email, phone, or matric.
+    Returns voter status, elections, receipts, timeline WITHOUT revealing
+    vote choices. Supports cross-org matches (returns `matches` array).
+    Includes `_privacy` field with 3 guarantees.
+  - New page: /status — VoterStatusPortal component with:
+    - Search card with large input + Check Status button
+    - Results: voter card (name, status badge, verification badge, org),
+      elections list (with Vote Now button for live + not voted), receipts
+      with inline verify, timeline (last 10 events)
+    - Privacy notice (what is/isn't revealed)
+    - "Not found" state with suggestions
+  - Homepage: "Check Your Voter Status" section with link to /status.
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Analytics: 1 election, 15 voters, 8 votes, 53.3% avg turnout, all
+    charts render correctly.
+  - Voter Status: searched voter1@demo.votewise.ng → found Aisha Mohammed,
+    ACTIVE/VERIFIED, 1 election, 4 receipts, correct timeline.
+  - Homepage: "Check your voter status" section present.
+  - Zero runtime errors.
+
+Stage Summary:
+- ✅ Election Analytics Dashboard — organizations can now compare elections,
+  view turnout trends, and track participation metrics in a visual dashboard.
+- ✅ Voter Status Portal — voters can check their registration status,
+  voting history, and receipts WITHOUT revealing vote choices. This
+  completes the voter-facing trust layer.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Risk-limiting audit tool, multi-language
+  support, election notification system, mobile app.
+
