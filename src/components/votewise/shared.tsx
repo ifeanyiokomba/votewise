@@ -28,12 +28,12 @@ export function Logo({ className }: { className?: string }) {
 }
 
 const NAV_ITEMS: { label: string; target: string; view?: View }[] = [
+  { label: 'Features', target: 'features' },
   { label: 'Platform', target: 'products' },
-  { label: 'Organizations', target: 'organizations' },
-  { label: 'Roles', target: 'roles' },
-  { label: 'Principles', target: 'principles' },
-  { label: 'Security', target: 'security' },
   { label: 'Pricing', target: 'pricing' },
+  { label: 'Testimonials', target: 'testimonials' },
+  { label: 'Security', target: 'security' },
+  { label: 'Docs', target: 'docs' },
 ]
 
 export function NavBar() {

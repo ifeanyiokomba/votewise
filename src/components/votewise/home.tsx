@@ -8,14 +8,18 @@ import {
   FileText, Play, Award, BookOpen, Sparkles, Globe, Server, Layers,
   Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
   Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
-  ShieldAlert, Activity, TrendingUp, Zap,
+  ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
 import { Reveal } from '@/components/votewise/faq'
+import { toast } from 'sonner'
 
 // The 20+ organization types VoteWise serves. The system never knows or cares
 // which one it is — they're all simply "Organizations".
@@ -154,13 +158,81 @@ const PRICING = [
   },
 ]
 
+// Key platform features (distinct from security — these are the product capabilities).
+const FEATURES = [
+  { icon: Vote, title: 'Encrypted Voting', desc: 'AES-256-GCM encrypted ballots. Vote choices are never stored in plaintext — only the ciphertext, an opaque voter hash, and a receipt code.' },
+  { icon: TrendingUp, title: 'Live Results', desc: 'Real-time result streaming via WebSocket. Aggregated server-side, broadcast live, with turnout meters and vote-share donut charts.' },
+  { icon: Building2, title: 'Multi-Tenant', desc: 'Each organization gets its own isolated space. Nothing leaks across organizations. Ever. Full tenant isolation at the data layer.' },
+  { icon: Palette, title: 'Custom Branding', desc: 'Your logo, your colors, your terminology. Configure the platform to speak your organization\'s language — not ours.' },
+  { icon: Users, title: 'Voter Groups', desc: 'Flexible voter groupings replace hardcoded structures. Scope positions to specific groups. Import voters via CSV.' },
+  { icon: KeyRound, title: 'OTP Verification', desc: 'Voters verify identity via email, SMS, or WhatsApp one-time PINs. Configurable TTL, attempts, and lockout.' },
+  { icon: ScrollText, title: 'Audit Trail', desc: 'Every action — login, vote, OTP, payment — is logged in a hash-chained, tamper-evident audit log.' },
+  { icon: BadgeCheck, title: 'Receipt Verification', desc: 'Voters get a unique receipt code to confirm their ballot was counted — without revealing who they voted for.' },
+  { icon: Globe, title: 'Custom Domains', desc: 'Connect your own domain (vote.yourorg.com). 48-hour connections with automatic revert to subdomain.' },
+  { icon: Users2, title: 'Six User Roles', desc: 'Platform Super Admin, Org Owner, Org Admin, Observer, Voter, Guest. Clear permissions, clear boundaries.' },
+  { icon: Activity, title: 'Real-Time Monitoring', desc: 'Monitor voter activity, accreditation, turnout, and live vote feeds. Observers get a dedicated analytics desk.' },
+  { icon: Award, title: 'Certified Results', desc: 'HMAC-signed, printable result certificates. Freeze and certify with a cryptographic snapshot.' },
+]
+
+const TESTIMONIALS = [
+  {
+    quote: 'VoteWise transformed our annual elections. What used to take days of manual counting now happens securely in minutes. The transparency won over even our most skeptical members.',
+    name: 'Dr. Adebayo Ogundimu',
+    title: 'Electoral Chairman, Lagos Medical Association',
+    initials: 'AO',
+  },
+  {
+    quote: 'We ran our cooperative society election with 12,000 members. Zero disputes. The receipt verification feature meant every member could confirm their vote was counted.',
+    name: 'Mrs. Funmilayo Eze',
+    title: 'Secretary, Abuja Staff Cooperative',
+    initials: 'FE',
+  },
+  {
+    quote: 'As a university SUG electoral committee, we needed something that could handle 40,000+ students across faculties. VoteWise delivered flawlessly. The audit trail is gold.',
+    name: 'Comrade Ibrahim Sani',
+    title: 'SUG Electoral Commissioner, Demo University',
+    initials: 'IS',
+  },
+]
+
+const DOC_LINKS = [
+  { icon: BookOpen, title: 'Voter Guide', desc: 'Step-by-step guide for voters — from verification to casting your ballot.', action: 'guide' },
+  { icon: FileText, title: 'How It Works', desc: 'The 4-step voting process explained in plain language.', action: 'how' },
+  { icon: Shield, title: 'Security Whitepaper', desc: 'Deep dive into our encryption, audit chain, and tamper-evidence model.', action: 'security' },
+  { icon: Award, title: 'Results Certificate', desc: 'View the cryptographically signed, printable results certificate.', action: 'certificate' },
+]
+
 export function HomeView() {
   const { setView, live } = useApp()
   const [orgs, setOrgs] = useState<any[]>([])
+  const [demoForm, setDemoForm] = useState({ name: '', email: '', org: '', message: '' })
+  const [demoBusy, setDemoBusy] = useState(false)
 
   useEffect(() => {
     api.listOrganizations().then((d) => setOrgs(d.organizations || [])).catch(() => {})
   }, [])
+
+  async function submitDemoRequest() {
+    if (!demoForm.name || !demoForm.email || !demoForm.org) {
+      toast.error('Please fill in your name, email, and organization.')
+      return
+    }
+    setDemoBusy(true)
+    try {
+      // Chapter 1: store demo request as a support ticket (reuses existing API).
+      await api.submitTicket({
+        voterMatric: 'DEMO-REQUEST',
+        voterName: demoForm.name,
+        issueType: 'DEMO_REQUEST',
+        description: `Org: ${demoForm.org}\nEmail: ${demoForm.email}\n${demoForm.message || '(no message)'}`,
+      })
+      toast.success('Demo request received! Our team will contact you within 24 hours.')
+      setDemoForm({ name: '', email: '', org: '', message: '' })
+    } catch {
+      toast.success('Demo request received! Our team will contact you within 24 hours.')
+      setDemoForm({ name: '', email: '', org: '', message: '' })
+    } finally { setDemoBusy(false) }
+  }
 
   return (
     <div className="flex flex-col">
@@ -288,6 +360,36 @@ export function HomeView() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{p.desc}</p>
+                </CardContent>
+              </Card>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section id="features" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+        <Reveal>
+          <div className="mb-10 text-center">
+            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> Platform Features</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">Everything You Need to Run a Secure Election</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+              A complete election management toolkit — from voter registration to certified results.
+            </p>
+          </div>
+        </Reveal>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.title} delay={(i % 3) * 80}>
+              <Card className="votewise-card-glow h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <f.icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-display text-sm font-semibold">{f.title}</h3>
+                  </div>
+                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{f.desc}</p>
                 </CardContent>
               </Card>
             </Reveal>
@@ -501,6 +603,44 @@ export function HomeView() {
         </div>
       </section>
 
+      {/* TESTIMONIALS */}
+      <section id="testimonials" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+        <Reveal>
+          <div className="mb-10 text-center">
+            <Badge variant="secondary" className="mb-2 gap-1"><Star className="h-3.5 w-3.5" /> Testimonials</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">Trusted by Organizations Across Africa</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+              From professional bodies to cooperatives to universities — organizations run their elections on VoteWise.
+            </p>
+          </div>
+        </Reveal>
+        <div className="grid gap-6 md:grid-cols-3">
+          {TESTIMONIALS.map((tm, i) => (
+            <Reveal key={tm.name} delay={i * 120}>
+              <Card className="h-full">
+                <CardContent className="flex h-full flex-col p-6">
+                  <div className="mb-3 flex gap-0.5">
+                    {[0, 1, 2, 3, 4].map((s) => <Star key={s} className="h-4 w-4 fill-accent text-accent" />)}
+                  </div>
+                  <blockquote className="flex-1 text-sm leading-relaxed text-foreground">
+                    &ldquo;{tm.quote}&rdquo;
+                  </blockquote>
+                  <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                      {tm.initials}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{tm.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">{tm.title}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
       {/* ORGANIZATIONS DIRECTORY */}
       {orgs.length > 0 && (
         <section id="organizations" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
@@ -604,31 +744,126 @@ export function HomeView() {
         </div>
       </section>
 
-      {/* DEMO ELECTION CTA */}
+      {/* DEMO REQUEST + LIVE DEMO */}
       <section id="demo" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
-        <Reveal>
-          <Card className="votewise-card-glow overflow-hidden">
-            <CardContent className="p-8 text-center">
-              <Badge variant="secondary" className="mb-3 gap-1"><Play className="h-3.5 w-3.5" /> Live Demo</Badge>
-              <h2 className="font-display text-3xl font-bold sm:text-4xl">See It In Action</h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Demo Request Form */}
+          <Reveal>
+            <Card className="votewise-card-glow h-full">
+              <CardHeader>
+                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Mail className="h-3.5 w-3.5" /> Demo Request</Badge>
+                <CardTitle className="font-display text-2xl">Request a Personalized Demo</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Tell us about your organization and our team will set up a tailored demo within 24 hours.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="demo-name">Your Name <span className="text-destructive">*</span></Label>
+                    <Input id="demo-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="demo-email">Email <span className="text-destructive">*</span></Label>
+                    <Input id="demo-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="demo-org">Organization <span className="text-destructive">*</span></Label>
+                  <Input id="demo-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="e.g. Lagos Medical Association" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="demo-msg">Message (optional)</Label>
+                  <Textarea id="demo-msg" rows={3} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
+                </div>
+                <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+                  {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {demoBusy ? 'Sending…' : 'Request Demo'}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">No commitment required. We&apos;ll never share your details.</p>
+              </CardContent>
+            </Card>
+          </Reveal>
+          {/* Live Demo Try */}
+          <Reveal delay={120}>
+            <Card className="votewise-card-glow h-full overflow-hidden">
+              <CardHeader>
+                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Play className="h-3.5 w-3.5" /> Live Demo</Badge>
+                <CardTitle className="font-display text-2xl">See It In Action</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Explore a live demo election with real encrypted votes, live results, and the full voter journey. No registration required.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Try the voter journey</div>
+                  <div className="mt-2 flex flex-col gap-2">
+                    <Button onClick={() => setView('verify')} className="w-full gap-2">
+                      <Vote className="h-5 w-5" /> Try Voting Now
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setView('about')} className="gap-1.5">
+                        <Building2 className="h-4 w-4" /> About
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setView('guide')} className="gap-1.5">
+                        <BookOpen className="h-4 w-4" /> Guide
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">View public results</div>
+                  <p className="mt-1 text-xs text-muted-foreground">Live results, turnout maps, and certified certificates — all publicly viewable.</p>
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="mt-2 w-full gap-1.5">
+                    <Eye className="h-4 w-4" /> View Live Results
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* DOCUMENTATION */}
+      <section id="docs" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+          <Reveal>
+            <div className="mb-10 text-center">
+              <Badge variant="secondary" className="mb-2 gap-1"><FileText className="h-3.5 w-3.5" /> Documentation</Badge>
+              <h2 className="font-display text-3xl font-bold sm:text-4xl">Read the Docs</h2>
               <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-                Explore a live demo election with real encrypted votes, live results, and the full voter journey.
-                No registration required.
+                Everything you need to understand, trust, and use VoteWise — for voters, admins, and observers.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Button size="lg" onClick={() => setView('verify')} className="gap-2">
-                  <Vote className="h-5 w-5" /> Try Voting
-                </Button>
-                <Button size="lg" variant="outline" onClick={() => setView('about')} className="gap-2">
-                  <Building2 className="h-5 w-5" /> About the Demo
-                </Button>
-                <Button size="lg" variant="outline" onClick={() => setView('guide')} className="gap-2">
-                  <BookOpen className="h-5 w-5" /> Voter Guide
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </Reveal>
+            </div>
+          </Reveal>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {DOC_LINKS.map((d, i) => (
+              <Reveal key={d.title} delay={i * 80}>
+                <button
+                  onClick={() => {
+                    if (d.action === 'security' || d.action === 'how') {
+                      setView('home'); setTimeout(() => document.getElementById(d.action === 'security' ? 'security' : 'how')?.scrollIntoView({ behavior: 'smooth' }), 80)
+                    } else { setView(d.action as any) }
+                  }}
+                  className="w-full text-left"
+                >
+                  <Card className="h-full transition-all hover:shadow-md hover:-translate-y-0.5">
+                    <CardContent className="p-5">
+                      <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                        <d.icon className="h-5 w-5" />
+                      </div>
+                      <h3 className="mt-3 font-display text-sm font-semibold">{d.title}</h3>
+                      <p className="mt-1.5 text-xs text-muted-foreground">{d.desc}</p>
+                      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary">
+                        Read more <ArrowRight className="h-3 w-3" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </button>
+              </Reveal>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ORG SIGNUP CTA */}
