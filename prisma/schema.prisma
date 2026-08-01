@@ -626,6 +626,7 @@ model ElectionSession {
   resultSnapshots ResultSnapshot[]
   notifications   Notification[]
   timeline        ElectionEvent[]
+  supportTickets  SupportTicket[]
 
   @@index([status])
   @@index([organizationId])
@@ -1315,12 +1316,16 @@ model SupportTicket {
   id           String    @id @default(cuid())
   // Chapter 3: generic org scoping + assignment tracking
   organizationId String?
+  // Chapter 11: optional election scoping (tickets raised for a specific election)
+  electionId   String?
+  election     ElectionSession? @relation(fields: [electionId], references: [id], onDelete: SetNull)
   voterId      String?
   voter        Voter?    @relation(fields: [voterId], references: [id], onDelete: SetNull)
   voterMatric  String
   voterName    String
   openedBy     String?   // Chapter 3: who opened the ticket
-  assignedTo   String?   // Chapter 3: who is assigned to handle it
+  assignedTo   String?   // Chapter 3: who is assigned to handle it (assignedToId)
+  assignedToName String? // Chapter 11: denormalized assignee display name
   category     String?   // Chapter 3: "TECHNICAL" | "OTP" | "VERIFICATION" | "BILLING" | "OTHER"
   issueType    String
   description  String
@@ -1336,6 +1341,7 @@ model SupportTicket {
 
   @@index([status])
   @@index([organizationId])
+  @@index([electionId])
 }
 
 model Notification {

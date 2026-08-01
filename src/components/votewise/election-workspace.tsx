@@ -16,6 +16,11 @@ import { BallotSimulation } from '@/components/votewise/ballot-simulation'
 import { LiveVoteMonitor } from '@/components/votewise/live-vote-monitor'
 import { ElectionVerification } from '@/components/votewise/election-verification'
 import { AuditLogs } from '@/components/votewise/audit-logs'
+import { ElectionSettings } from '@/components/votewise/election-settings'
+import { ElectionSupport } from '@/components/votewise/election-support'
+import { ElectionCandidates } from '@/components/votewise/election-candidates'
+import { ElectionObservers } from '@/components/votewise/election-observers'
+import { ElectionVoters } from '@/components/votewise/election-voters'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -208,6 +213,50 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         </CardContent></Card>
       )}
 
+      {tab === 'Candidates' && (
+        <ElectionCandidates electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab === 'Voters' && (
+        <ElectionVoters electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab === 'Observers' && (
+        <ElectionObservers electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab === 'Accreditation' && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display text-base font-semibold">Accreditation Rules</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Accreditation is configured per-election via the Settings tab. Use the Accreditation
+                  Rules in Organization Settings to define eligibility rules — who can vote, what ID is
+                  accepted, when accreditation opens/closes, and which channels (matric, biometric, QR)
+                  are valid.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 shrink-0"
+                onClick={() => {
+                  const q = subdomain ? `?org=${encodeURIComponent(subdomain)}&tab=accreditation` : '?tab=accreditation'
+                  window.location.href = `/workspace/settings${q}`
+                }}
+              >
+                Open Accreditation Settings <ArrowLeft className="h-3.5 w-3.5 rotate-180" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {tab === 'Voting' && (
         <div className="space-y-4">
           {/* Vote now button (for voters) */}
@@ -248,7 +297,15 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         <AuditLogs electionId={electionId} subdomain={subdomain} />
       )}
 
-      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && (
+      {tab === 'Settings' && (
+        <ElectionSettings electionId={electionId} subdomain={subdomain} election={e} />
+      )}
+
+      {tab === 'Support' && (
+        <ElectionSupport electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Candidates' && tab !== 'Voters' && tab !== 'Observers' && tab !== 'Accreditation' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && tab !== 'Settings' && tab !== 'Support' && (
         <Card><CardContent className="py-12 text-center">
           {(() => { const Icon = TABS.find(t => t.label === tab)?.icon || Vote; return <Icon className="mx-auto h-12 w-12 text-muted-foreground/40" /> })()}
           <p className="mt-3 text-sm text-muted-foreground">{tab} — this section is part of the election workspace.</p>

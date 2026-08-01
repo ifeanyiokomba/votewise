@@ -83,6 +83,26 @@ export const api = {
   validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getElectionAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Chapter 11: Settings + Support tabs (Election Workspace)
+  getElectionSettings: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  updateElectionSettings: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getElectionSupport: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  createElectionSupport: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateElectionSupport: (electionId: string, ticketId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support/${ticketId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Candidates — within an election workspace
+  getElectionCandidates: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  addElectionCandidate: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateElectionCandidate: (electionId: string, candidateId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates/${candidateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteElectionCandidate: (electionId: string, candidateId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates/${candidateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  screenElectionCandidate: (electionId: string, candidateId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates/${candidateId}/screen${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Chapter 7: Election-scoped observers + voters (per-election workspace tabs)
+  getElectionObservers: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  assignElectionObserver: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  removeElectionObserver: (electionId: string, observerId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/observers?observerId=${observerId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  getElectionVoters: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/voters${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  addElectionVoter: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/voters${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Chapter 8: Voter Management
   voterRegistry: (params: string, subdomain?: string) => req(`/api/workspace/voters${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
