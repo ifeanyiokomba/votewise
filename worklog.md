@@ -1992,3 +1992,42 @@ Stage Summary:
 - ✅ Professionally crafted loader using the homepage hero image. The image
   spins 360°, a checkmark stamps onto the ballot box with an impact ring, and
   the VoteWise brand reveals. Cinematic, branded, ~1.9s total.
+
+---
+Task ID: LOGO-LOADER-MORPH
+Agent: Lead Developer (main)
+Task: Try a different Transformative Logo Loader concept — the previous spinning
+hero image was rejected.
+
+Work Log:
+- **New concept: "The Morph"** — a sophisticated transformation where a circle
+  (representing community) morphs into the green rounded square brand mark.
+  Created `src/components/votewise/logo-loader.tsx`:
+  - **Phase 1 (0–0.5s)**: A green circle scales in (0.4 → 1) from a rotated
+    state (-45° → 0°) with a soft ambient glow behind it.
+  - **Phase 2 (0.25–0.8s)**: The circle **morphs into a rounded square** via
+    `borderRadius` animation (50% → 24%) — the transformative moment. Uses a
+    smooth ease curve.
+  - **Phase 3 (0.55–1.05s)**: Inner depth gradient fades in; the gold ballot
+    box slot slides down + the box body scales up vertically.
+  - **Phase 4 (1.0–1.4s)**: White checkmark **draws itself** (SVG pathLength
+    0 → 1) — the verification moment.
+  - **Phase 5 (1.15–1.75s)**: A diagonal **shimmer sweep** — a white/30
+    gradient strip rotates 12° and sweeps across the mark left-to-right,
+    giving a premium glossy finish.
+  - **Phase 6 (1.3–1.7s)**: "VoteWise" wordmark fades in + slides up (Vote in
+    foreground, Wise in primary green) + "Election Platform" tagline.
+  - **Phase 7 (1.7s)**: Entire loader fades out (0.4s).
+  - Total: ~1.7s. Logo size: 96px (compact, refined).
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - At 0.3s: VLM confirmed "solid green circle in the center" (morph starting).
+  - At 1.1s: VLM confirmed "dark green rounded square containing a gold/orange
+    icon" (ballot box).
+  - At 1.4s: VLM confirmed "green rounded square logo with orange ballot box
+    and white checkmark."
+  - Loader gone after ~1.7s, app visible. Zero errors.
+
+Stage Summary:
+- ✅ New "Morph" loader concept: circle → rounded square morph (the
+  transformation), ballot box draws in, checkmark self-draws, shimmer sweep,
+  wordmark fade. Premium, ~1.7s, zero errors.
