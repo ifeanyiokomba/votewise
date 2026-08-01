@@ -688,62 +688,6 @@ export function HomeView() {
         </section>
       )}
 
-      {/* PLATFORM DASHBOARD PREVIEW */}
-      <section className="border-t border-border/60 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center">
-          <div>
-            <Badge variant="secondary" className="mb-2 gap-1"><Shield className="h-3.5 w-3.5" /> Platform Dashboard</Badge>
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">The VoteWise Control Room</h2>
-            <p className="mt-2 max-w-lg text-muted-foreground">
-              For VoteWise staff only. Monitor every organization, manage billing, resolve support tickets,
-              detect fraud, and keep the platform healthy — all from one secure dashboard.
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {[
-                { icon: Building2, label: 'Organizations' },
-                { icon: DollarSign, label: 'Billing' },
-                { icon: Headphones, label: 'Support' },
-                { icon: Activity, label: 'Monitoring' },
-                { icon: ShieldAlert, label: 'Fraud Detection' },
-                { icon: Server, label: 'System Health' },
-                { icon: TrendingUp, label: 'Revenue' },
-                { icon: ScrollText, label: 'Audit Log' },
-              ].map((f) => (
-                <div key={f.label} className="flex items-center gap-2 rounded-lg border border-border/60 bg-card p-2.5">
-                  <f.icon className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-medium">{f.label}</span>
-                </div>
-              ))}
-            </div>
-            <Button size="lg" variant="outline" onClick={() => setView('platform-login')} className="mt-6 gap-2">
-              <Shield className="h-5 w-5" /> Platform Admin Login
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border/60 bg-card p-4 text-center">
-              <Server className="mx-auto h-8 w-8 text-emerald-600" />
-              <div className="mt-2 font-display text-2xl font-bold">99.9%</div>
-              <div className="text-[10px] text-muted-foreground">Uptime</div>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-card p-4 text-center">
-              <Activity className="mx-auto h-8 w-8 text-primary" />
-              <div className="mt-2 font-display text-2xl font-bold">Live</div>
-              <div className="text-[10px] text-muted-foreground">Monitoring</div>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-card p-4 text-center">
-              <Lock className="mx-auto h-8 w-8 text-accent-foreground" />
-              <div className="mt-2 font-display text-2xl font-bold">AES-256</div>
-              <div className="text-[10px] text-muted-foreground">Encryption</div>
-            </div>
-            <div className="rounded-xl border border-border/60 bg-card p-4 text-center">
-              <ScrollText className="mx-auto h-8 w-8 text-purple-600" />
-              <div className="mt-2 font-display text-2xl font-bold">Chained</div>
-              <div className="text-[10px] text-muted-foreground">Audit Log</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* DEMO REQUEST + LIVE DEMO */}
       <section id="demo" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
         <div className="grid gap-6 lg:grid-cols-2">

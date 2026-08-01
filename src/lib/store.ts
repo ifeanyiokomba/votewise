@@ -17,7 +17,6 @@ export type View =
   | 'signup'
   | 'official-login'
   | 'official'
-  | 'platform-login'      // Platform Dashboard login (super-admin)
   | 'organizations'       // Public organizations directory
   // Legacy aliases kept for nav compatibility
   | 'admin-login' | 'admin' | 'observer-login' | 'observer'

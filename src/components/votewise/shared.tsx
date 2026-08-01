@@ -86,9 +86,6 @@ export function NavBar() {
               <BarChart3 className="h-4 w-4" /> Dashboard
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setView('platform-login')} className="gap-1.5 text-muted-foreground" title="Platform Super Admin login">
-            <Shield className="h-4 w-4" /> Platform
-          </Button>
           {voterProfile && <VoterNotifications />}
           <ThemeToggle />
         </div>
@@ -127,9 +124,6 @@ export function NavBar() {
                 <BarChart3 className="h-4 w-4" /> Organization Portal
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={() => { setView('platform-login'); setOpen(false) }} className="gap-1.5 text-muted-foreground">
-              <Shield className="h-4 w-4" /> Platform Dashboard
-            </Button>
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-muted-foreground">Theme</span>
               <ThemeToggle />
@@ -185,7 +179,6 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li><button onClick={() => setView('home')} className="hover:text-foreground">Public Website</button></li>
             <li><button onClick={() => setView('official-login')} className="hover:text-foreground">Organization Portal</button></li>
-            <li><button onClick={() => setView('platform-login')} className="hover:text-foreground">Platform Dashboard</button></li>
             <li><button onClick={() => setView('signup')} className="hover:text-foreground">Register Organization</button></li>
           </ul>
         </div>

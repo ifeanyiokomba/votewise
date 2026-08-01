@@ -35,9 +35,9 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.png", type: "image/png", sizes: "64x64" },
-      { url: "/logo-votewise.png", type: "image/png", sizes: "512x512" },
+      { url: "/logo-votewise.png", type: "image/png", sizes: "1024x1024" },
     ],
-    apple: [{ url: "/logo-votewise.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/logo-votewise.png", sizes: "1024x1024", type: "image/png" }],
   },
 };
 

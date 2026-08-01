@@ -1805,3 +1805,71 @@ Stage Summary:
   Fraud Detection, System Health, Revenue, Audit, Security).
 - **Chapter 1 is now 100% spec-complete.** Every item in the spec has been
   implemented, verified, and documented.
+
+---
+Task ID: HIDE-PLATFORM-PORTAL + REBRAND-LOGO
+Agent: Lead Developer (main)
+Task: (1) Remove the Platform Admin portal link from the homepage — make /admin a
+dedicated standalone page not visible/linked from the VoteWise homepage.
+(2) Redesign the brand logo so it clearly defines what the web app does.
+
+Work Log:
+- **Removed Platform Admin portal from homepage navigation:**
+  - NavBar (desktop): removed the "Platform" ghost button that linked to
+    `setView('platform-login')`.
+  - NavBar (mobile): removed the "Platform Dashboard" button.
+  - Footer: removed the "Platform Dashboard" link from the Platform column
+    (now only Public Website, Organization Portal, Register Organization).
+  - Homepage: removed the entire "PLATFORM DASHBOARD PREVIEW" section (the
+    "VoteWise Control Room" CTA with the "Platform Admin Login" button +
+    uptime/monitoring stat cards).
+  - page.tsx: removed `platform-login` view routing + PlatformLoginView import.
+  - store.ts: removed `platform-login` from the View type.
+  - organizations.tsx: removed the `PlatformLoginView` export + cleaned up
+    unused imports (Shield, Lock, ArrowRight, Eye, CardHeader, CardTitle,
+    Label, toast).
+  - The `/admin` route remains as the **dedicated standalone Platform Dashboard
+    page** — accessible only by typing the URL directly, not linked from the
+    public website. This matches the spec: "Only for VoteWise staff."
+  - Note: the homepage still *describes* the Platform Dashboard in the "Three
+    Products" section (informational), but no longer *links* to it.
+- **Redesigned the brand logo:**
+  - Generated 3 concepts via image-generation skill, evaluated each with VLM:
+    - v1: ballot + checkmark + shield + text "VoteWise" — 7.5/10 (had text,
+      generic)
+    - v2: two checkmarks + concentric circles — no text but read as "task
+      completion" not elections
+    - v3: **ballot box with white checkmark on emerald-green rounded square** —
+      9/10, clearly communicates elections/voting, no text, clean, memorable,
+      works at small sizes. **Selected as the official logo.**
+  - Final logo: `public/logo-votewise.png` (1024×1024 RGBA PNG) — a gold ballot
+    box with a slot on top, a large white checkmark emerging from the slot,
+    on a vibrant emerald-green rounded square background. Symbolizes a verified
+    vote — exactly what VoteWise does.
+  - Favicon: `public/favicon.png` (64×64 PNG, resized from the logo via LANCZOS).
+  - Updated `layout.tsx` metadata.icons sizes from "512x512" → "1024x1024".
+  - The logo is now used as the web app's logo in all locations (automatically,
+    since all references point to `/logo-votewise.png`):
+    - NavBar Logo component (shared.tsx)
+    - Footer Logo component (shared.tsx)
+    - Platform Dashboard header (/admin page)
+    - Browser favicon + apple-touch-icon
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Homepage NavBar: no "Platform" admin button (the "Platform" nav item now
+    only scrolls to the "Three Products" section, which is informational).
+  - Footer: only 3 links (Public Website, Organization Portal, Register
+    Organization) — no Platform Dashboard link.
+  - Homepage: no "Platform Admin Login" button or "Control Room" CTA section.
+  - `/admin` still works as a dedicated standalone page (accessible by direct
+    URL only).
+  - New logo renders in NavBar (image loads, naturalWidth confirmed).
+  - Zero console/runtime errors.
+
+Stage Summary:
+- ✅ Platform Admin portal is no longer visible/linked from the VoteWise
+  homepage. It exists as a dedicated `/admin` page accessible only by direct
+  URL — matching the spec ("Only for VoteWise staff. dashboard.votewise.com").
+- ✅ Brand logo redesigned: a gold ballot box with a white checkmark on an
+  emerald-green rounded square — clearly communicates "secure verified voting,"
+  which is exactly what VoteWise does. Rated 9/10 by VLM. Applied as the web
+  app logo (NavBar, Footer, admin header) + favicon + apple-touch-icon.

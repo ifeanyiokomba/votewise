@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Building2, Users, Layers, Network, Globe, Shield, Lock, Loader2, ArrowLeft,
-  ArrowRight, Sparkles, Eye,
+  Building2, Users, Layers, Network, Globe, Loader2, ArrowLeft,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
-import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 // Public organizations directory — shows all active organizations on VoteWise.
@@ -94,44 +92,6 @@ export function OrganizationsView() {
           <Sparkles className="h-5 w-5" /> Register Your Organization
         </Button>
       </div>
-    </div>
-  )
-}
-
-// Platform Dashboard login — redirects to /admin (which has its own auth form).
-export function PlatformLoginView() {
-  const { setView } = useApp()
-  return (
-    <div className="mx-auto w-full max-w-md px-4 py-12 sm:px-6">
-      <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 gap-1.5">
-        <ArrowLeft className="h-4 w-4" /> Back to home
-      </Button>
-      <Card className="votewise-card-glow">
-        <CardHeader className="text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground">
-            <Shield className="h-7 w-7" />
-          </div>
-          <CardTitle className="mt-3 font-display">Platform Dashboard</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            The VoteWise staff control room. Manage all organizations, billing, support, monitoring, fraud detection, and system health.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-xs text-muted-foreground">
-            <p className="flex items-center gap-1.5 font-semibold text-foreground">
-              <Lock className="h-3.5 w-3.5" /> Restricted Access
-            </p>
-            <p className="mt-1">Only Platform Super Admins can access this dashboard. This protects trust — platform staff cannot modify votes or impersonate voters.</p>
-          </div>
-          <Button onClick={() => { window.location.href = '/admin' }} className="w-full gap-2">
-            <Shield className="h-4 w-4" /> Continue to Platform Dashboard <ArrowRight className="h-4 w-4" />
-          </Button>
-          <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-            <p className="font-semibold text-foreground">Demo credentials</p>
-            <p className="mt-1 font-mono">admin@votewise.ng / admin123</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
