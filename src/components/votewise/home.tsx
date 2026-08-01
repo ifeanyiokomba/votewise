@@ -10,7 +10,7 @@ import {
   Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
   Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
   ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2, Phone,
-  AlertCircle, ShieldCheck, ExternalLink, UserCheck, Hash,
+  AlertCircle, ShieldCheck, ExternalLink, UserCheck, Hash, Lightbulb,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
 import { useApp } from '@/lib/store'
 import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
@@ -513,6 +514,9 @@ export function HomeView() {
 
       {/* VOTER STATUS PORTAL — cross-org voter self-service lookup */}
       <VoterStatusSection />
+
+      {/* LEARN HOW TO VOTE — voter education portal CTA */}
+      <LearnHowToVoteSection />
 
       {/* VERIFY AN ELECTION — public verification portal CTA */}
       <VerifyElectionSection />
@@ -1229,6 +1233,125 @@ function cn(...classes: (string | false | undefined | null)[]): string {
 // Lets anyone paste an election ID or a /verify/[id] / /results/[id] URL and
 // jump straight to the public verification portal for that certified election.
 // ---------------------------------------------------------------------------
+
+function LearnHowToVoteSection() {
+  const { t } = useTranslation()
+  return (
+    <section
+      id="learn"
+      className="border-b border-border/60 bg-gradient-to-b from-accent/5 to-background scroll-mt-20"
+    >
+      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            <Badge variant="secondary" className="gap-1">
+              <GraduationCap className="h-3.5 w-3.5" /> Voter Education
+            </Badge>
+            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              Learn How to Vote{' '}
+              <span className="text-primary">Securely</span>
+            </h2>
+            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+              New to VoteWise? Our Voter Education Portal walks you through the entire
+              voting process — from registration to receipt verification — with step-by-step
+              guides, security explanations, video tutorials, and best practices.
+            </p>
+            <ul className="space-y-2.5 pt-1">
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <BookOpen className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">8-Step Voting Journey</strong> —
+                  understand exactly what happens at each stage of voting.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Shield className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Security Explained</strong> —
+                  learn how your vote is encrypted, anonymized, and audited.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Lightbulb className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Best Practices</strong> —
+                  tips for secure voting and what to do if something goes wrong.
+                </span>
+              </li>
+            </ul>
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Button size="lg" onClick={() => window.location.href = '/learn'} className="gap-2">
+                <GraduationCap className="h-5 w-5" /> Open Education Portal
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => window.location.href = '/status'} className="gap-2">
+                <UserCheck className="h-5 w-5" /> Check Your Registration
+              </Button>
+            </div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            className="relative"
+          >
+            <Card className="votewise-card-glow">
+              <CardContent className="p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <GraduationCap className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="font-display text-lg font-bold">Voter Education Portal</div>
+                    <div className="text-xs text-muted-foreground">Everything you need to vote confidently</div>
+                  </div>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/60 p-3 text-center">
+                    <div className="text-2xl font-bold text-primary">8</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Voting Steps</div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3 text-center">
+                    <div className="text-2xl font-bold text-primary">4</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Video Guides</div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3 text-center">
+                    <div className="text-2xl font-bold text-primary">10+</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">FAQs</div>
+                  </div>
+                  <div className="rounded-lg border border-border/60 p-3 text-center">
+                    <div className="text-2xl font-bold text-primary">6</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Best Practices</div>
+                  </div>
+                </div>
+                <Alert>
+                  <Lightbulb className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    Knowledge is power. Understanding how voting works builds trust and increases turnout.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function VerifyElectionSection() {
   const [input, setInput] = useState('')
   const { t } = useTranslation()

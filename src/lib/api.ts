@@ -130,6 +130,10 @@ export const api = {
   cancelScheduledNotification: (electionId: string, scheduleId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/${scheduleId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
   processScheduledNotifications: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/process${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
 
+  // Notification Delivery Tracking — per-recipient delivery status
+  getNotificationDeliveries: (electionId: string, notificationId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/${notificationId}/deliveries${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getNotificationDeliveryStats: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/delivery-stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
   // Observer Incident Dashboard — real-time incident reporting + monitoring
   getElectionIncidents: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   reportElectionIncident: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),

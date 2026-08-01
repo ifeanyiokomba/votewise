@@ -1520,3 +1520,37 @@ model ScheduledNotification {
   @@index([status])
   @@index([triggerAt])
 }
+
+// ---------------------------------------------------------------------------
+// CHAPTER: Notification Delivery Tracking — tracks the delivery status of
+// each notification per recipient × channel. One Notification can have many
+// deliveries (e.g. EMAIL + IN_APP for one voter). Used by the Delivery
+// Tracking dashboard so officials can see exactly which voters received,
+// read, or failed to receive each notification.
+// ---------------------------------------------------------------------------
+
+/// NotificationDelivery — tracks the delivery status of a notification per
+/// recipient. One Notification can have many deliveries (one per channel:
+/// email, SMS, WhatsApp).
+model NotificationDelivery {
+  id              String   @id @default(cuid())
+  notificationId  String
+  voterId         String?
+  channel         String   // EMAIL | SMS | WHATSAPP | IN_APP
+  status          String   @default("PENDING") // PENDING | SENT | DELIVERED | READ | FAILED | BOUNCED
+  recipientAddress String?  // masked email/phone (e.g. "v***@demo.com")
+  externalId      String?  // provider message ID (for tracking)
+  errorCode       String?
+  errorMessage    String?
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  attempts        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([notificationId])
+  @@index([voterId])
+  @@index([status])
+  @@index([channel])
+}
