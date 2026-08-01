@@ -5676,3 +5676,528 @@ Stage Summary:
   election duplication with date shifting, risk-limiting audit tool,
   public verification portal for certified elections.
 
+
+---
+Task ID: IMPORT-DUPLICATE-ENHANCE
+Agent: Lead Developer (main)
+Task: Enhance the Import Wizard with a CSV template download feature + improve the
+Duplicate Election API to support date shifting with a UI dialog.
+
+Work Log:
+
+### Feature 1 — CSV Template Download for Import Wizard
+
+**1. New API endpoint** `src/app/api/workspace/voters/import-template/route.ts` (133 lines):
+- `GET /api/workspace/voters/import-template?x-vw-org=<subdomain>`
+- Uses `requireOrganization` (404 if org not found) + `getCurrentOfficial` (401 if
+  not authenticated) — workspace routes never expose org-specific config to anon.
+- Pulls the org's `VoterField` definitions (ordered by displayOrder, then createdAt).
+- Builds the column list:
+  - Always includes canonical voter identity columns: `firstName, lastName,
+    email, phone`.
+  - If the org has NO custom field whose key is `matric` / `matricNumber`,
+    also appends `matric` (most academic institutions need it).
+  - Appends every custom VoterField key (e.g. `department`, `faculty`, `level`,
+    `employeeId`, `membershipNumber`).
+- Includes **3 example rows** with realistic Nigerian-style names + values
+  (Adaobi Okonkwo / Ibrahim Musah / Fatima Bello). Extra keys beyond `columns`
+  are silently ignored when composing rows, so the same example data works
+  whether or not the org has those custom fields.
+- Response:
+  - `content-type: text/csv; charset=utf-8`
+  - `content-disposition: attachment; filename="votewise-voter-template.csv"`
+  - `cache-control: private, max-age=30` (safe to cache briefly per-org).
+- `csvEscape()` helper handles commas, quotes, and newlines per RFC 4180.
+
+**2. API client method** `src/lib/api.ts`:
+- Added `downloadVoterTemplate(subdomain?)` — returns the template URL string
+  (uses `window.location.origin` when client-side so it works regardless of
+  where the app is hosted). The button uses `fetch()` + Blob + object URL
+  rather than `<a href>` so it can surface auth/404 errors as toasts.
+
+**3. Import Wizard enhancement** `src/components/votewise/import-wizard.tsx`:
+- New `downloadingTemplate` state + `downloadTemplate()` async function:
+  - Fetches the template URL with `credentials: 'include'` so the workspace
+    auth cookie is sent.
+  - On non-2xx: parses the JSON error and shows it as a sonner toast.
+  - On 2xx: reads the response as a Blob, pulls the filename from
+    `Content-Disposition` (regex), creates an object URL, programmatically
+    clicks a temporary `<a download>` element, then revokes the URL.
+  - Toast on success: "Template downloaded — open it and fill in your voters."
+- New prominent card BELOW the upload area in Step 1:
+  - Emerald-tinted card (`bg-emerald-50/60` + `border-emerald-200/70`, dark
+    mode variants).
+  - Download icon in an emerald chip + "Download a CSV template" heading +
+    the spec's helper copy: "Not sure how to format your CSV? Download our
+    template with the correct columns for your organization."
+  - "Download Template" button (outline, emerald-themed) with spinner state.
+  - Mobile-first: stacks vertically on mobile, horizontal on `sm+`.
+- Reused the already-imported `Download` + `Loader2` icons — no new imports
+  needed (lint confirmed).
+
+### Feature 2 — Enhanced Duplicate with Date Shifting
+
+**1. Updated Duplicate API** `src/app/api/workspace/elections/[id]/duplicate/route.ts`:
+- Now accepts JSON body `{ name?, startTime?, endTime?, shiftDays? }`.
+- Date resolution has three modes (selected automatically based on body):
+  1. **Custom mode** (both `startTime` AND `endTime` provided): uses them
+     directly. Validates that endTime > startTime (400 otherwise). The other
+     lifecycle timestamps are shifted by `(newStart − originalStart)` so their
+     relative offsets to voting-open are preserved.
+  2. **Shift-by-days mode** (`shiftDays` provided, no custom times): shifts
+     every original timestamp by `shiftDays * 86_400_000` ms. Ideal for
+     "duplicate this election for next year" (365) or "next month" (30).
+     Rejects `shiftDays === 0` or non-finite values with 400.
+  3. **Default fallback** (no body / no recognisable fields): preserves the
+     original behaviour — new start = `now + 7d`, new end = `now + 7d + 6h`,
+     other timestamps nulled out.
+- The `shiftDate()` helper centralises the proportional-shift logic — it
+  returns `null` in default mode (preserving current behaviour) and the
+  shifted Date in the other two modes.
+- `accreditationStart`, `accreditationEnd`, `candidateRegStart`,
+  `candidateRegEnd`, and `resultsReleaseAt` are all shifted proportionally
+  when the original had them — no longer hard-nulled.
+- The audit log entry now records `dateMode` + `shiftDays` so we can see
+  exactly how a duplicate was created.
+- Response: `{ ok, election, dates: { mode, startTime, endTime,
+  accreditationStart, accreditationEnd, candidateRegStart, candidateRegEnd,
+  resultsReleaseAt } }` — the `dates` object lets the UI confirm what got
+  created.
+
+**2. API client method** `src/lib/api.ts`:
+- `duplicateElection` signature changed to:
+  `duplicateElection(id, options?: { name?, startTime?, endTime?, shiftDays? }, subdomain?)`.
+- POSTs the options as JSON body. Backwards-compatible — existing callers
+  that omit `options` still work (server falls back to default mode).
+
+**3. New Duplicate Dialog UI** `src/components/votewise/duplicate-election-dialog.tsx` (~280 lines):
+- Controlled component: `<DuplicateElectionDialog open onOpenChange election subdomain onDuplicated? />`.
+- Opens when the workspace's "Duplicate" button is clicked.
+- Fields:
+  - **New Election Name** Input (defaults to `"<original name> (Copy)"`).
+  - **Date mode selector** — RadioGroup with 3 cards (each a `<label>` so the
+    whole card is clickable):
+    - "1 Week from Now" — amber Calendar icon, helper: "Quick clone: voting
+      opens 1 week from now and stays open for 6 hours. Other lifecycle
+      timestamps are cleared."
+    - "Shift by Days" — emerald CalendarClock icon, helper: "Move every
+      original timestamp forward by N days. Ideal for cloning an election
+      for next year (365) or next month (30)."
+      When selected, shows a number Input (default 365, min 1) + helper
+      text "365 = next year · 30 = next month · 7 = next week".
+    - "Custom Dates" — primary Calendar icon, helper: "Pick the exact start
+      and end times. Other lifecycle timestamps are shifted by the same
+      delta, preserving their offset to voting-open."
+      When selected, shows two `<input type="datetime-local">` fields
+      (Voting Opens / Voting Closes). Shows an inline "End time must be
+      after start time" hint when invalid.
+  - **Computed Dates preview panel** — mirrors the server-side logic via a
+    `useMemo` so the user sees EXACTLY what will be created. Renders a 2-col
+    `<dl>` with all 7 lifecycle timestamps formatted via `toLocaleString`.
+    Emphasises Voting Opens / Closes (foreground color); other rows use
+    muted-foreground. Includes a Badge showing the active mode + a tiny
+    hint ("Other timestamps cleared…" for default mode, "Other timestamps
+    shifted proportionally…" for the other two).
+  - **Alert** (amber-themed): "What gets copied?" — positions, candidates,
+    settings, visibility, voting method, category. New election starts in
+    DRAFT. Votes/results/accreditations/audit logs are never copied.
+- Submit button: emerald "Duplicate Election" with Copy icon + ArrowRight.
+  Disabled while submitting or when inputs are invalid. Spinner state.
+- On success: toast "Duplicated as '<name>'" → close dialog → navigate to
+  the new election's workspace (`/workspace/elections/<newId>?org=…`).
+  Supports an optional `onDuplicated(newId)` callback if the parent wants
+  to handle navigation itself.
+- The form RESETS every time the dialog opens for a new election
+  (`useEffect` on `[open, election]`) so stale state never leaks between
+  duplicates.
+- `toLocalInput()` converts a Date to the `YYYY-MM-DDTHH:mm` format
+  expected by `datetime-local` inputs (in the user's local timezone).
+- `fromLocalInput()` parses a datetime-local value back to an ISO string.
+
+**4. Wired into Election Workspace** `src/components/votewise/election-workspace.tsx`:
+- Imported `DuplicateElectionDialog`.
+- Added `dupOpen` state.
+- Replaced the old `async duplicate()` (which fired `api.duplicateElection`
+  directly) with `function duplicate()` that just opens the dialog.
+- Rendered `<DuplicateElectionDialog open={dupOpen} onOpenChange={setDupOpen}
+  election={election} subdomain={subdomain} />` at the bottom of the
+  workspace, alongside the existing Save-as-Template dialog.
+
+### Verification
+
+- `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings** (exit 0).
+- Live API smoke tests (logged in as `admin@afrivote.ng`):
+  - `GET /api/workspace/voters/import-template?x-vw-org=demo` → 200,
+    `content-type: text/csv; charset=utf-8`, `content-disposition: attachment;
+    filename="votewise-voter-template.csv"`. Body = correct 5-column CSV with
+    3 example rows.
+  - `POST /api/workspace/elections/sve-demo/duplicate?x-vw-org=demo` with body
+    `{}` → 200, created "SUG General Elections 2025 (SVE Demo) (Copy)" with
+    start time = now + 7d (default mode).
+  - Same endpoint with `{"name":"Next Year SUG","shiftDays":365}` → 200,
+    created "Next Year SUG" with start time = original + 365d (shift mode).
+  - Same endpoint with `{"name":"Custom Election","startTime":"2026-12-01T08:00:00.000Z","endTime":"2026-12-01T18:00:00.000Z"}` → 200,
+    created "Custom Election" with the exact provided dates (custom mode).
+  - Same endpoint with end < start → 400 "endTime must be after startTime".
+  - Nonexistent election id → 404 "Election not found".
+  - Test duplicates cleaned up afterwards via Prisma.
+- Dev server log shows clean compilation of the new routes — no TypeScript or
+  runtime errors attributable to this task. (Pre-existing 500s in
+  `src/app/api/elections/[id]/verification-portal/route.ts` are unrelated to
+  these changes.)
+
+### Files Created / Modified
+
+**Created:**
+- `src/app/api/workspace/voters/import-template/route.ts` (133 lines)
+- `src/components/votewise/duplicate-election-dialog.tsx` (~280 lines)
+
+**Modified:**
+- `src/app/api/workspace/elections/[id]/duplicate/route.ts` — rewrote POST
+  handler to support `{ name, startTime, endTime, shiftDays }` with three
+  date-resolution modes + proportional shifting of all lifecycle timestamps.
+- `src/lib/api.ts` — added `downloadVoterTemplate(subdomain?)`; updated
+  `duplicateElection(id, options?, subdomain?)` to POST options as JSON.
+- `src/components/votewise/import-wizard.tsx` — added `downloadingTemplate`
+  state + `downloadTemplate()` (fetch + Blob + object URL) + prominent
+  emerald-themed download card below the upload area in Step 1.
+- `src/components/votewise/election-workspace.tsx` — imported
+  `DuplicateElectionDialog`; added `dupOpen` state; changed `duplicate()`
+  to open the dialog; rendered the dialog at the bottom of the workspace.
+
+### Design / UX Notes
+
+- **Palette**: strictly emerald/gold/amber/zinc — NO indigo, NO blue. The
+  download card uses emerald-tinted backgrounds + borders. The duplicate
+  dialog's mode cards highlight the selected option in emerald; the Alert
+  uses amber; the Submit button is emerald-600.
+- **`votewise-card-glow`** preserved on the Import Wizard's outer Card (was
+  already there). No new glow added (kept the dialog clean).
+- **Mobile-first**: the download card stacks on mobile (`flex-col`) and
+  goes horizontal on `sm+`. The duplicate dialog is `sm:max-w-lg` with
+  `max-h-[92vh] overflow-y-auto` so it scrolls on small screens. The
+  Computed Dates preview uses a 1-col grid on mobile, 2-col on `sm+`.
+  The RadioGroup cards are full-width with the radio button on the left
+  and the label/description stacked on the right.
+- **Padding**: `p-4` on the download card; `p-3` on the preview panel and
+  mode cards; `gap-2` / `gap-3` between fields. Dialog content uses the
+  shadcn default `p-6`.
+- **Accessibility**: every interactive element has a label (Label component
+  or aria via the wrapping `<label htmlFor>`); the RadioGroup is keyboard
+  navigable (Radix handles this); the Alert has a real `role="alert"` via
+  the shadcn Alert component; the download button has a visible spinner +
+  "Preparing…" text so screen readers + sighted users both know what's
+  happening.
+- **Toast feedback** (sonner) for: successful download, download error,
+  successful duplicate, duplicate error, missing name, invalid shift days,
+  missing custom dates.
+- **Type safety**: the duplicate API uses `DateMode` discriminated unions
+  internally + a `shiftDate()` helper that always returns `Date | null`
+  (never `undefined`). The dialog component's `DuplicateElectionDialogProps`
+  types `election` as the subset of fields the dialog actually reads, so it
+  can be passed the full election object from the parent without TypeScript
+  complaints.
+
+### Stage Summary
+
+- ✅ **CSV Template Download** — organizations can now download a CSV
+  template that exactly matches their configured VoterFields. The Import
+  Wizard surfaces this with a prominent emerald-themed card in Step 1 and
+  handles the download via fetch + Blob so auth errors are surfaced as
+  toasts (not silent failures).
+- ✅ **Enhanced Duplicate API** — the duplicate endpoint now supports three
+  date-resolution modes (custom / shift-by-days / default 1-week-from-now)
+  and proportionally shifts ALL lifecycle timestamps (accreditation,
+  candidate reg, results release) instead of hard-nulling them.
+- ✅ **Duplicate Dialog UI** — the "Duplicate" button in the Election
+  Workspace header now opens a polished dialog with name override, three
+  date modes (radio cards), a live preview of all computed dates, and an
+  amber Alert explaining what gets copied. On submit, the dialog closes
+  and the user is navigated to the new election's workspace.
+- ✅ Lint: 0 errors, 0 warnings. Dev server compiles cleanly. Live API
+  tests confirm all three modes work end-to-end.
+- **Next-phase recommendations:** the Import Wizard's mapping step could
+  now use the same `downloadVoterTemplate` columns to auto-suggest field
+  mappings (currently it uses a hard-coded `knownFields` list). The
+  duplicate flow could optionally copy voter groups + observers too (today
+  only positions + candidates are copied).
+
+---
+Task ID: PUBLIC-VERIFICATION-PORTAL
+Agent: Public Verification Portal Agent
+Task: Build a Public Verification Portal for certified elections — a shareable
+page where anyone can verify the integrity of a certified election's results.
+
+### Work Log
+
+1. Read `/home/z/my-project/worklog.md` to absorb project context (VoteWise —
+   Next.js 16 election platform; emerald/gold palette; SVE library at
+   `src/lib/sve/` with `tallyElection()`, `getVerification()`,
+   `verifyReceipt()`; existing public results page at `/results/[id]`;
+   existing receipt verification API at `POST /api/receipt/verify`;
+   `ElectionVerification` model stores the post-certification package).
+
+2. Explored the SVE library (`src/lib/sve/index.ts`, `tally.ts`, `crypto.ts`,
+   `types.ts`) to understand:
+   - `tallyElection(electionId)` → decrypts all vote records, aggregates per
+     candidate, computes `auditHash` (SHA-256 of all vote records sorted by
+     ID) + `integritySignature` (HMAC-SHA256 over the audit hash).
+   - `getVerification(electionId)` → returns the stored `ElectionVerification`
+     row (persisted after certification via `persistVerification()`).
+   - `computeAuditHash()` in `sve/crypto.ts` takes `{id, receiptCode,
+     positionId, createdAt}` (different from the audit-LOG `computeAuditHash`
+     in `@/lib/crypto` which takes `{prevHash, actorId, action, details,
+     createdAt, nonce}`).
+   - `verifyAuditChain()` in `@/lib/election` walks the GLOBAL audit log and
+     requires the first entry to link from `AUDIT_GENESIS =
+     'GENESIS-votewise-sug-v2'`. In the dev DB, the first entry links from a
+     legacy `'GENESIS-afrivote-sug-v1'` anchor → global chain reports broken.
+
+3. Built the new **API endpoint** at
+   `src/app/api/elections/[id]/verification-portal/route.ts`:
+   - Public GET — no org context, no auth.
+   - Returns 404 with a helpful message if the election is not found OR not
+     CERTIFIED.
+   - Returns the full verification package: election metadata (name,
+     description, org name, status, certification date, voting window),
+     stored + recomputed verification package (totals, auditHash,
+     recomputedAuditHash, auditHashMatches, integritySignature,
+     signatureValid, generatedAt), certified results by position (with
+     winner highlighting), election-scoped chain integrity report (intact,
+     totalChecked, brokenAt, electionEntries, genesis, head[3], tail[3],
+     hiddenMiddleCount), vote record count, per-check status list, and the
+     overall `verified` boolean.
+   - `verified` = certified AND chainIntact AND signatureValid AND
+     auditHashMatches.
+   - Calls `getVerification(electionId)`, `tallyElection(electionId)`, and
+     the new `verifyElectionAuditChain(electionId)`.
+
+4. Built a new **SVE chain verification function**
+   `verifyElectionAuditChain(electionId)` in `src/lib/sve/tally.ts` +
+   exported from `src/lib/sve/index.ts`:
+   - Walks THIS election's audit log entries in chronological order.
+   - Checks self-integrity: recomputes each entry's hash
+     (`computeAuditHash` from `@/lib/crypto` with the audit-log signature)
+     and compares to the stored hash.
+   - Checks link integrity: each entry's `prevHash` must be a known genesis
+     anchor (`GENESIS-votewise-sug-v2` OR legacy `GENESIS-afrivote-sug-v1`),
+     OR the previous entry's hash in this election, OR a hash that exists
+     in the global audit log (cross-election link is valid).
+   - Returns `{intact, brokenAt, totalChecked, electionEntries, head[3],
+     tail[3], hiddenMiddleCount}` for the UI visualization.
+   - More focused than the global `verifyAuditChain()` — catches tampering
+     with THIS election's entries while being resilient to legacy genesis
+     conventions and cross-election interleaving.
+
+5. Built the **page** at `src/app/verify/[id]/page.tsx` (exact code from the
+   task spec — Suspense + `use(params)` + NavBar/Footer wrapper).
+
+6. Built the **component** at `src/components/votewise/verification-portal.tsx`
+   (~1100 lines):
+   - **HeaderCard**: "Election Verification Portal" badge + "Certified" badge
+     + org name + voting method + election name + description + certification
+     date + voting window + verification status pill (Verified/Failed) +
+     "Public Results" link.
+   - **VerificationStatusBanner**: big green check (or red X) + "✓ This
+     election is verified" (or "✗ Verification failed") + 4 per-check cards
+     (certified, chain intact, signature valid, vote count matches) each with
+     pass/fail icon + detail text.
+   - **SummaryStats**: 5 staggered cards (Total Eligible, Total Votes,
+     Invalid Votes, Blank Votes, Turnout %) with emerald/primary/red/zinc/
+     amber tints.
+   - **TurnoutProgress**: certified turnout Progress bar with breakdown.
+   - **CryptographicProof**: audit hash (SHA-256) + integrity signature
+     (HMAC-SHA256), each in a `HashField` with a "Verified"/"Mismatch"
+     badge, copy button, and a Dialog to expand the full hash; generated-at
+     timestamp, vote record count, audit entry count; explanation of how to
+     independently verify.
+   - **CertifiedResults**: per-position tables (desktop) + card lists
+     (mobile) with winner highlighting (gold border + Trophy badge),
+     animated vote-share bars, vote counts, percentages, tie badge.
+   - **AuditChainVisualization**: chain stats grid + visual hash-chain
+     diagram (GENESIS anchor → first 3 entries → "...N hidden..." divider →
+     last 3 entries, deduplicated when ≤6 total) with each node showing
+     action, actor, timestamp, prev-hash, hash, and a copy button; "Chain
+     Intact"/"Chain Broken" badge; broken-at alert if tampered.
+   - **DownloadAndShare**: Download JSON button (builds a full verification
+     package blob + triggers download) + Share section (read-only URL input
+     + copy button + 4 social share links: Twitter/X, WhatsApp, Facebook,
+     LinkedIn).
+   - **ReceiptVerifyInline**: inline form ("Verify your vote was counted")
+     with receipt-code input + verify button that calls the public
+     `/api/receipt/verify` endpoint; success alert (green) or not-found
+     alert (red) with election name, position, recorded-at timestamp.
+   - **PortalFooter**: summary line + "Public Results" + "VoteWise" links.
+   - Uses shadcn/ui: Card, CardContent, CardHeader, CardTitle, Button, Input,
+     Badge, Alert, AlertDescription, AlertTitle, Separator, Progress, Dialog
+     (DialogTrigger, DialogContent, DialogHeader, DialogTitle,
+     DialogDescription).
+   - Icons: ShieldCheck, CheckCircle2, XCircle, FileCheck, Hash, Lock,
+     Download, Share2, Copy, Trophy, Users, Vote, TrendingUp, Award, Eye,
+     ExternalLink, Loader2, AlertCircle, ChevronRight, KeyRound, ScrollText,
+     BadgeCheck, Calendar, Building2, Sparkles, Maximize2.
+   - Framer Motion: staggered card reveal (SummaryStats uses
+     staggerChildren), per-section fade+slide-in, animated vote-share bars.
+   - `votewise-card-glow` on the header + verification status banner.
+   - `votewise-portal-bg` (new CSS class) for the premium certificate-feel
+     backdrop (radial gradients + subtle diagonal stripe pattern).
+   - Mobile-first responsive: 2-col stat grid on mobile → 5-col on desktop;
+     card list on mobile → table on desktop for results; flex-wrap button
+     groups; full-width inputs on mobile.
+
+7. Added a **new CSS class** `votewise-portal-bg` to
+   `src/app/globals.css` — radial primary/accent gradients + a subtle
+   135° repeating linear-gradient stripe (4% primary tint) over the
+   background, giving the portal a premium "government certificate" feel.
+
+8. Added the **API client method** `getVerificationPortal(electionId)` to
+   `src/lib/api.ts` (calls
+   `/api/elections/${electionId}/verification-portal`).
+
+9. Wired the **"View Full Verification" link** from
+   `src/components/votewise/public-results.tsx`:
+   - Added a "Verified" badge (emerald, ShieldCheck icon) to the header
+     badges row when `data.status.toUpperCase() === 'CERTIFIED'`.
+   - Added a prominent emerald "View Full Verification" button (links to
+     `/verify/${electionId}`) in the header action group, shown only when
+     the election is certified.
+   - Imported `ShieldCheck` from lucide-react + `Link` from next/link.
+
+10. Wired the **"Verify an Election" section** on the homepage
+    (`src/components/votewise/home.tsx`):
+    - New `VerifyElectionSection` component rendered right after the
+      existing "Verify your vote" receipt section.
+    - Left column: "Public Verification Portal" badge + "Verify an entire
+      election." headline + explanation + 3 bullet points (Certified only,
+      Cryptographic, Tamper-evident).
+    - Right column: `votewise-card-glow` card with an input that accepts an
+      election ID, a `/verify/<id>` URL, or a `/results/<id>` URL (parsed
+      via `resolveElectionId()` which handles raw IDs, relative paths, and
+      full URLs). "Open Verification Portal" button navigates to
+      `/verify/${id}`.
+    - Imported `ShieldCheck` + `ExternalLink` from lucide-react + `Link`
+      from next/link.
+
+11. **Testing & verification**:
+    - Certified the `sve-demo` election in the dev DB (set status to
+      CERTIFIED + certificationDate, ran `tallyElection()` +
+      `persistVerification()`, wrote an `ELECTION_CERTIFIED` audit log
+      entry) so the portal has real data to display.
+    - API endpoint tests:
+      - `GET /api/elections/sve-demo/verification-portal` → 200 with full
+        package, `verified: true`, all 4 checks passing (certified ✓, chain
+        intact ✓ with 3 entries verified, signature valid ✓, vote count
+        matches ✓ with 8 vote records matching the certified audit hash).
+      - `GET /api/elections/nonexistent-id/verification-portal` → 404 with
+        "Election not found" message.
+      - `GET /api/elections/default/verification-portal` (status=VOTING)
+        → 404 with "not yet certified" message.
+    - Browser tests via agent-browser:
+      - `/verify/sve-demo` renders all sections: header, verification
+        banner (✓ verified), 5 summary stats, turnout progress, crypto
+        proof (both hashes "Verified"), certified results tables (4
+        positions with winner highlighting), audit chain visualization
+        (GENESIS → 3 entries, "Chain Intact"), download button, share
+        section (URL + 4 social links), receipt verify form, footer.
+      - Mobile viewport (390×844): renders correctly.
+      - Homepage "Verify an Election" section: typing `sve-demo` + clicking
+        "Open Verification Portal" navigates to `/verify/sve-demo`.
+      - Public results page (`/results/sve-demo`): "View Full Verification"
+        button + "Verified" badge present; clicking navigates to
+        `/verify/sve-demo`.
+      - Receipt verification on the portal: entering a valid receipt code
+        (`VW-2026-26A429D0`) shows "Vote confirmed & counted" with election
+        name + recorded-at timestamp.
+      - Download JSON button: clicks without error (triggers blob download).
+    - Fixed a duplicate React key warning in the chain visualization
+      (head/tail overlap when ≤6 audit entries → deduplicated entries +
+      used composite keys `${idx}-${entry.id}`).
+
+12. **Lint**: `cd /home/z/my-project && bun run lint` → 0 errors, 0 warnings
+    (exit 0). Dev server compiles cleanly with no runtime errors in the
+    browser console after the duplicate-key fix.
+
+### Files Created / Modified
+
+**Created:**
+- `src/app/api/elections/[id]/verification-portal/route.ts` (~250 lines) —
+  public GET endpoint returning the full verification package.
+- `src/app/verify/[id]/page.tsx` (~25 lines) — App Router page (Suspense +
+  `use(params)` + NavBar/Footer wrapper).
+- `src/components/votewise/verification-portal.tsx` (~1100 lines) — the full
+  verification portal UI (header, status banner, summary stats, turnout
+  progress, crypto proof, certified results, audit chain viz, download +
+  share, receipt verify, footer).
+
+**Modified:**
+- `src/lib/sve/tally.ts` — added `verifyElectionAuditChain(electionId)`
+  function (election-scoped chain verification) + imported
+  `computeAuditHash as computeAuditLogHash` from `@/lib/crypto`.
+- `src/lib/sve/index.ts` — exported `verifyElectionAuditChain`.
+- `src/lib/api.ts` — added `getVerificationPortal(electionId)` method.
+- `src/components/votewise/public-results.tsx` — added "Verified" badge +
+  "View Full Verification" button (emerald, links to `/verify/[id]`) when
+  the election is CERTIFIED; imported `ShieldCheck` + `Link`.
+- `src/components/votewise/home.tsx` — added `VerifyElectionSection`
+  component (input that accepts election ID / `/verify/<id>` / `/
+  results/<id>` URL + "Open Verification Portal" button) rendered after the
+  receipt-verification section; imported `ShieldCheck`, `ExternalLink`,
+  `Link`.
+- `src/app/globals.css` — added `.votewise-portal-bg` class (radial
+  gradients + subtle diagonal stripe pattern for the premium certificate
+  feel).
+
+### Design / UX Notes
+
+- **Palette**: strictly emerald/gold/amber/zinc/red — NO indigo or blue.
+  Verification-passed = emerald; verification-failed = red; winners = gold/
+  amber; neutral stats = zinc; turnout = amber.
+- **`votewise-card-glow`** applied to the header card + verification status
+  banner card (the two most prominent "trust" elements).
+- **`votewise-portal-bg`** wraps the entire portal — radial primary/accent
+  gradients + a 4%-tint diagonal stripe pattern over the background, giving
+  a "government certificate" feel without being heavy.
+- **Mobile-first**: 2-col stat grid → 5-col on desktop; card list → table
+  for results; flex-wrap button groups; full-width inputs; `sm:` breakpoints
+  throughout.
+- **Padding**: consistent `p-4`/`p-5`/`p-6` on cards; `gap-3`/`gap-4`
+  between grid items; `space-y-3`/`space-y-4` inside card bodies.
+- **Accessibility**: every interactive element has `aria-label`; the
+  verification banner uses semantic Alert roles; hash fields have copy
+  buttons with descriptive labels; the chain diagram uses `◆`/`→`/`⇲`
+  glyphs + text labels (not color-only).
+- **Framer Motion**: staggered card reveal on SummaryStats
+  (staggerChildren 0.05s); per-section fade+slide-in (delay 0.05–0.35s);
+  animated vote-share bars (width 0 → target, 0.5s ease-out).
+- **Trust signals**: the "Verified" pill in the header, the big green
+  checkmark banner, the per-check cards with pass/fail badges, the
+  "Matches recomputed hash" / "Signature valid" badges on the crypto
+  fields, and the "Chain Intact" badge on the chain visualization all
+  reinforce that the election is trustworthy.
+
+### Stage Summary
+
+- ✅ Public Verification Portal fully built and browser-verified. Anyone
+  with a certified election's URL (`/verify/[electionId]`) can independently
+  verify: (1) the election is certified, (2) the audit-log hash chain is
+  intact for this election, (3) the HMAC-SHA256 integrity signature is
+  valid, (4) the recomputed SHA-256 audit hash matches the stored hash
+  (proving no vote records were added/deleted/modified since certification).
+- ✅ New SVE function `verifyElectionAuditChain(electionId)` — election-
+  scoped chain verification that's resilient to legacy genesis conventions
+  and cross-election interleaving.
+- ✅ Full UI: header, verification status banner (4 checks), 5 summary
+  stats, turnout progress, cryptographic proof (audit hash + integrity
+  signature with copy + expand Dialog), certified results tables with
+  winner highlighting, audit chain visualization (GENESIS → entries →
+  "Chain Intact" badge), download JSON, share section (URL + 4 socials),
+  inline receipt verification.
+- ✅ Wired into the public results page ("View Full Verification" button +
+  "Verified" badge when CERTIFIED) and the homepage ("Verify an Election"
+  section with ID/URL input).
+- ✅ Lint: 0 errors, 0 warnings. Dev server compiles cleanly. Zero runtime
+  errors in the browser console.
+- ✅ Tested end-to-end with agent-browser: portal renders, all checks pass,
+  receipt verification works, download works, navigation from public
+  results + homepage works, mobile viewport works.
+

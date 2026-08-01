@@ -60,6 +60,11 @@ export const api = {
   workspaceCreateImport: (data: any, subdomain?: string) => req(`/api/workspace/imports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   workspaceImportStatus: (id: string, subdomain?: string) => req(`/api/workspace/imports/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
 
+  // CSV template download URL — opens in the browser as an attachment.
+  // Returns the URL (the caller can use <a href={url} download> or window.open).
+  downloadVoterTemplate: (subdomain?: string) =>
+    `${typeof window !== 'undefined' ? window.location.origin : ''}/api/workspace/voters/import-template${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`,
+
   // Chapter 4: IAM — invitations
   workspaceInvitations: (subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   workspaceInviteUser: (data: any, subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
@@ -79,7 +84,14 @@ export const api = {
   createElection: (data: any, subdomain?: string) => req(`/api/workspace/elections${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   getElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   updateElection: (id: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  duplicateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/duplicate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+  duplicateElection: (
+    id: string,
+    options?: { name?: string; startTime?: string; endTime?: string; shiftDays?: number },
+    subdomain?: string,
+  ) => req(`/api/workspace/elections/${id}/duplicate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {
+    method: 'POST',
+    body: JSON.stringify(options || {}),
+  }),
   validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getElectionAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
@@ -159,6 +171,8 @@ export const api = {
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
   // Public live results (shareable URL)
   getPublicResults: (electionId: string) => req(`/api/elections/${electionId}/public-results`),
+  // Public verification portal for certified elections (shareable URL)
+  getVerificationPortal: (electionId: string) => req(`/api/elections/${electionId}/verification-portal`),
 
 
   // Platform (super-admin)

@@ -162,6 +162,21 @@
     linear-gradient(180deg, color-mix(in oklch, var(--background) 92%, var(--primary)), var(--background));
 }
 
+/* Premium backdrop for the public verification portal — subtle certificate feel */
+.votewise-portal-bg {
+  background:
+    radial-gradient(900px 380px at 8% -8%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 60%),
+    radial-gradient(720px 320px at 96% 4%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 55%),
+    repeating-linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 22px,
+      color-mix(in oklch, var(--primary) 4%, transparent) 22px,
+      color-mix(in oklch, var(--primary) 4%, transparent) 23px
+    ),
+    var(--background);
+}
+
 .votewise-card-glow {
   box-shadow: 0 1px 0 0 color-mix(in oklch, var(--primary) 12%, transparent) inset,
               0 10px 30px -12px color-mix(in oklch, var(--primary) 22%, transparent);

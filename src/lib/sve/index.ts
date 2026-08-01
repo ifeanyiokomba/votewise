@@ -32,5 +32,5 @@ export { startVotingSession, getActiveSession, validateSession, accreditSession 
 export type { StartSessionOptions, VotingSessionInfo } from './session'
 export { getLiveStats, getAllLiveStats, incrementLiveCount, clearLiveCache } from './live-counter'
 export { runSimulation, resetSimulation, previewBallot, listSimulations } from './simulation'
-export { tallyElection, persistVerification, getVerification } from './tally'
+export { tallyElection, persistVerification, getVerification, verifyElectionAuditChain } from './tally'
 export type { TallyOptions, TallyResult } from './tally'

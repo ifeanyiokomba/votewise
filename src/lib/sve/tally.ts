@@ -17,6 +17,7 @@
 
 import { db } from '@/lib/db'
 import { decryptChoice, computeAuditHash, signAuditHash } from './crypto'
+import { computeAuditHash as computeAuditLogHash } from '@/lib/crypto'
 import type { VerificationPackage } from './types'
 
 export interface TallyOptions {
@@ -231,4 +232,147 @@ export async function persistVerification(electionId: string, tally: TallyResult
  */
 export async function getVerification(electionId: string) {
   return db.electionVerification.findUnique({ where: { electionId } })
+}
+
+/**
+ * Verify the audit-log hash chain for a specific election.
+ *
+ * Walks this election's audit log entries in chronological order and checks:
+ *   1. Self-integrity: each entry's hash recomputes correctly from its
+ *      fields (prevHash, actorId, action, details, createdAt, nonce).
+ *   2. Link integrity: each entry's prevHash either matches the previous
+ *      entry in this election's set, OR exists as a hash somewhere in the
+ *      global audit log (cross-election link is valid), OR is a known
+ *      genesis anchor.
+ *
+ * This is more focused than `verifyAuditChain()` (which walks the entire
+ * global chain and requires the first-ever entry to link from a specific
+ * genesis string). The election-scoped check catches tampering with THIS
+ * election's entries while being resilient to legacy genesis conventions
+ * and cross-election interleaving.
+ *
+ * Returns the chain integrity report + the first 3 / last 3 entries for
+ * visualization.
+ */
+export async function verifyElectionAuditChain(electionId: string): Promise<{
+  intact: boolean
+  brokenAt: string | null
+  totalChecked: number
+  electionEntries: number
+  head: Array<{
+    id: string
+    action: string
+    actorName: string
+    actorRole: string
+    prevHash: string
+    hash: string
+    createdAt: Date
+  }>
+  tail: Array<{
+    id: string
+    action: string
+    actorName: string
+    actorRole: string
+    prevHash: string
+    hash: string
+    createdAt: Date
+  }>
+  hiddenMiddleCount: number
+}> {
+  // Fetch this election's audit logs in chronological order.
+  const electionLogs = await db.auditLog.findMany({
+    where: { electionId },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true, action: true, actorId: true, actorName: true, actorRole: true,
+      details: true, prevHash: true, hash: true, nonce: true, createdAt: true,
+    },
+  })
+
+  if (electionLogs.length === 0) {
+    return {
+      intact: true,
+      brokenAt: null,
+      totalChecked: 0,
+      electionEntries: 0,
+      head: [],
+      tail: [],
+      hiddenMiddleCount: 0,
+    }
+  }
+
+  // Build a set of ALL audit log hashes (global) so we can validate
+  // cross-election prevHash links. This is a single column scan.
+  const allLogs = await db.auditLog.findMany({
+    select: { hash: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  const globalHashes = new Set(allLogs.map((l) => l.hash))
+
+  // Known genesis anchors (v2 + legacy v1).
+  const GENESIS_ANCHORS = new Set([
+    'GENESIS-votewise-sug-v2',
+    'GENESIS-afrivote-sug-v1',
+  ])
+
+  let intact = true
+  let brokenAt: string | null = null
+  let totalChecked = 0
+  let lastHashInElection: string | null = null
+
+  for (const log of electionLogs) {
+    totalChecked++
+
+    // 1. Self-integrity: recompute the hash and compare.
+    const recomputed = computeAuditLogHash({
+      prevHash: log.prevHash,
+      actorId: log.actorId,
+      action: log.action,
+      details: log.details,
+      createdAt: log.createdAt,
+      nonce: log.nonce,
+    })
+    if (recomputed !== log.hash) {
+      intact = false
+      brokenAt = log.id
+      break
+    }
+
+    // 2. Link integrity: prevHash must be one of:
+    //    - a known genesis anchor (for the first entry or a fork point)
+    //    - the previous entry's hash in this election
+    //    - a hash that exists in the global audit log (cross-election link)
+    const prevOk =
+      GENESIS_ANCHORS.has(log.prevHash) ||
+      (lastHashInElection !== null && log.prevHash === lastHashInElection) ||
+      globalHashes.has(log.prevHash)
+    if (!prevOk) {
+      intact = false
+      brokenAt = log.id
+      break
+    }
+
+    lastHashInElection = log.hash
+  }
+
+  // First 3 + last 3 for visualization.
+  const head = electionLogs.slice(0, 3).map((l) => ({
+    id: l.id, action: l.action, actorName: l.actorName, actorRole: l.actorRole,
+    prevHash: l.prevHash, hash: l.hash, createdAt: l.createdAt,
+  }))
+  const tail = electionLogs.slice(-3).map((l) => ({
+    id: l.id, action: l.action, actorName: l.actorName, actorRole: l.actorRole,
+    prevHash: l.prevHash, hash: l.hash, createdAt: l.createdAt,
+  }))
+  const hiddenMiddleCount = Math.max(0, electionLogs.length - 6)
+
+  return {
+    intact,
+    brokenAt,
+    totalChecked,
+    electionEntries: electionLogs.length,
+    head,
+    tail,
+    hiddenMiddleCount,
+  }
 }

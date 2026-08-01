@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import {
   Shield, KeyRound, BadgeCheck, Vote, Users, Eye, Lock, FileCheck2,
   CheckCircle2, ArrowRight, ScrollText, Building2, Clock, Calendar,
@@ -9,7 +10,7 @@ import {
   Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
   Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
   ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2, Phone,
-  AlertCircle,
+  AlertCircle, ShieldCheck, ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -511,6 +512,9 @@ export function HomeView() {
           </div>
         </div>
       </section>
+
+      {/* VERIFY AN ELECTION — public verification portal CTA */}
+      <VerifyElectionSection />
 
       {/* TRUST INDICATORS */}
       <section className="border-b border-border/60 bg-primary/5">
@@ -1219,4 +1223,152 @@ function HeroStat({ value, suffix, label }: { value: number; suffix?: string; la
 // Local cn helper (avoid extra import churn in this file).
 function cn(...classes: (string | false | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ')
+}
+
+// ---------------------------------------------------------------------------
+// Verify an Election — public verification portal CTA.
+// Lets anyone paste an election ID or a /verify/[id] / /results/[id] URL and
+// jump straight to the public verification portal for that certified election.
+// ---------------------------------------------------------------------------
+function VerifyElectionSection() {
+  const [input, setInput] = useState('')
+
+  function resolveElectionId(raw: string): string | null {
+    const v = raw.trim()
+    if (!v) return null
+    // Accept a raw election ID (cuid-like, 20+ chars).
+    if (/^[a-z0-9]{20,}$/i.test(v)) return v
+    // Accept /verify/<id> or /results/<id> URLs (absolute or relative).
+    const m = v.match(/\/(?:verify|results)\/([a-z0-9]+)/i)
+    if (m) return m[1]
+    // Accept a full URL with the path above.
+    try {
+      const u = new URL(v)
+      const m2 = u.pathname.match(/\/(?:verify|results)\/([a-z0-9]+)/i)
+      if (m2) return m2[1]
+    } catch {
+      // not a URL — fall through
+    }
+    // Otherwise treat the trimmed string as an ID and let the portal 404 gracefully.
+    return v
+  }
+
+  function go() {
+    const id = resolveElectionId(input)
+    if (!id) {
+      toast.error('Enter an election ID or verification URL')
+      return
+    }
+    window.location.href = `/verify/${encodeURIComponent(id)}`
+  }
+
+  return (
+    <section id="verify-election" className="border-b border-border/60 bg-secondary/30 scroll-mt-20">
+      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+          {/* Left: explanation */}
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+            className="space-y-4"
+          >
+            <Badge variant="secondary" className="gap-1">
+              <ShieldCheck className="h-3.5 w-3.5" /> Public Verification Portal
+            </Badge>
+            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              Verify an{' '}
+              <span className="text-primary">entire election.</span>
+            </h2>
+            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+              Anyone — voters, journalists, observers, auditors — can
+              independently verify the integrity of a certified VoteWise
+              election. Check the audit hash, walk the hash-chained audit log,
+              and confirm the integrity signature. If anything was tampered
+              with, the portal will tell you.
+            </p>
+            <ul className="space-y-2.5 pt-1">
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <ShieldCheck className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Certified only.</strong>{' '}
+                  Verification portals are available only after the electoral
+                  committee certifies the results.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Lock className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Cryptographic.</strong>{' '}
+                  Recompute the SHA-256 audit hash and verify the HMAC-SHA256
+                  signature yourself.
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5 text-sm">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <ScrollText className="h-4 w-4" />
+                </span>
+                <span>
+                  <strong className="text-foreground">Tamper-evident.</strong>{' '}
+                  The hash-chained audit log catches any modification —
+                  anywhere, anytime.
+                </span>
+              </li>
+            </ul>
+          </motion.div>
+
+          {/* Right: input + go */}
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="votewise-card-glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-display text-lg">
+                  <ShieldCheck className="h-5 w-5 text-primary" /> Open a Verification Portal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="verify-election-input">Election ID or URL</Label>
+                  <Input
+                    id="verify-election-input"
+                    placeholder="Paste an election ID or /verify/… link"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') go() }}
+                    className="font-mono text-sm"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Accepts an election ID, a <code className="font-mono">/verify/&lt;id&gt;</code>{' '}
+                    URL, or a <code className="font-mono">/results/&lt;id&gt;</code> URL.
+                  </p>
+                </div>
+                <Button onClick={go} disabled={!input.trim()} className="w-full gap-2">
+                  <ExternalLink className="h-4 w-4" /> Open Verification Portal
+                </Button>
+                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Don&apos;t have an ID?
+                  </p>
+                  <span className="text-xs text-muted-foreground">
+                    Ask the election organizers for the verification link.
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  )
 }

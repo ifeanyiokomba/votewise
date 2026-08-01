@@ -6,6 +6,7 @@ import Image from 'next/image'
 import {
   Users, Vote, TrendingUp, Clock, Shield, Share2, BadgeCheck, Lock,
   Eye, Trophy, Radio, Hash, Loader2, AlertCircle, CheckCircle2, ChevronDown,
+  ShieldCheck,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui/collapsible'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 
@@ -240,6 +242,11 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 {statusBadge(data.status, data.isLive)}
+                {data.status && data.status.toUpperCase() === 'CERTIFIED' && (
+                  <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                    <ShieldCheck className="h-3 w-3" /> Verified
+                  </Badge>
+                )}
                 {data.organizationName && (
                   <Badge variant="outline" className="gap-1">
                     <BadgeCheck className="h-3 w-3 text-primary" /> {data.organizationName}
@@ -296,7 +303,15 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                   {formatDuration(remainingMs)}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {data.status && data.status.toUpperCase() === 'CERTIFIED' && (
+                  <Link
+                    href={`/verify/${data.electionId}`}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> View Full Verification
+                  </Link>
+                )}
                 <Button variant="outline" size="sm" onClick={onShare} className="gap-1.5">
                   <Share2 className="h-4 w-4" /> Share
                 </Button>

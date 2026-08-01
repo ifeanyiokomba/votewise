@@ -25,7 +25,46 @@ export function ImportWizard({ subdomain, onDone }: { subdomain?: string; onDone
   const [validation, setValidation] = useState<{ errors: any[]; valid: number; duplicates: number }>({ errors: [], valid: 0, duplicates: 0 })
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<{ imported: number; skipped: number; failed: number } | null>(null)
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Download the org-specific CSV template. We fetch with credentials so the
+  // workspace auth cookie is sent, then turn the response into a Blob and
+  // trigger a download via an object URL. This works around the fact that
+  // <a download> alone doesn't let us surface auth errors as a toast.
+  async function downloadTemplate() {
+    setDownloadingTemplate(true)
+    try {
+      const url = api.downloadVoterTemplate(subdomain)
+      const res = await fetch(url, { credentials: 'include' })
+      if (!res.ok) {
+        let msg = `Download failed (${res.status})`
+        try {
+          const data = await res.json()
+          if (data?.error) msg = data.error
+        } catch { /* not JSON */ }
+        throw new Error(msg)
+      }
+      const blob = await res.blob()
+      // Pull the filename from Content-Disposition, falling back to a sensible default.
+      const cd = res.headers.get('content-disposition') || ''
+      const match = cd.match(/filename="?([^";]+)"?/i)
+      const filename = match ? match[1] : 'votewise-voter-template.csv'
+      const objUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objUrl)
+      toast.success('Template downloaded — open it and fill in your voters.')
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not download template')
+    } finally {
+      setDownloadingTemplate(false)
+    }
+  }
 
   // Step 1: File upload + parse
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -148,6 +187,33 @@ export function ImportWizard({ subdomain, onDone }: { subdomain?: string; onDone
                 <Button className="mt-4 gap-2" onClick={() => fileRef.current?.click()}><Upload className="h-4 w-4" /> Choose File</Button>
                 <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={onFile} />
               </div>
+
+              {/* CSV template download — prominent card below the upload area */}
+              <div className="flex flex-col gap-3 rounded-lg border border-emerald-200/70 bg-emerald-50/60 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    <Download className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Download a CSV template</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Not sure how to format your CSV? Download our template with the correct columns for your organization.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadTemplate}
+                  disabled={downloadingTemplate}
+                  className="gap-1.5 shrink-0 border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-800 dark:bg-transparent dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                >
+                  {downloadingTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {downloadingTemplate ? 'Preparing…' : 'Download Template'}
+                </Button>
+              </div>
+
               <div className="flex justify-center gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { window.location.href = `/workspace/voters?org=${subdomain || ''}` }}><Plus className="h-3.5 w-3.5" /> Manual Entry Instead</Button>
               </div>

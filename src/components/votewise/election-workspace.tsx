@@ -28,6 +28,7 @@ import { ElectionCandidates } from '@/components/votewise/election-candidates'
 import { ElectionPositions } from '@/components/votewise/election-positions'
 import { ElectionObservers } from '@/components/votewise/election-observers'
 import { ElectionVoters } from '@/components/votewise/election-voters'
+import { DuplicateElectionDialog } from '@/components/votewise/duplicate-election-dialog'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -58,6 +59,9 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
   const [tplName, setTplName] = useState('')
   const [tplDesc, setTplDesc] = useState('')
   const [tplSaving, setTplSaving] = useState(false)
+
+  // Duplicate-election dialog state.
+  const [dupOpen, setDupOpen] = useState(false)
 
   // Open-incident count for the header badge (fetched from the incident stats
   // endpoint every 30s). When > 0 we render a red badge button in the header
@@ -102,8 +106,10 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
     return () => { active = false; clearInterval(interval) }
   }, [electionId, subdomain])
 
-  async function duplicate() {
-    try { await api.duplicateElection(electionId, subdomain); toast.success('Election duplicated!') } catch (e: any) { toast.error(e.message) }
+  function duplicate() {
+    // Opens the duplicate dialog (no longer a one-click action — the dialog
+    // lets the user pick new dates / shift by N days before duplicating).
+    setDupOpen(true)
   }
 
   function openSaveTemplate() {
@@ -432,6 +438,14 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate election dialog */}
+      <DuplicateElectionDialog
+        open={dupOpen}
+        onOpenChange={setDupOpen}
+        election={election}
+        subdomain={subdomain}
+      />
     </div>
   )
 }
