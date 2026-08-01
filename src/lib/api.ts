@@ -21,9 +21,16 @@ async function req<T = any>(path: string, opts: RequestInit = {}, voterToken?: s
   try { data = text ? JSON.parse(text) : null } catch { data = { raw: text } }
   if (!res.ok) {
     const msg = data?.error || `Request failed (${res.status})`
-    const err: any = new Error(msg)
+    // Provide user-friendly messages for auth/permission errors
+    const friendlyMsg = res.status === 401
+      ? 'Please sign in to continue.'
+      : res.status === 403
+      ? 'You do not have permission to perform this action. Please sign in as an admin.'
+      : msg
+    const err: any = new Error(friendlyMsg)
     err.status = res.status
     err.data = data
+    err.originalMessage = msg
     throw err
   }
   return data as T

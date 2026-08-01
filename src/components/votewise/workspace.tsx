@@ -6,7 +6,7 @@ import {
   Building2, Users, Vote, Trophy, Loader2, CheckCircle2, AlertCircle,
   TrendingUp, Activity, Server, Bell, Shield, Globe, Clock, Plus,
   ArrowRight, Sparkles, FileCheck2, Headphones, Eye, Settings as SettingsIcon,
-  ScrollText, ChevronRight, Zap, CreditCard, Mail, Brain,
+  ScrollText, ChevronRight, Zap, CreditCard, Mail, Brain, LogIn, ShieldAlert,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -89,9 +89,23 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
             <Badge variant="outline" className="text-[10px]">{org.plan}</Badge>
             {official && <Badge variant="secondary">{official.name}</Badge>}
             <Button variant="outline" size="sm" onClick={() => { window.location.href = `/workspace/command-center?org=${subdomain || ''}` }} className="gap-1.5"><Activity className="h-4 w-4" /> Command Center</Button>
-            <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5"><SettingsIcon className="h-4 w-4" /> Manage</Button>
+            {official ? (
+              <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5"><SettingsIcon className="h-4 w-4" /> Manage</Button>
+            ) : (
+              <Button size="sm" onClick={() => setView('official-login')} className="gap-1.5"><LogIn className="h-4 w-4" /> Admin Login</Button>
+            )}
           </div>
         </div>
+        {!official && (
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
+              <span className="text-amber-700">
+                You are viewing in read-only mode. <button onClick={() => setView('official-login')} className="font-semibold underline hover:no-underline">Sign in as admin</button> to manage elections, voters, and settings.
+              </span>
+            </div>
+          </div>
+        )}
         {/* Workspace nav */}
         <WorkspaceNav subdomain={subdomain} />
       </header>
