@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { generateOtp } from '@/lib/crypto'
 import { json, errorJson, getElectionContext, getClientIp, writeAudit, recordSecurityEvent, logVoterActivity } from '@/lib/election'
 import { RATE_LIMITS } from '@/lib/ratelimit'
+import { recordEvent } from '@/lib/eifdirs'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +56,19 @@ export async function POST(req: NextRequest) {
   await logVoterActivity({
     voterId: voter.id, action: 'SEND_OTP', details: { channel, matric }, ipAddress: getClientIp(req),
   })
+  // EIFDIRS: Record OTVP generation for fraud detection
+  await recordEvent({
+    voterId: voter.id,
+    actorId: voter.id,
+    actorName: voter.fullName,
+    actorRole: 'VOTER',
+    eventType: 'OTVP_GENERATED',
+    category: 'AUTHENTICATION',
+    severity: 'INFO',
+    description: `OTVP generated for ${voter.fullName} via ${channel}`,
+    ipAddress: getClientIp(req),
+    metadata: { channel, matric },
+  }).catch(() => {})
   return json({
     ok: true,
     message: `A 6-digit verification code has been sent via ${channel}.`,

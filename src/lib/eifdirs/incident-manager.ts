@@ -59,6 +59,11 @@ export async function createIncident(input: FraudIncidentInput): Promise<string>
     })
   }
 
+  // Trigger automated responses (async — don't block incident creation)
+  import('./auto-responder').then(({ executeAutoResponses }) => {
+    executeAutoResponses(incident.id).catch(() => {})
+  })
+
   return incident.id
 }
 

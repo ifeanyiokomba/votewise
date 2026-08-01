@@ -14,3 +14,5 @@ export {
   emergencyOverride, initiateLockdown, releaseLockdown,
 } from './election-lock'
 export { generateIntegrityCertificate, getIntegrityCertificate, generateTransparencyReport } from './certificate-generator'
+export { executeAutoResponses, getResponseRules } from './auto-responder'
+export type { AutoResponseRule, AutoResponseType } from './auto-responder'

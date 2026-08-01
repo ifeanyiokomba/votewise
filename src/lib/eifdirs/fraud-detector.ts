@@ -48,6 +48,8 @@ export async function detectFraud(eventId: string): Promise<void> {
       break
     case 'VOTE_SUBMITTED':
       detections.push(detectVoteTiming(event))
+      detections.push(detectSharedDevice(event))
+      detections.push(detectTurnoutAnomaly(event))
       break
     case 'CANDIDATE_DELETED':
     case 'POSITION_DELETED':
@@ -60,6 +62,7 @@ export async function detectFraud(eventId: string): Promise<void> {
       break
     case 'VOTER_IMPORTED':
       detections.push(detectVoterImportAbuse(event))
+      detections.push(detectIdentityFraud(event))
       break
   }
 
@@ -319,4 +322,106 @@ async function flagEvent(eventId: string, incident: {
     detectedBy: 'SYSTEM',
     relatedEventIds: [eventId],
   })
+}
+
+// ---------------------------------------------------------------------------
+// Identity Fraud Detection (duplicate phone/email/matric)
+// ---------------------------------------------------------------------------
+
+async function detectIdentityFraud(event: any): Promise<void> {
+  if (!event.organizationId) return
+
+  const meta = event.metadata ? JSON.parse(event.metadata) : {}
+  const { email, phone, matric } = meta
+
+  const duplicates: string[] = []
+
+  if (email) {
+    const count = await db.voter.count({
+      where: { OR: [{ email }, { institutionEmail: email }, { personalEmail: email }] },
+    })
+    if (count > 1) duplicates.push(`email: ${email} (${count} records)`)
+  }
+
+  if (phone) {
+    const count = await db.voter.count({ where: { phone } })
+    if (count > 1) duplicates.push(`phone: ${phone} (${count} records)`)
+  }
+
+  if (matric) {
+    const count = await db.voter.count({ where: { matric } })
+    if (count > 1) duplicates.push(`matric: ${matric} (${count} records)`)
+  }
+
+  if (duplicates.length > 0) {
+    await flagEvent(event.id, {
+      title: `Duplicate identity detected: ${duplicates.join(', ')}`,
+      description: `Voter import detected duplicate identifiers: ${duplicates.join(', ')}. Multiple records with the same identity may indicate identity fraud or data entry errors.`,
+      category: 'IDENTITY_FRAUD' as IncidentCategory,
+      severity: 'HIGH' as IncidentSeverity,
+      riskScore: RISK_WEIGHTS.DUPLICATE_IDENTITY,
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared Device Detection
+// ---------------------------------------------------------------------------
+
+async function detectSharedDevice(event: any): Promise<void> {
+  if (!event.deviceFingerprint || !event.electionId) return
+
+  // Check how many distinct voters used the same device for this election
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+  const deviceUsers = await db.integrityEvent.findMany({
+    where: {
+      deviceFingerprint: event.deviceFingerprint,
+      electionId: event.electionId,
+      eventType: 'VOTE_SUBMITTED',
+      createdAt: { gte: oneHourAgo },
+    },
+    select: { voterId: true },
+    distinct: ['voterId'],
+  })
+
+  const uniqueVoters = deviceUsers.filter((d) => d.voterId).length
+
+  // Flag if 10+ different voters used the same device in 1 hour
+  if (uniqueVoters >= 10) {
+    await flagEvent(event.id, {
+      title: `Shared device detected: ${uniqueVoters} voters on one device`,
+      description: `${uniqueVoters} different voters cast votes from the same device within 1 hour. This could be a computer lab, cyber café, or coordinated fraud. Flagged for investigation — votes are NOT automatically invalidated.`,
+      category: 'OTHER' as IncidentCategory,
+      severity: (uniqueVoters >= 30 ? 'HIGH' : 'MEDIUM') as IncidentSeverity,
+      riskScore: RISK_WEIGHTS.SHARED_DEVICE_HIGH,
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Turnout Anomaly Detection
+// ---------------------------------------------------------------------------
+
+async function detectTurnoutAnomaly(event: any): Promise<void> {
+  if (!event.electionId) return
+
+  // Check for turnout spike: 100+ votes in 1 minute
+  const oneMinAgo = new Date(Date.now() - 60 * 1000)
+  const recentVotes = await db.integrityEvent.count({
+    where: {
+      eventType: 'VOTE_SUBMITTED',
+      electionId: event.electionId,
+      createdAt: { gte: oneMinAgo },
+    },
+  })
+
+  if (recentVotes >= 100) {
+    await flagEvent(event.id, {
+      title: `Turnout spike: ${recentVotes} votes in 1 minute`,
+      description: `${recentVotes} votes were cast in 1 minute for this election. This is a statistical anomaly — possible coordinated voting or automation.`,
+      category: 'TURNOUT_ANOMALY' as IncidentCategory,
+      severity: 'CRITICAL' as IncidentSeverity,
+      riskScore: RISK_WEIGHTS.TURNOUT_SPIKE,
+    })
+  }
 }

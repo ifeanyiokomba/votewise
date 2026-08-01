@@ -5,6 +5,7 @@ import { signAccessToken, newRefreshToken, setAuthCookies } from '@/lib/auth'
 import { writeAudit, recordSecurityEvent, getClientIp, json, errorJson } from '@/lib/election'
 import { RATE_LIMITS } from '@/lib/ratelimit'
 import { requires2FA } from '@/lib/rbac'
+import { recordEvent } from '@/lib/eifdirs'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,19 @@ export async function POST(req: NextRequest) {
         actorId: official.id, actorEmail: official.email, ipAddress: ip,
         message: `Failed login attempt ${attempts} for ${official.email}${lockUntil ? ' — account locked 15min' : ''}`,
       })
+      // EIFDIRS: Record integrity event for fraud detection
+      await recordEvent({
+        actorId: official.id,
+        actorName: official.email,
+        actorRole: official.role,
+        eventType: 'LOGIN_FAILED',
+        category: 'AUTHENTICATION',
+        severity: attempts >= 5 ? 'HIGH' : 'MEDIUM',
+        riskScore: attempts >= 5 ? 25 : 10,
+        description: `Failed login attempt ${attempts} for ${official.email}${lockUntil ? ' — account locked' : ''}`,
+        ipAddress: ip,
+        metadata: { attempts, locked: !!lockUntil },
+      }).catch(() => {})
     }
     return errorJson('Invalid email or password', 401)
   }
@@ -92,6 +106,17 @@ export async function POST(req: NextRequest) {
     actorId: official.id, actorRole: official.role, actorName: official.name,
     action: 'OFFICIAL_LOGIN', ip,
   })
+  // EIFDIRS: Record successful login
+  await recordEvent({
+    actorId: official.id,
+    actorName: official.name,
+    actorRole: official.role,
+    eventType: 'LOGIN',
+    category: 'AUTHENTICATION',
+    severity: 'INFO',
+    description: `Admin login: ${official.name} (${official.email})`,
+    ipAddress: ip,
+  }).catch(() => {})
   return json({
     ok: true,
     official: {
