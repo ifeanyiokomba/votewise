@@ -7372,3 +7372,67 @@ ballots to verify the correctness of a certified election tally.
   and re-derive the sample to confirm the audit was honest; (4)
   integrate with the existing audit-log hash chain so the RLA result
   is itself hash-anchored for tamper-evidence.
+
+---
+Task ID: NOTIFICATIONS-RLA-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — Election Notification System + Risk-Limiting Audit Tool.
+
+Work Log:
+- **QA Assessment**: Platform stable — all services running, lint 0 errors.
+  Previous round built Election Analytics Dashboard + Voter Status Portal.
+  This round built 2 new features from the next-phase recommendations.
+- **Election Notification System** (new 13th tab + 2 APIs + component):
+  - New APIs: GET/POST /api/workspace/elections/[id]/notifications (list
+    campaigns with read stats, send broadcast or targeted notification),
+    GET /api/workspace/elections/[id]/notifications/templates (5 built-in
+    templates with {electionName}, {endTime}, {hours} placeholders).
+  - POST creates Notification rows for all eligible voters (broadcast) or
+    a specific voter, enqueues delivery job, creates ElectionEvent +
+    AuditLog.
+  - UI: 4 stat cards (Total Sent/Read/Unread/Delivery Rate), quick template
+    buttons (Voting Opens, Voting Closes Soon, Results Published, Reminder,
+    Custom), scrollable campaign list with read progress bars, Send Dialog
+    with template selector, type picker (INFO/SUCCESS/WARNING/SECURITY),
+    target selector (All Voters/Specific Voter with search), recipient
+    count preview.
+  - New "Notifications" tab added to Election Workspace (now 13 tabs).
+- **Risk-Limiting Audit Tool** (new SVE module + API + component):
+  - New SVE module: src/lib/sve/rla.ts with 4 functions:
+    - computeSampleSize (BRAVO-style: n = ceil(ln(riskLimit) / ln(1-margin)))
+    - selectRandomSample (cryptographically reproducible via SHA-256 PRNG
+      seeded for verifiability — same seed always selects same ballots)
+    - auditSample (decrypts each sampled ballot with AES-256-GCM, compares
+      to stored candidateId)
+    - runRiskLimitingAudit (orchestrates per-position audit: tally → margin
+      → sample size → sample selection → audit → result)
+  - New API: POST /api/workspace/elections/[id]/audit-rla (runs audit,
+    persists as ElectionEvent), GET (retrieves last result).
+  - UI: Configuration card (risk limit 5/10/20%, seed input with
+    regenerate), results section with pass/fail banner, 5 summary stats,
+    per-position table (winner, margin, sample size, matching, mismatches,
+    risk limit met), expandable sample details, reproducibility card
+    (re-run with same seed), download audit report JSON.
+  - Added to Reports tab below ElectionVerification.
+  - Exported from SVE barrel (src/lib/sve/index.ts).
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Notifications tab: renders with stats, templates, send dialog.
+  - RLA tool: renders in Reports tab with config card, seed, risk limit.
+  - RLA API: returns correct results (4/8 ballots sampled, 0 mismatches).
+  - Timeline shows audit results: "Risk-limiting audit passed".
+  - Zero runtime errors.
+
+Stage Summary:
+- ✅ Election Notification System — organizations can now broadcast
+  notifications to voters (voting opens, closes, results published) and
+  track delivery + read rates. 5 built-in templates + custom messages.
+- ✅ Risk-Limiting Audit Tool — a statistically rigorous post-election
+  audit that samples random ballots, decrypts them, and compares to the
+  certified tally. Fully reproducible (seed-based). This is a gold-standard
+  election integrity feature used in US states like Colorado and Rhode Island.
+- ✅ Election Workspace now has 13 tabs (added Notifications).
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Multi-language support, election
+  notification scheduling (auto-send at voting open/close), mobile app,
+  observer mobile companion app.
+
