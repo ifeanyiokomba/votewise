@@ -208,6 +208,14 @@ export const api = {
   raeiGenerateReport: (data: any, subdomain?: string) => req(`/api/raei/reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   raeiGetCertification: (electionId: string, subdomain?: string) => req(`/api/raei/certification/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   raeiGetReplay: (electionId: string, subdomain?: string) => req(`/api/raei/replay/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Observer reports (structured submission)
+  raeiGetObserverReports: (params: string, subdomain?: string) => req(`/api/raei/observer-reports${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiSubmitObserverReport: (data: any, subdomain?: string) => req(`/api/raei/observer-reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  raeiUpdateObserverReport: (reportId: string, data: any, subdomain?: string) => req(`/api/raei/observer-reports/${reportId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  raeiDeleteObserverReport: (reportId: string, subdomain?: string) => req(`/api/raei/observer-reports/${reportId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  // Data retention policy
+  raeiGetDataRetention: (subdomain?: string) => req(`/api/raei/data-retention${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiUpdateDataRetention: (data: any, subdomain?: string) => req(`/api/raei/data-retention${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Chapter 12: CNSE — Communication, Notification & Support Ecosystem
   cnseSend: (data: any, subdomain?: string) => req(`/api/cnse/send${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),

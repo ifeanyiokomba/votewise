@@ -1839,3 +1839,54 @@ model KnowledgeBaseArticle {
   @@index([category])
   @@index([isPublished])
 }
+
+/// ObserverReport — structured reports submitted by election observers.
+/// Included in the final certification package.
+model ObserverReport {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  observerId      String?  // OrganizationMember ID
+  observerName    String
+  observation     String   // what was observed
+  severity        String   @default("INFO") // INFO | LOW | MEDIUM | HIGH | CRITICAL
+  evidence        String?  // JSON array of { type, description, data }
+  recommendation  String?  // observer's recommendation
+  attachments     String?  // JSON array of { name, url }
+  status          String   @default("SUBMITTED") // SUBMITTED | REVIEWED | ACCEPTED | REJECTED
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([severity])
+  @@index([status])
+}
+
+/// DataRetentionPolicy — organization-level data retention configuration.
+/// Controls how long different data types are kept before archiving/deletion.
+model DataRetentionPolicy {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  // Retention periods in days (0 = keep forever)
+  voteRecordsDays     Int  @default(2555)   // 7 years (compliance default)
+  auditLogsDays       Int  @default(2555)   // 7 years
+  integrityEventsDays Int  @default(365)    // 1 year
+  incidentsDays       Int  @default(2555)   // 7 years
+  messagesDays        Int  @default(90)     // 90 days
+  supportTicketsDays  Int  @default(365)    // 1 year
+  notificationsDays   Int  @default(90)     // 90 days
+  // Actions
+  archiveAfterDays    Boolean @default(true) // archive before delete
+  autoDeleteEnabled   Boolean @default(false) // auto-delete expired data
+  // Config
+  lastPolicyReview    DateTime?
+  createdById         String?
+  createdByName       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([organizationId])
+}
