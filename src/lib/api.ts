@@ -60,6 +60,12 @@ export const api = {
   workspaceCreateImport: (data: any, subdomain?: string) => req(`/api/workspace/imports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   workspaceImportStatus: (id: string, subdomain?: string) => req(`/api/workspace/imports/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
 
+  // Chapter 4: IAM — invitations
+  workspaceInvitations: (subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceInviteUser: (data: any, subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  workspaceRevokeInvitation: (id: string, subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ id }) }),
+  acceptInvitation: (token: string, password: string) => req('/api/workspace/invitations/accept', { method: 'POST', body: JSON.stringify({ token, password }) }),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),

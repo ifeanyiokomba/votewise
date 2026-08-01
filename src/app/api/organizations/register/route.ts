@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { json, errorJson, writeAudit, getClientIp } from '@/lib/election'
 import { hashPassword } from '@/lib/crypto'
 import { signAccessToken, newRefreshToken, setAuthCookies } from '@/lib/auth'
+import { validatePassword } from '@/lib/password-policy'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,8 +33,10 @@ export async function POST(req: NextRequest) {
     return errorJson('Organization name is required', 400)
   if (!ownerName || !ownerEmail || !ownerPassword)
     return errorJson('Owner name, email, and password are required', 400)
-  if (ownerPassword.length < 8)
-    return errorJson('Password must be at least 8 characters', 400)
+  // Chapter 4: enforce enterprise password policy (12+ chars, upper, lower, number, special)
+  const pwCheck = validatePassword(ownerPassword)
+  if (!pwCheck.valid)
+    return errorJson('Password does not meet security requirements', 400, { errors: pwCheck.errors })
 
   // Validate requested subdomain if provided (Step 4 of registration flow).
   let subdomain: string
@@ -56,7 +59,9 @@ export async function POST(req: NextRequest) {
   const emailLower = ownerEmail.toLowerCase()
 
   // Check email uniqueness (across both OrganizationMember and legacy ElectionOfficial)
-  const existingMember = await db.organizationMember.findUnique({ where: { email: emailLower } })
+  // Chapter 4: email is no longer globally unique (multi-org membership).
+  // Check if this email is already used by ANY org member.
+  const existingMember = await db.organizationMember.findFirst({ where: { email: emailLower } })
   if (existingMember) return errorJson('An account with this email already exists', 409)
   const existingOfficial = await db.electionOfficial.findUnique({ where: { email: emailLower } })
   if (existingOfficial) return errorJson('An account with this email already exists', 409)
@@ -102,6 +107,7 @@ export async function POST(req: NextRequest) {
         name: ownerName.trim(),
         role: 'ORG_OWNER',
         passwordHash: pwHash,
+        accountStatus: 'ACTIVE', // Chapter 4: explicit account status
         emailVerified: true, // auto-verify for onboarding simplicity (Principle 5)
         phone: ownerPhone || null,
       },

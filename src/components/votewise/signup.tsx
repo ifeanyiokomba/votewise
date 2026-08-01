@@ -132,7 +132,7 @@ export function SignupView() {
   }
 
   // Validation per step
-  const canStep1 = form.fullName && form.email && form.phone && form.password?.length >= 8 && form.password === form.confirmPassword
+  const canStep1 = form.fullName && form.email && form.phone && form.password?.length >= 12 && /[A-Z]/.test(form.password) && /[a-z]/.test(form.password) && /[0-9]/.test(form.password) && /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(form.password) && form.password === form.confirmPassword
   const canStep2 = form.orgName && form.country && form.state && form.timezone
   const canStep4 = subCheck?.available === true
 
@@ -192,7 +192,7 @@ export function SignupView() {
               </div>
               <div className="space-y-1.5">
                 <Label>Password <span className="text-destructive">*</span></Label>
-                <Input type="password" value={form.password || ''} onChange={(e) => set('password', e.target.value)} placeholder="At least 8 characters" />
+                <Input type="password" value={form.password || ''} onChange={(e) => set('password', e.target.value)} placeholder="Min 12 chars, 1 upper, 1 lower, 1 number, 1 special" />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Confirm Password <span className="text-destructive">*</span></Label>

@@ -195,14 +195,21 @@ model VoterGroup {
 /// GUEST is implicit (not logged in) and rarely stored; included for completeness.
 /// This model is the NEW RBAC identity. The legacy `ElectionOfficial` model
 /// is retained for the seeded demo and will be migrated in a later chapter.
+/// Chapter 4: OrganizationMember is now the unified User model. A single user
+/// (identified by email) can belong to MULTIPLE organizations with different
+/// roles — the same email can exist in multiple orgs. The @@unique constraint
+/// is [organizationId, email] (not global email @unique).
+/// The legacy `ElectionOfficial` table is retained for the demo election only.
 model OrganizationMember {
   id              String   @id @default(cuid())
   organizationId  String?  // null for PLATFORM_SUPER_ADMIN (platform-wide)
   organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  email           String   @unique
+  email           String   // Chapter 4: NOT globally unique — same email can join multiple orgs
   name            String
   role            String   // PLATFORM_SUPER_ADMIN | ORG_OWNER | ORG_ADMIN | OBSERVER | VOTER | GUEST
   passwordHash    String
+  // Chapter 4: account status (ACTIVE | PENDING | SUSPENDED | LOCKED | DISABLED | ARCHIVED)
+  accountStatus   String   @default("ACTIVE")
   // 2FA (required for PLATFORM_SUPER_ADMIN and ORG_OWNER per RBAC policy)
   totpSecret      String?
   totpEnabled     Boolean  @default(false)
@@ -225,9 +232,11 @@ model OrganizationMember {
 
   roles           OrganizationMemberRole[]
 
+  @@unique([organizationId, email])
   @@index([organizationId])
   @@index([role])
   @@index([email])
+  @@index([accountStatus])
 }
 
 /// OrganizationMemberRole — links members to roles (many-to-many). A member
