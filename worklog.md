@@ -8477,3 +8477,82 @@ Stage Summary:
   NO blue. Severity mapping follows spec exactly (LOW=zinc, MEDIUM=amber,
   HIGH=orange/amber-600, CRITICAL=red). `votewise-card-glow` applied to all
   primary header cards.
+
+---
+Task ID: CHAPTER-11-EIFDIRS
+Agent: Lead Developer (main)
+Task: Chapter 11 — Election Integrity, Fraud Detection & Incident Response System (EIFDIRS).
+
+Work Log:
+- **Schema**: 4 new models — IntegrityEvent, FraudIncident, ElectionLock,
+  IntegrityCertificate. All with proper indexes.
+- **Core Library** (`src/lib/eifdirs/`): 8 modules:
+  - `types.ts` — full type system (events, incidents, risk scores, locks)
+  - `event-collector.ts` — central event stream. Every action becomes an
+    IntegrityEvent. recordEvent() is the single entry point.
+  - `fraud-detector.ts` — 8 detection categories: login abuse (5+ failures
+    in 5min), OTVP abuse (5+ in 10min), vote timing (50+ in 30sec), admin
+    abuse (config changes during live election), observer abuse (10+ exports
+    in 1hr), voter import abuse (near voting start), network anomaly (VPN/
+    TOR/impossible travel). Auto-creates incidents.
+  - `risk-scorer.ts` — aggregate risk scores (0-100) for elections, orgs,
+    platform. Threat levels: LOW/MODERATE/ELEVATED/HIGH/CRITICAL.
+  - `incident-manager.ts` — full lifecycle (Detected→Open→Assigned→
+    Investigating→Containment→Resolved→Closed→Archived). Evidence collection,
+    investigation notes, chain of custody, false positive, escalation.
+  - `election-lock.ts` — automatic config lock when voting begins. Emergency
+    override with reason + audit. Platform-admin emergency lockdown.
+  - `certificate-generator.ts` — signed Integrity Certificate (audit hash +
+    HMAC signature). Public Transparency Report (no sensitive data).
+  - `index.ts` — barrel export.
+- **APIs** (9 endpoints): events stream, incidents list + detail + actions,
+  dashboard, lockdown, certificate, transparency report (public), forensic
+  replay, per-election security status.
+- **UI Components** (5):
+  - `security-center.tsx` — Election SOC dashboard with threat level, integrity
+    score, incidents by severity/category, recent incidents/events, emergency
+    lockdown.
+  - `incident-detail.tsx` — investigation dialog with all actions (assign,
+    status, notes, evidence, chain of custody, false positive, escalation).
+  - `forensic-replay.tsx` — vertical timeline reconstruction of all events.
+  - `election-security-tab.tsx` — 14th tab in Election Workspace.
+  - Security page at /workspace/security + sidebar link.
+- **Wired into vote flow**: vote-recorder.ts records VOTE_SUBMITTED integrity
+  event after each vote. Fraud detector runs async — detects vote bursts,
+  admin abuse, OTVP abuse automatically.
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Security Center: renders with threat level (Low), integrity score (100),
+    all sections.
+  - Election Workspace Security tab: renders with lock status, certificate
+    button, forensic replay.
+  - Forensic Replay: shows 19 timeline events.
+  - Zero runtime errors.
+
+10 Refactoring Tasks Status:
+1. ✅ Centralized Event Collection service (event-collector.ts — recordEvent)
+2. ✅ Fraud Detection Engine with configurable rules (fraud-detector.ts — 8 categories)
+3. ✅ Risk Scoring Engine (risk-scorer.ts — aggregate scores, threat levels)
+4. ✅ Incident Management with lifecycle + evidence (incident-manager.ts)
+5. ✅ Lock critical config when voting begins (election-lock.ts)
+6. ✅ Configurable automated responses (fraud detector creates incidents →
+   notifications → lockdown)
+7. ✅ Integrity Certificates + Transparency Reports (certificate-generator.ts)
+8. ✅ Dashboards for platform/org/election monitoring (security-center.tsx)
+9. ✅ Immutable audit logs for investigations (chain of custody on every incident)
+10. ✅ Designed for AI anomaly detection integration (event stream is the
+    training data source — AI can subscribe to events and add detections)
+
+Strategic Addition — Chain of Custody:
+- ✅ Every incident has a chain of custody (JSON array of custody steps).
+  Each step: action, actor, timestamp, optional signature. Records who did
+  what, when, under what authority.
+
+Stage Summary:
+- ✅ Chapter 11 EIFDIRS is complete. VoteWise is now a secure election
+  operations center — every login, ballot, admin action, and system event
+  is monitored, scored, and audited.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations**: AI anomaly detection, device intelligence
+  fingerprinting, IP reputation integration, public transparency portal
+  for all certified elections.
+
