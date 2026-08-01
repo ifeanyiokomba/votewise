@@ -220,9 +220,26 @@ model OrganizationMember {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  roles           OrganizationMemberRole[]
+
   @@index([organizationId])
   @@index([role])
   @@index([email])
+}
+
+/// OrganizationMemberRole — links members to roles (many-to-many). A member
+/// can have multiple roles within an organization.
+model OrganizationMemberRole {
+  id              String   @id @default(cuid())
+  memberId        String
+  member          OrganizationMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  roleId          String
+  role            Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([memberId, roleId])
+  @@index([memberId])
+  @@index([roleId])
 }
 
 /// Organization Terminology — Principle 4: Everything configurable.
@@ -254,6 +271,180 @@ model OrganizationTerminology {
 // Organization/Workspace/VoterGroup hierarchy fully replaces them.
 // All NEW features MUST use the generic hierarchy above.
 // ===========================================================================
+
+// ===========================================================================
+// CHAPTER 3 — DATABASE REFACTORING & DOMAIN MODEL (NEW)
+// Generic, enterprise-grade models. No university assumptions. Dynamic voter
+// fields, normalized RBAC, separated domains (voting/billing/branding/support).
+// Every table references organizationId (except platform-level config).
+// ===========================================================================
+
+/// Role — stored, not hardcoded. Each organization can have custom roles,
+/// but defaults (Owner, Admin, Observer, Support, Auditor, Voter) are seeded.
+model Role {
+  id              String   @id @default(cuid())
+  organizationId  String?  // null = platform-wide default role
+  name            String   // "Owner" | "Admin" | "Observer" | "Support" | "Auditor" | "Voter" | custom
+  description     String?
+  isSystem        Boolean  @default(false) // true for the 6 default roles (cannot be deleted)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  members         OrganizationMemberRole[]
+  permissions     RolePermission[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+/// Permission — stored separately. Enterprise-ready: permissions are granular
+/// and linkable to any role via RolePermission.
+model Permission {
+  id              String   @id @default(cuid())
+  key             String   @unique // "election.create" | "voter.import" | "billing.manage" | ...
+  description     String?
+  category        String   // "election" | "voter" | "billing" | "security" | "audit" | ...
+  createdAt       DateTime @default(now())
+
+  roles           RolePermission[]
+}
+
+/// RolePermission — links roles to permissions (many-to-many).
+model RolePermission {
+  id              String   @id @default(cuid())
+  roleId          String
+  role            Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId    String
+  permission      Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+/// VoterField — dynamic voter fields per organization. Organizations define
+/// what voter info they require (matric number / employee ID / membership
+/// number / parish / shop number / etc.). The voter importer builds itself
+/// dynamically from these definitions.
+model VoterField {
+  id              String   @id @default(cuid())
+  organizationId  String
+  label           String   // "Matric Number" | "Employee ID" | "Membership Number"
+  key             String   // "matricNumber" | "employeeId" | "membershipNumber"
+  fieldType       String   // TEXT | NUMBER | EMAIL | PHONE | SELECT | DATE
+  required        Boolean  @default(false)
+  displayOrder    Int      @default(0)
+  options         String?  // JSON array for SELECT type
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+}
+
+/// ImportJob — async CSV import tracking. Imports never happen synchronously.
+/// A background worker processes the import; the UI polls for status.
+model ImportJob {
+  id              String   @id @default(cuid())
+  organizationId  String
+  uploadedById    String?
+  status          String   @default("PENDING") // PENDING | PROCESSING | COMPLETED | FAILED
+  fileName        String?
+  totalRows       Int      @default(0)
+  processedRows   Int      @default(0)
+  failedRows      Int      @default(0)
+  completedRows   Int      @default(0)
+  errors          String?  // JSON array of row-level errors
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+/// VotingCredential — separated OTVP (One-Time Voting Password). Supports
+/// Email/SMS/WhatsApp without changing the schema. Separate from Voter so
+/// credential delivery can be retried/audited independently.
+model VotingCredential {
+  id              String   @id @default(cuid())
+  organizationId  String
+  voterId         String
+  electionId      String?
+  deliveryMethod  String   // EMAIL | SMS | WHATSAPP
+  code            String   // the OTVP code (hashed in production)
+  destination     String?  // masked email/phone
+  expiresAt       DateTime
+  attempts        Int      @default(0)
+  status          String   @default("PENDING") // PENDING | VERIFIED | EXPIRED | USED
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([voterId])
+  @@index([status])
+}
+
+/// VotingSession — tracks whether a voter has voted (separate from the Vote
+/// itself). This separation improves ballot secrecy: the vote record has no
+/// voter identity, only the encryptedReceipt.
+model VotingSession {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  voterId         String
+  sessionToken    String   @unique
+  accredited      Boolean  @default(false)
+  accreditedAt    DateTime?
+  hasVoted        Boolean  @default(false)
+  votedAt         DateTime?
+  deviceFingerprint String?
+  ipAddress       String?
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([voterId])
+  @@index([electionId])
+}
+
+/// SupportMessage — messages within a support ticket. Supports voter →
+/// observer → platform escalation.
+model SupportMessage {
+  id              String   @id @default(cuid())
+  ticketId        String
+  senderId        String?
+  senderName      String
+  senderRole      String   // VOTER | OBSERVER | ADMIN | SUPPORT | SYSTEM
+  message         String
+  attachments     String?  // JSON array of {type, name, dataUrl}
+  readAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([createdAt])
+}
+
+/// OrganizationBrand — white-label branding. Everything visual lives here,
+/// separate from the Organization core record.
+model OrganizationBrand {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  logo            String?
+  darkModeLogo    String?
+  favicon         String?
+  primaryColor    String   @default("#15803d")
+  secondaryColor  String?
+  accentColor     String   @default("#b45309")
+  font            String?  // "Inter" | "Geist" | custom
+  customCSS       String?
+  loginBackground String?
+  updatedAt       DateTime @updatedAt
+}
 
 // ---------------------------------------------------------------------------
 // Multi-tenant: Organizations (University / Faculty / Department) — LEGACY

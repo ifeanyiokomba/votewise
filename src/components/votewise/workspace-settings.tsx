@@ -24,6 +24,7 @@ const SETTINGS_TABS = [
   { value: 'branding', label: 'Branding', icon: Palette },
   { value: 'domain', label: 'Domain', icon: Globe },
   { value: 'roles', label: 'Roles', icon: Users },
+  { value: 'voterfields', label: 'Voter Fields', icon: FileCheck2 },
   { value: 'security', label: 'Security', icon: Shield },
   { value: 'billing', label: 'Billing', icon: CreditCard },
   { value: 'notifications', label: 'Notifications', icon: Bell },
@@ -93,6 +94,11 @@ export function WorkspaceSettings({ subdomain }: { subdomain?: string }) {
         {/* Roles */}
         <TabsContent value="roles">
           <RolesTab subdomain={subdomain} />
+        </TabsContent>
+
+        {/* Voter Fields (dynamic) */}
+        <TabsContent value="voterfields">
+          <VoterFieldsTab subdomain={subdomain} />
         </TabsContent>
 
         {/* Security */}
@@ -382,6 +388,78 @@ function AuditTab({ subdomain }: any) {
             </tbody>
           </table>
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Voter Fields tab — dynamic voter field definitions per org (Chapter 3).
+function VoterFieldsTab({ subdomain }: { subdomain?: string }) {
+  const [fields, setFields] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ label: '', key: '', fieldType: 'TEXT', required: false, displayOrder: 0 })
+
+  useEffect(() => {
+    let active = true
+    api.workspaceVoterFields(subdomain).then((d) => { if (active) setFields(d.fields || []) }).catch(() => {}).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [subdomain])
+  async function reload() {
+    try { const d = await api.workspaceVoterFields(subdomain); setFields(d.fields || []) } catch {}
+  }
+
+  async function create() {
+    if (!form.label || !form.key) { toast.error('Label and key are required'); return }
+    try {
+      await api.workspaceCreateVoterField(form, subdomain)
+      toast.success('Voter field created')
+      setForm({ label: '', key: '', fieldType: 'TEXT', required: false, displayOrder: 0 })
+      setShowForm(false)
+      reload()
+    } catch (e: any) { toast.error(e.message) }
+  }
+  async function remove(id: string) {
+    try { await api.workspaceDeleteVoterField(id, subdomain); toast.success('Field deleted'); reload() }
+    catch (e: any) { toast.error(e.message) }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="font-display text-base">Dynamic Voter Fields</CardTitle>
+          <Button size="sm" onClick={() => setShowForm((s) => !s)} className="gap-1.5"><Plus className="h-3.5 w-3.5" /> Add Field</Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Organizations define what voter information they require (matric number, employee ID, membership number, parish, shop number, etc.). The voter importer builds itself dynamically from these definitions. <strong>No schema changes ever.</strong></p>
+        {showForm && (
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1"><Label className="text-[11px]">Label</Label><Input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} placeholder="Matric Number" /></div>
+              <div className="space-y-1"><Label className="text-[11px]">Key</Label><Input value={form.key} onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }))} placeholder="matricNumber" className="font-mono" /></div>
+              <div className="space-y-1"><Label className="text-[11px]">Field Type</Label><Input list="ftypes" value={form.fieldType} onChange={(e) => setForm((f) => ({ ...f, fieldType: e.target.value }))} /><datalist id="ftypes"><option value="TEXT" /><option value="NUMBER" /><option value="EMAIL" /><option value="PHONE" /><option value="SELECT" /><option value="DATE" /></datalist></div>
+              <div className="space-y-1"><Label className="text-[11px]">Display Order</Label><Input type="number" value={form.displayOrder} onChange={(e) => setForm((f) => ({ ...f, displayOrder: parseInt(e.target.value) || 0 }))} /></div>
+            </div>
+            <div className="flex items-center gap-2"><Switch checked={form.required} onCheckedChange={(v) => setForm((f) => ({ ...f, required: v }))} /><Label className="text-xs">Required field</Label></div>
+            <div className="flex gap-2"><Button size="sm" onClick={create} className="gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" /> Create</Button><Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button></div>
+          </div>
+        )}
+        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : fields.length === 0 ? (
+          <div className="py-6 text-center"><FileCheck2 className="mx-auto h-8 w-8 text-muted-foreground/40" /><p className="mt-2 text-sm text-muted-foreground">No voter fields defined yet. Add fields to customize your voter registration.</p></div>
+        ) : (
+          <div className="space-y-2">
+            {fields.map((f) => (
+              <div key={f.id} className="flex items-center gap-3 rounded-lg border border-border/60 p-3">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary"><FileCheck2 className="h-4 w-4" /></div>
+                <div className="flex-1 min-w-0"><div className="text-sm font-medium">{f.label}</div><div className="font-mono text-[10px] text-muted-foreground">{f.key} · {f.fieldType}</div></div>
+                {f.required && <Badge variant="secondary" className="text-[10px]">Required</Badge>}
+                <Button size="sm" variant="ghost" onClick={() => remove(f.id)} className="text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

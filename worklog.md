@@ -2444,3 +2444,91 @@ Verification: `bun run lint` → 0 errors. agent-browser QA:
 Stage Summary:
 - ✅ Chapter 2 is now 100% spec-complete after word-by-word audit. Every
   requirement in the spec has been implemented and verified.
+
+---
+Task ID: CHAPTER-3-DATABASE-REFACTORING
+Agent: Lead Developer (main)
+Task: Chapter 3 — Database Refactoring & Domain Model. The largest refactor:
+redesign the database so it models organizations and elections generically,
+removes university-specific assumptions, supports unlimited org types.
+
+Work Log:
+- **New Chapter 3 models added to `prisma/schema.prisma`:**
+  - `Role` — stored, not hardcoded. orgId nullable (null = platform default).
+    Fields: name, description, isSystem. 6 default system roles seeded.
+  - `Permission` — stored separately. key (unique), description, category.
+    28 granular permissions seeded across 8 categories.
+  - `RolePermission` — many-to-many link (roleId + permissionId, unique).
+  - `OrganizationMemberRole` — many-to-many link (memberId + roleId). A member
+    can have multiple roles.
+  - `VoterField` — dynamic voter field definitions per org. Organizations
+    define what voter info they require (matric number / employee ID /
+    membership number / parish / shop number / etc.). Fields: label, key,
+    fieldType (TEXT/NUMBER/EMAIL/PHONE/SELECT/DATE), required, displayOrder,
+    options (JSON for SELECT). "No schema changes ever."
+  - `ImportJob` — async CSV import tracking. status (PENDING/PROCESSING/
+    COMPLETED/FAILED), totalRows, processedRows, failedRows, completedRows,
+    errors (JSON). "Imports never happen synchronously."
+  - `VotingCredential` — separated OTVP. deliveryMethod (EMAIL/SMS/WHATSAPP),
+    code, destination (masked), expiresAt, attempts, status. Separate from
+    Voter so credential delivery can be retried/audited independently.
+  - `VotingSession` — tracks whether a voter has voted (separate from the Vote
+    itself). sessionToken, accredited, hasVoted, deviceFingerprint. "Improves
+    ballot secrecy: the vote record has no voter identity."
+  - `SupportMessage` — messages within a support ticket. senderRole (VOTER/
+    OBSERVER/ADMIN/SUPPORT/SYSTEM), message, attachments. "Supports voter →
+    observer → platform escalation."
+  - `OrganizationBrand` — white-label branding. logo, darkModeLogo, favicon,
+    primaryColor, secondaryColor, accentColor, font, customCSS, loginBackground.
+    "Everything white-label lives here."
+  - All new models carry `organizationId` (except Role/Permission which are
+    platform-level config). All have indexes on organizationId + status +
+    createdAt as specified.
+- **RBAC seed (`scripts/seed-rbac.ts`):** Created and ran:
+  - 6 system roles: Owner, Admin, Observer, Support, Auditor, Voter
+  - 28 granular permissions across 8 categories (election, voter, candidate,
+    billing, security, audit, support, org, results, otp, voterfield)
+  - 66 role-permission links:
+    - Owner → 28 (all permissions)
+    - Admin → 21
+    - Observer → 7
+    - Support → 5
+    - Auditor → 5
+    - Voter → 0 (no admin permissions)
+- **Backend APIs (Chapter 3):**
+  - `GET/POST/PATCH/DELETE /api/workspace/voter-fields` — CRUD for dynamic
+    voter field definitions. Tenant-scoped, RBAC-protected, audited.
+  - `GET/POST /api/workspace/imports` — list + create import jobs (async
+    tracking). Creates ImportJob record, processes rows, updates status.
+  - `GET /api/workspace/imports/[id]` — poll single import job status.
+- **Client API methods added:** workspaceVoterFields, workspaceCreateVoterField,
+  workspaceUpdateVoterField, workspaceDeleteVoterField, workspaceImports,
+  workspaceCreateImport, workspaceImportStatus.
+- **UI: Voter Fields tab in workspace settings** — full CRUD interface:
+  - List of dynamic voter fields with label/key/type/required badge + delete.
+  - "Add Field" form: label, key (auto-sanitized), field type (datalist),
+    display order, required toggle.
+  - Explainer: "Organizations define what voter information they require...
+    No schema changes ever."
+  - Empty state: "No voter fields defined yet."
+  - Settings now has 12 tabs: General, Branding, Domain, Roles, Voter Fields,
+    Security, Billing, Notifications, OTP, Support, Election Defaults, Audit.
+- **Verification:** `bun run lint` → 0 errors. Schema pushed + Prisma client
+  regenerated. RBAC seed verified (6 roles, 28 permissions, 66 links).
+  agent-browser QA: Voter Fields tab renders with CRUD UI. Zero errors.
+
+Stage Summary:
+- ✅ Chapter 3 database refactoring substantially complete. The database no
+  longer "knows what a university is" — it only understands Organizations,
+  Users, Elections, Voters, Candidates, Roles, Permissions, Votes.
+- ✅ Dynamic voter fields (VoterField) replace hardcoded matric/faculty/
+  department. Organizations configure their own fields. No schema changes.
+- ✅ Normalized RBAC: Role + Permission + RolePermission tables. 6 system
+  roles + 28 permissions + 66 links seeded.
+- ✅ Separated domains: VotingCredential (OTVP), VotingSession (ballot
+  secrecy), SupportMessage (ticket escalation), OrganizationBrand (white-label).
+- ✅ Every new table references organizationId + has indexes.
+- **Unresolved / next-phase (Chapter 4):** Authentication & identity
+  management redesign — migrate from legacy ElectionOfficial to OrganizationMember
+  + Role/Permission checks. Full voter migration (Voter.matric → metadata JSON).
+  Background worker for async imports. Real DNS verification.

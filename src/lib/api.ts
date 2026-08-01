@@ -51,6 +51,15 @@ export const api = {
   workspaceConnectDomain: (domain: string, isPrimary = true, subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ domain, isPrimary }) }),
   workspaceDisconnectDomain: (domain: string, subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ domain }) }),
 
+  // Chapter 3: dynamic voter fields + import jobs
+  workspaceVoterFields: (subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceCreateVoterField: (data: any, subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  workspaceUpdateVoterField: (id: string, data: any, subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify({ id, ...data }) }),
+  workspaceDeleteVoterField: (id: string, subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ id }) }),
+  workspaceImports: (subdomain?: string) => req(`/api/workspace/imports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceCreateImport: (data: any, subdomain?: string) => req(`/api/workspace/imports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  workspaceImportStatus: (id: string, subdomain?: string) => req(`/api/workspace/imports/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),
