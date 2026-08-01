@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { api } from '@/lib/api'
 import { StatusBadge } from '@/components/votewise/shared'
+import { BallotSimulation } from '@/components/votewise/ballot-simulation'
+import { LiveVoteMonitor } from '@/components/votewise/live-vote-monitor'
+import { ElectionVerification } from '@/components/votewise/election-verification'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -203,7 +206,43 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         </CardContent></Card>
       )}
 
-      {tab !== 'Overview' && tab !== 'Positions' && (
+      {tab === 'Voting' && (
+        <div className="space-y-4">
+          {/* Vote now button (for voters) */}
+          {e.status === 'LIVE' && (
+            <Card className="votewise-card-glow border-emerald-500/30">
+              <CardContent className="flex flex-col items-center justify-between gap-3 p-5 sm:flex-row">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-100 text-emerald-600">
+                    <Vote className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Voting is Live</div>
+                    <div className="text-xs text-muted-foreground">The election is open. Eligible voters can cast their ballots now.</div>
+                  </div>
+                </div>
+                <Button onClick={() => window.location.href = `/workspace/elections/${e.id}/vote?org=${subdomain || ''}`} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                  <Vote className="h-4 w-4" /> Cast Your Vote
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+          <BallotSimulation electionId={electionId} subdomain={subdomain} />
+        </div>
+      )}
+
+      {tab === 'Results' && (
+        <div className="space-y-4">
+          <LiveVoteMonitor electionId={electionId} subdomain={subdomain} />
+          <ElectionVerification electionId={electionId} subdomain={subdomain} canTally={e.status === 'COMPLETED' || e.status === 'CERTIFIED' || e.status === 'LIVE'} />
+        </div>
+      )}
+
+      {tab === 'Reports' && (
+        <ElectionVerification electionId={electionId} subdomain={subdomain} canTally={false} />
+      )}
+
+      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && (
         <Card><CardContent className="py-12 text-center">
           {(() => { const Icon = TABS.find(t => t.label === tab)?.icon || Vote; return <Icon className="mx-auto h-12 w-12 text-muted-foreground/40" /> })()}
           <p className="mt-3 text-sm text-muted-foreground">{tab} — this section is part of the election workspace.</p>

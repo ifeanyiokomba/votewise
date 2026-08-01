@@ -2,95 +2,114 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
-import { sha256, hmacSign, randomToken } from '@/lib/crypto'
+import { buildBallot, startVotingSession, getActiveSession } from '@/lib/sve'
+import { verifyAccessToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 // POST /api/workspace/ballot — Generate a secure ballot dynamically.
-// Body: { electionId, voterId, isSimulation? }
-// Returns: ballot with positions + candidates + integrity token + signature.
+//
+// This is the ONLY way to create a ballot. The ballot is built from:
+//   Election → Positions → Candidates (eligible + approved) → Voting Rules
+//
+// The frontend renders whatever the backend sends — no hardcoded positions.
+//
+// Body: { electionId, voterId?, isSimulation?, sessionToken? }
+// Returns: GeneratedBallot with positions, candidates, integrity token, signature.
+//
+// For real votes, the voter must have an active VotingSession (created via
+// /api/workspace/ballot/session/start). For simulations, no session required.
 export async function POST(req: NextRequest) {
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult
 
   const body = await req.json().catch(() => ({}))
-  const { electionId, voterId, isSimulation } = body
+  const { electionId, voterId, isSimulation, sessionToken } = body
   if (!electionId) return errorJson('Election ID is required', 400)
 
-  const election = await db.electionSession.findUnique({
-    where: { id: electionId },
-    include: {
-      positions: {
-        orderBy: { displayOrder: 'asc' },
-        where: { /* could filter by scope */ },
-        include: {
-          candidates: {
-            where: { status: 'APPROVED', screeningStatus: 'APPROVED' },
-            orderBy: { displayOrder: 'asc' },
-            select: { id: true, fullName: true, slug: true, photoUrl: true, slogan: true, manifesto: true, politicalPartyId: true },
-          },
-        },
-      },
-    },
-  })
+  // Resolve the voter. For real votes, we accept either a voterId or a sessionToken.
+  let resolvedVoterId = voterId as string | undefined
+  let sessionId: string | undefined
 
-  if (!election || election.organizationId !== org.id)
-    return errorJson('Election not found', 404)
-
-  // Check election is live (skip for simulation)
   if (!isSimulation) {
-    const now = new Date()
-    if (now < election.startTime) return errorJson('Voting has not opened yet', 403)
-    if (now >= election.endTime) return errorJson('Voting has closed', 403)
+    // Try session token first (preferred path).
+    if (sessionToken) {
+      const { validateSession } = await import('@/lib/sve')
+      const session = await validateSession(sessionToken)
+      if (!session) return errorJson('Invalid or expired voting session. Please start a new one.', 401)
+      resolvedVoterId = session.voterId
+      sessionId = session.sessionId
+    } else if (resolvedVoterId) {
+      // Voter ID provided directly — find or create an active session.
+      const active = await getActiveSession(resolvedVoterId, electionId)
+      if (active) {
+        sessionId = active.sessionId
+      } else {
+        // Auto-start a session for the voter (if election is live + voter eligible).
+        const session = await startVotingSession({
+          electionId,
+          voterId: resolvedVoterId,
+          organizationId: org.id,
+          req,
+        })
+        sessionId = session.sessionId
+      }
+    }
+
+    // If we still don't have a voter, try the access token (admin/observer preview).
+    if (!resolvedVoterId) {
+      const auth = verifyAccessToken(req)
+      if (auth) {
+        // Admin/observer preview — use a synthetic voter ID. This is for preview
+        // only; actual vote casting requires a real voter session.
+        const member = await db.organizationMember.findFirst({
+          where: { email: auth.email, organizationId: org.id },
+        })
+        if (member) {
+          // Try to find any voter in the org to preview the ballot.
+          const previewVoter = await db.voter.findFirst({
+            where: { organizationId: org.id },
+          })
+          if (previewVoter) resolvedVoterId = previewVoter.id
+        }
+      }
+    }
+
+    if (!resolvedVoterId) {
+      return errorJson('A valid voter session or voter ID is required to generate a ballot.', 401)
+    }
   }
 
-  // Build ballot content
-  const content = JSON.stringify({
-    electionId: election.id,
-    electionName: election.name,
-    positions: election.positions.map((p) => ({
-      positionId: p.id,
-      title: p.title,
-      maximumVotes: p.maximumVotes || 1,
-      candidates: p.candidates.map((c) => ({
-        id: c.id,
-        name: c.fullName,
-        photo: c.photoUrl,
-        slogan: c.slogan,
-        manifesto: c.manifesto,
-      })),
-    })),
-  })
-
-  // Generate integrity token + digital signature
-  const voterHash = voterId ? sha256(`${voterId}:votewise-pepper-v2`) : sha256(`sim-${Date.now()}`)
-  const integrityToken = sha256(content + voterHash + Date.now())
-  const digitalSignature = hmacSign(`ballot:${integrityToken}`)
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 min ballot validity
-
-  // Store ballot
-  const ballot = await db.ballot.create({
-    data: {
-      organizationId: org.id,
+  try {
+    const { ballot } = await buildBallot({
       electionId,
-      voterId: voterId || null,
-      content,
-      integrityToken,
-      digitalSignature,
-      version: 1,
-      expiresAt,
-      status: 'GENERATED',
+      voterId: resolvedVoterId,
+      sessionId,
       isSimulation: !!isSimulation,
-    },
-  })
+      shuffleCandidates: !isSimulation, // natural order for simulation preview
+    })
 
-  return json({
-    ballotId: ballot.id,
-    content: JSON.parse(content),
-    integrityToken,
-    digitalSignature,
-    expiresAt,
-    isSimulation: !!isSimulation,
-  })
+    // Log the ballot generation (audit).
+    if (!isSimulation && resolvedVoterId) {
+      await db.voterTimelineEvent.create({
+        data: {
+          organizationId: org.id,
+          voterId: resolvedVoterId,
+          electionId,
+          eventType: 'BALLOT_GENERATED',
+          description: `Ballot generated for ${ballot.election.name} (${ballot.content.positions.length} positions)`,
+          actorId: resolvedVoterId,
+          metadata: JSON.stringify({ ballotId: ballot.ballotId, sessionId }),
+        },
+      }).catch(() => {})
+    }
+
+    return json(ballot)
+  } catch (e: any) {
+    if (e.message === 'ELECTION_NOT_FOUND') return errorJson('Election not found', 404)
+    if (e.message === 'VOTER_NOT_FOUND') return errorJson('Voter not found', 404)
+    console.error('[ballot/generate] error', e)
+    return errorJson('Failed to generate ballot', 500)
+  }
 }

@@ -101,10 +101,20 @@ export const api = {
   savePolicy: (data: any, subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Chapter 10: Secure Voting Engine
-  generateBallot: (electionId: string, voterId?: string, isSimulation?: boolean, subdomain?: string) => req(`/api/workspace/ballot${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, voterId, isSimulation }) }),
-  submitVote: (ballotId: string, selections: Record<string, string>, subdomain?: string) => req(`/api/workspace/ballot/submit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ballotId, selections }) }),
+  generateBallot: (electionId: string, voterId?: string, isSimulation?: boolean, subdomain?: string, sessionToken?: string) => req(`/api/workspace/ballot${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, voterId, isSimulation, sessionToken }) }),
+  submitVote: (ballotId: string, selections: Record<string, string | string[]>, subdomain?: string) => req(`/api/workspace/ballot/submit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ballotId, selections }) }),
   verifyReceipt: (receiptCode: string, subdomain?: string) => req(`/api/workspace/ballot/receipt${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ receiptCode }) }),
-  simulateBallot: (electionId: string, subdomain?: string) => req(`/api/workspace/ballot/simulate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId }) }),
+  simulateBallot: (electionId: string, action: 'preview' | 'cast' | 'reset' | 'list' = 'preview', selections?: Record<string, string | string[]>, subdomain?: string) => req(`/api/workspace/ballot/simulate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, action, selections }) }),
+  autoSaveSelections: (ballotId: string, selections: Record<string, string | string[]>, subdomain?: string) => req(`/api/workspace/ballot/auto-save${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ballotId, selections }) }),
+  getAutoSavedSelections: (ballotId: string, subdomain?: string) => req(`/api/workspace/ballot/auto-save?ballotId=${ballotId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  clearAutoSavedSelections: (ballotId: string, subdomain?: string) => req(`/api/workspace/ballot/auto-save?ballotId=${ballotId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  startVotingSession: (electionId: string, voterId?: string, subdomain?: string) => req(`/api/workspace/ballot/session/start${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, voterId }) }, getVoterToken()),
+  getElectionLive: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/live${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  tallyElection: (electionId: string, tieStrategy?: string, force?: boolean, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ tieStrategy, force }) }),
+  getElectionTally: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getElectionVerification: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/verification${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getDemoVoters: (electionId: string, subdomain?: string) => req(`/api/workspace/ballot/demo-voters?electionId=${electionId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
 
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),

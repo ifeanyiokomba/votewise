@@ -3423,3 +3423,155 @@ Stage Summary:
 - **Unresolved / next-phase:** Full Import Wizard UI (5-step: file→preview→
   mapping→validation→summary), multi-channel OTVP delivery analytics,
   self-service voter portal, election rules engine (Chapter 9 recommendation).
+
+---
+Task ID: CHAPTER-10-SVE
+Agent: Lead Developer (main)
+Task: Chapter 10 — Secure Voting Engine (SVE). The heart of VoteWise.
+
+Work Log:
+- **SVE Core Library** (`src/lib/sve/`): Built as an independent service module
+  with clearly defined APIs. 10 files:
+  - `types.ts` — shared types (BallotContent, ValidationResult, CastVoteResult,
+    ReceiptVerification, LiveElectionStats, VerificationPackage, SimulationResult)
+  - `crypto.ts` — SVE-specific crypto: ballot integrity tokens (sha256 of
+    content + voterHash + timestamp), digital signatures (HMAC-SHA256),
+    voter identity hashing (one-way, peppered), idempotency keys
+    (sha256(voterId|electionId|positionId)), receipt codes (VW-YYYY-XXXXXXXX),
+    vote encryption at rest (AES-256-GCM via existing encryptVote), rules hash
+    (order-independent, detects mid-vote config changes), audit hash + integrity
+    signature for post-election verification.
+  - `ballot-builder.ts` — dynamic ballot generation from election config.
+    Scope filtering (university/faculty/department), per-voter candidate
+    shuffling (Fisher-Yates seeded by voter hash), rules hash computation,
+    integrity token + signature, 30-minute ballot expiry.
+  - `validation-pipeline.ts` — the 8-step validation pipeline:
+    1. Session valid, 2. OTVP valid, 3. Election live, 4. Rules unchanged,
+    5. Has not voted, 6. Ballot valid (signature + integrity + expiry),
+    7. Candidate valid, 8. Position valid. Returns structured result with
+    failed checks for precise error messages.
+  - `vote-recorder.ts` — atomic vote recording inside db.$transaction:
+    re-validate → encrypt choice → store VoteRecord → mark voter voted →
+    hash-chained AuditLog → VoterTimelineEvent → ElectionEvent → mark ballot
+    submitted → commit. Idempotency via UNIQUE constraint on idempotencyKey.
+    CastVoteError class with precise error codes.
+  - `receipt.ts` — receipt generation + verification WITHOUT revealing choices.
+    Returns election name + position title + timestamp, never candidateId or
+    encryptedChoice or voterHash.
+  - `session.ts` — voting session management (start, validate, accredit).
+    Separate from login auth. 30-minute expiry. Single-use (revoked after vote).
+  - `live-counter.ts` — in-memory cache for real-time turnout + vote count.
+    TTL 5s. Notifies WebSocket service via internal HTTP bump endpoint.
+  - `simulation.ts` — full simulation mode: preview ballot, cast test vote,
+    reset simulation data. All simulation records marked isSimulation=true.
+  - `tally.ts` — post-election tallying: decrypt all vote records, aggregate
+    per candidate, detect ties (4 strategies: RUNOFF/MANUAL/SHARED/COIN_TOSS),
+    compute audit hash + integrity signature, persist verification package.
+  - `index.ts` — public API barrel.
+
+- **Enhanced APIs** (10 endpoints):
+  - `POST /api/workspace/ballot` — generate secure ballot dynamically (full
+    eligibility pipeline, session resolution via token/voterId/access token)
+  - `POST /api/workspace/ballot/submit` — cast vote (8-step validation + atomic
+    transaction, idempotent)
+  - `POST /api/workspace/ballot/receipt` — verify receipt without revealing
+  - `POST /api/workspace/ballot/simulate` — full simulation (preview/cast/
+    reset/list actions)
+  - `POST /api/workspace/ballot/auto-save` — temporary ballot save (offline
+    recovery) + GET + DELETE
+  - `POST /api/workspace/ballot/session/start` — start secure voting session
+  - `GET /api/workspace/ballot/demo-voters` — list eligible voters (demo)
+  - `GET /api/workspace/elections/[id]/live` — live monitor stats (votes cast,
+    turnout, per-position, per-candidate, recent activity, system health)
+  - `POST /api/workspace/elections/[id]/tally` — tally + lock + verification
+    (requires election.certify permission)
+  - `GET /api/workspace/elections/[id]/verification` — post-election
+    verification package (audit hash, integrity signature, full results)
+
+- **Real-time WebSocket** (`mini-services/results-service/index.ts`):
+  - Extended to support per-election channels (socket.emit('subscribe',
+    { electionId }))
+  - Reads from BOTH legacy EncryptedVote and new VoteRecord (SVE) tables
+  - /internal/bump HTTP endpoint (port 3031) for immediate broadcast after a
+    vote is cast (no 2s wait)
+  - sve:live events (per-election live stats) + sve:vote-cast events
+  - Fixed Prisma client initialization (copied generated client from main
+    project)
+
+- **UI Components** (4 new + 1 refactored):
+  - `ballot-view.tsx` (refactored) — full voting experience: countdown timer,
+    single/multiple choice (radio + checkboxes), candidate cards with photo +
+    manifesto expansion, NOTA option, auto-save (debounced 1.5s), offline
+    detection, review screen, final confirmation dialog, receipt display with
+    copy-to-clipboard + inline verify, WebSocket live count. Framer Motion
+    animations.
+  - `ballot-simulation.tsx` — admin simulation tool with 3 tabs (Preview,
+    Results, Runs). Preview ballot, cast test vote, reset simulation data.
+  - `live-vote-monitor.tsx` — observer live view: 4 stat cards (eligible,
+    votes cast, turnout, active sessions), turnout progress bar, votes by
+    position, recent activity feed (animated), live candidate results (if
+    visible), system health. WebSocket real-time updates with pulse animation.
+  - `election-verification.tsx` — post-election verification package: 5 stat
+    boxes, cryptographic proof (audit hash + integrity signature with
+    monospace display), results by position with winner highlighting, export
+    to JSON, tally & lock button.
+  - `voter-picker.tsx` — demo voter selection screen for testing the voting
+    flow.
+
+- **Wiring**: SVE components integrated into Election Workspace:
+  - Voting tab: "Cast Your Vote" button (green, for voters) + BallotSimulation
+  - Results tab: LiveVoteMonitor + ElectionVerification
+  - Reports tab: ElectionVerification (read-only)
+  - Vote page (`/workspace/elections/[id]/vote`): VoterPicker → BallotView
+
+- **Seed Script** (`scripts/seed-sve.ts`): Creates a LIVE demo election
+  "SUG General Elections 2025 (SVE Demo)" in the Demo University org with:
+  - 4 positions (President, VP, Secretary, Treasurer)
+  - 9 candidates (with photos, manifestos, slogans)
+  - 15 voters (with matric, email, phone)
+  - Election is LIVE right now (closes in 6 hours)
+  - Settings: no accreditation/OTVP required (for demo ease), live results on
+
+10 Refactoring Tasks Status:
+1. ✅ SVE as independent service module (src/lib/sve/ with 10 files + barrel)
+2. ✅ Dynamic ballot generation from election config (ballot-builder.ts)
+3. ✅ Complete validation pipeline before recording (8-step validation-pipeline.ts)
+4. ✅ Atomic database transactions for vote recording (vote-recorder.ts)
+5. ✅ Voter identity separated from stored ballots (voterHash only, never voterId)
+6. ✅ Ballot encryption at rest + digital signatures (AES-256-GCM + HMAC-SHA256)
+7. ✅ Idempotent vote submission APIs (idempotencyKey UNIQUE constraint)
+8. ✅ Real-time turnout + monitoring via WebSocket (per-election channels)
+9. ✅ Receipt generation + verification without exposing choices (receipt.ts)
+10. ✅ Designed for horizontal scaling (in-memory cache, stateless validation)
+
+Strategic Addition — Ballot Preview & Simulation:
+- ✅ Full simulation mode: preview ballot → cast test vote → review results →
+  reset. All simulation records marked isSimulation=true. Does NOT affect real
+  results. Lets admins verify ballot layout, candidate order, voting rules,
+  and result calculations before going live.
+
+Post-Election Verification Package:
+- ✅ Every election gets a signed verification package: total eligible, total
+  votes, invalid votes, blank votes, turnout %, audit hash (SHA-256 of all
+  vote records), integrity signature (HMAC-SHA256). Exportable to JSON for
+  independent verification.
+
+Stage Summary:
+- ✅ Chapter 10 SVE is complete and verified end-to-end via agent-browser:
+  - Ballot generation: ✅ dynamic positions + candidates + per-voter shuffling
+  - Voter session: ✅ 30-minute expiry, single-use, revoked after vote
+  - Vote casting: ✅ 8-step validation + atomic transaction + encrypted
+  - Receipt generation: ✅ 4 receipts (VW-2026-XXXXXXXX format)
+  - Receipt verification: ✅ confirms participation without revealing choices
+  - Live monitor: ✅ real-time vote count (1 vote), turnout (6.67%),
+    per-position counts, recent activity, system health
+  - Verification package: ✅ audit hash + integrity signature + full results
+  - Ballot simulation: ✅ preview + cast test vote + results + reset
+  - Auto-save: ✅ debounced selections save for offline recovery
+- Vote successfully cast by "Bola Adeyemi" (voter 2) — 4 receipts generated,
+  all verified, live count updated to 1.
+- Lint: 0 errors. Zero runtime errors in dev log (after fixes).
+- **Unresolved / next-phase:** Chapter 11 Integrity Engine (end-to-end
+  cryptographic verification, blockchain-backed audit proofs, HSM integration,
+  risk-limiting audits, public verification portals).
+
