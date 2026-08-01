@@ -192,6 +192,16 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 13: RAEI — Reporting, Analytics & Election Intelligence
+  raeiGetPlatform: () => req('/api/raei/platform'),
+  raeiGetOrg: (subdomain?: string) => req(`/api/raei/org${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiGetElection: (electionId: string, subdomain?: string) => req(`/api/raei/election/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiGetHistorical: (subdomain?: string) => req(`/api/raei/historical${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiGetInsights: (subdomain?: string) => req(`/api/raei/insights${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiGenerateReport: (data: any, subdomain?: string) => req(`/api/raei/reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  raeiGetCertification: (electionId: string, subdomain?: string) => req(`/api/raei/certification/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  raeiGetReplay: (electionId: string, subdomain?: string) => req(`/api/raei/replay/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
   // Chapter 12: CNSE — Communication, Notification & Support Ecosystem
   cnseSend: (data: any, subdomain?: string) => req(`/api/cnse/send${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   cnseGetTemplates: (params: string, subdomain?: string) => req(`/api/cnse/templates${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

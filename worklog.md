@@ -8744,3 +8744,172 @@ Stage Summary:
   Turbopack stale-module-cache issue affects any Prisma model added
   AFTER the dev server was last started — bumping SCHEMA_SIG in db.ts
   is NOT sufficient; the safe-db.ts Proxy is the reliable workaround.
+
+---
+Task ID: RAEI-UI
+Agent: RAEI Intelligence Dashboard UI Agent (sub-agent)
+Task: Build the RAEI Intelligence Dashboard and Election Replay Studio UI —
+a 4-tab workspace page (Overview / Historical / Reports / Replay) consuming
+the Chapter 13 RAEI backend library, plus a workspace sidebar link.
+
+Work Log:
+1. Read /home/z/my-project/worklog.md to absorb project context (VoteWise —
+   Next.js 16 + Prisma/SQLite + Turbopack, emerald/gold/amber palette, the
+   RAEI backend library at src/lib/raei/ with getOrgDashboard /
+   getHistoricalComparison / getAIInsights / generateReport /
+   generateCertificationPackage and the replay endpoint at
+   /api/raei/replay/[electionId]). Confirmed the api.ts client methods
+   raeiGetOrg / raeiGetHistorical / raeiGetInsights / raeiGenerateReport /
+   raeiGetReplay are wired correctly (subdomain via ?x-vw-org= query).
+2. Studied existing patterns: src/app/workspace/analytics/page.tsx
+   (Suspense + useSearchParams + NavBar + Footer + ghost back-button),
+   src/components/votewise/analytics-dashboard.tsx (KPI cards, Recharts
+   LineChart/BarChart/PieChart with emerald/amber/zinc palette + tooltip
+   styling + Framer Motion entrance animations), src/components/votewise/
+   forensic-replay.tsx (vertical timeline with border-l-2 + coloured dots +
+   type-style map), src/components/votewise/security-center.tsx
+   (votewise-card-glow header + filter buttons + summary stat grid),
+   src/components/votewise/shared.tsx (NavBar / Footer / StatusBadge
+   exports), src/components/votewise/workspace.tsx (WorkspaceNav items
+   array), src/app/globals.css (votewise-card-glow + votewise-scroll +
+   votewise-bar-anim + votewise-live-dot classes), src/lib/raei/types.ts
+   (full RAEI type definitions for OrgDashboard / ParticipationFunnel /
+   CommunicationStats / SecurityStats / SupportStats / AIInsight /
+   HistoricalComparison / ReportResult / ReplayEvent), src/lib/raei/
+   analytics-engine.ts (insight rule logic, demographic breakdown by
+   faculty), src/lib/raei/report-generator.ts (8 report generators), and
+   the 8 RAEI API route handlers (org, historical, insights, reports,
+   certification, replay, election, platform).
+3. Created src/app/workspace/intelligence/page.tsx — follows the analytics
+   page pattern exactly: 'use client', Suspense boundary, useSearchParams
+   for ?org=, NavBar + Footer, ghost "Back to Dashboard" button, and
+   <IntelligenceDashboard subdomain={org} />.
+4. Created src/components/votewise/intelligence-dashboard.tsx (~1150 lines)
+   — the main 4-tab component. Highlights:
+   - **Header**: votewise-card-glow card with Brain icon, title
+     "Intelligence Dashboard", description, RAEI Engine badge, subdomain
+     badge, last-updated timestamp, Refresh button + auto-refresh indicator
+     (votewise-live-dot, 15s interval). Framer Motion entrance.
+   - **Tabs** (shadcn/ui): Overview, Historical, Reports, Replay.
+     Horizontally scrollable on mobile (votewise-scroll).
+   - **Overview tab**: 6 KPI cards (Avg Turnout, Avg Voting Time, Avg
+     Incidents, Avg Response Time, OTVP Delivery Rate, Election Success
+     Rate) with trend arrows. AI Insights section — votewise-card-glow
+     card with rule-based insight cards (POSITIVE=emerald, WARNING=amber,
+     NEGATIVE=red, INFORMATIONAL=zinc), each with type badge + category
+     badge + title + description + recommendation + confidence bar
+     (Progress component). Participation Funnel — 7-stage horizontal
+     funnel (Invited → Eligible → Accredited → OTVP Sent → OTVP Verified
+     → Ballots Started → Votes Completed) with width-proportional bars
+     and drop-off % badges between stages. Votes Per Hour bar chart
+     (Recharts, 24 hours, emerald bars). Demographic Breakdown —
+     horizontal bar list (turnout by faculty) with palette-cycled colors
+     and voted/eligible counts. Three StatMiniCards: Communication
+     (Delivery/Open/Click rates with Progress bars), Security (Threat
+     Level/Open Incidents/Integrity Score), Support (Open Tickets/Avg
+     Resolution/Top Issue). Auto-refresh every 15s via setInterval +
+     refreshTick state.
+   - **Historical tab**: Trend Indicators card (Turnout / Participation /
+     Incidents with UP/DOWN/FLAT arrows + colour coding). Average Stats
+     card (Avg Turnout, Avg Votes, Avg Incidents, Avg Duration).
+     Turnout trend line chart (Recharts, 0–100% Y-axis, emerald line
+     with active dots, angled X-axis labels for long election names).
+     Historical comparison table (sortable columns: Name, Date, Turnout,
+     Total Votes, Eligible, Incidents, Duration) with sticky header,
+     custom scrollbar, turnout % colour-coded (≥50% emerald else amber),
+     incident count badges. Loads via api.raeiGetHistorical(subdomain).
+   - **Reports tab**: votewise-card-glow header with FileText icon +
+     election selector (loads elections from api.workspaceDashboard).
+     Grid of 8 report-type cards (Election Summary, Turnout Report,
+     Candidate Report, Security Report, Observer Report, Communication
+     Report, Audit Report, Certification Package) — each with type-specific
+     icon, "Election" badge for election-specific reports, description,
+     format selector (JSON/CSV toggle buttons), and Generate button
+     (with loading spinner). When generated, opens a Dialog showing the
+     report data as pretty-printed JSON in a scrollable pre block + a
+     Download JSON button (creates a Blob + download link). Calls
+     api.raeiGenerateReport({ type, format, electionId? }, subdomain).
+   - **Replay tab**: votewise-card-glow header with History icon +
+     election selector + Export Timeline button. When an election is
+     selected, loads timeline via api.raeiGetReplay(electionId,
+     subdomain). 6 summary stat cards (Total Events, Votes, Incidents,
+     Audit Logs, Messages, Announcements). Filter buttons row (All /
+     Votes / Incidents / Messages / Audit / Announcements) with live
+     counts per filter. Vertical timeline (border-l-2 with coloured
+     dots) — each event has type badge (colour-coded per REPLAY_TYPE_STYLE
+     map), severity badge, milestone badge (for FIRST_VOTE /
+     TURNOUT_MILESTONE / ELECTION_CLOSED / RESULTS_CERTIFIED which get
+     larger 5×5 markers), timestamp, title, description, actor + metadata
+     chips (riskScore, channel, status, percentage). Type-style map
+     covers all 18+ event types from the replay endpoint (ELECTION_OPENED,
+     FIRST_VOTE, LAST_VOTE, TURNOUT_MILESTONE, VOTE_SPIKE, OTVP_SPIKE,
+     REMINDER_SENT, MESSAGE_SENT, INCIDENT_DETECTED, INCIDENT_RESOLVED,
+     SECURITY_ALERT, ELECTION_CLOSED, COUNTING_STARTED, RESULTS_CERTIFIED,
+     AUDIT_LOG, ANNOUNCEMENT, SUPPORT_TICKET, CUSTOM) — with emerald for
+     positive events, amber for milestones/warnings, red for incidents,
+     zinc for neutrals. REMINDER_SENT specifically uses emerald (per
+     spec — "blue-equivalent but use emerald"). Incident-detected events
+     get a red card background + animated ping ring on the marker.
+     Scrollable max-h-[600px] with custom scrollbar. Staggered Framer
+     Motion reveal (opacity + x slide, capped at 0.6s). Export Timeline
+     button downloads the full replay JSON.
+   - **Palette discipline**: emerald / gold / amber / zinc / red ONLY —
+     NO indigo, NO blue. CHART constant uses #10b981 (emerald), #f59e0b
+     (amber), #d4a017 (gold), zinc shades, #ef4444 (red), #f97316
+     (orange). Consistent p-4/p-6 padding, gap-4/gap-6 spacing.
+     Mobile-first responsive grids (grid-cols-2 → sm:grid-cols-3 →
+     lg:grid-cols-4 → xl:grid-cols-6). votewise-card-glow on header
+     cards + AI Insights + Report Center + Replay Studio. All charts
+     use ResponsiveContainer. Framer Motion entrance animations on
+     header, KPI cards, insight cards, chart cards, report cards.
+5. Added "Intelligence" link to the workspace sidebar in
+   src/components/votewise/workspace.tsx: imported Brain from
+   lucide-react, inserted { label: 'Intelligence', icon: Brain, href:
+   '/workspace/intelligence?org=...' } between "Communication" and
+   "Audit Logs" (i.e. after Communication, before Settings — satisfying
+   the spec's "after Communication, before Settings" requirement).
+6. Ran `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings**
+   (exit 0). Verified via curl that:
+   - GET /workspace/intelligence?org=demo → HTTP 200 (compiles in 1.65s
+     on first request, renders in 323ms).
+   - GET /api/raei/org?x-vw-org=demo → 200: full OrgDashboard with
+     insights array (elections:2, eligibleVoters:15, votesCast:8,
+     turnoutPct:53.33, participationFunnel, communicationStats,
+     securityStats, supportStats, demographicBreakdown, votesPerHour,
+     turnoutTrend).
+   - GET /api/raei/historical?x-vw-org=demo → 200: 2-election comparison
+     with trends + averages.
+   - GET /api/raei/insights?x-vw-org=demo → 200: { insights: [] }.
+   - GET /api/raei/replay/sve-demo?x-vw-org=demo → 200: full timeline
+     with election events, vote milestones, and summary stats.
+
+Stage Summary:
+- ✅ Intelligence Dashboard page at /workspace/intelligence — Suspense +
+  NavBar + Footer + back button, follows the analytics/security page
+  pattern exactly.
+- ✅ IntelligenceDashboard component with 4 fully-functional tabs:
+  Overview (6 KPI cards + AI Insights with confidence bars +
+  Participation Funnel with drop-off % + Votes Per Hour bar chart +
+  Demographic Breakdown + 3 StatMiniCards for Communication/Security/
+  Support + auto-refresh every 15s), Historical (Trend Indicators +
+  Average Stats + Turnout line chart + sortable comparison table),
+  Reports (8 report-type cards with JSON/CSV selector + Generate
+  button + Dialog JSON viewer + Download button + election selector),
+  Replay (election selector + 6 summary stats + 6 filter buttons +
+  vertical timeline with milestone markers + severity badges + actor/
+  metadata chips + Export Timeline button + Framer Motion staggered
+  reveal).
+- ✅ Workspace sidebar updated with Intelligence link (Brain icon,
+  between Communication and Audit Logs).
+- ✅ Palette discipline: emerald / gold / amber / zinc / red only — NO
+  indigo, NO blue. REMINDER_SENT type uses emerald (not blue) per spec.
+  votewise-card-glow on header + AI Insights + Report Center + Replay
+  Studio cards. Mobile-first responsive. Framer Motion animations
+  throughout. All charts use ResponsiveContainer.
+- ✅ Lint: 0 errors, 0 warnings.
+- **Files created:**
+  - src/app/workspace/intelligence/page.tsx
+  - src/components/votewise/intelligence-dashboard.tsx
+- **Files modified:**
+  - src/components/votewise/workspace.tsx (added Brain import +
+    Intelligence nav item between Communication and Audit Logs).

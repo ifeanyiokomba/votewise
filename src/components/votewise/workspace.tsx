@@ -6,7 +6,7 @@ import {
   Building2, Users, Vote, Trophy, Loader2, CheckCircle2, AlertCircle,
   TrendingUp, Activity, Server, Bell, Shield, Globe, Clock, Plus,
   ArrowRight, Sparkles, FileCheck2, Headphones, Eye, Settings as SettingsIcon,
-  ScrollText, ChevronRight, Zap, CreditCard, Mail,
+  ScrollText, ChevronRight, Zap, CreditCard, Mail, Brain,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -288,6 +288,7 @@ function WorkspaceNav({ subdomain }: { subdomain?: string }) {
     { label: 'Reports', icon: FileCheck2, href: subdomain ? `/workspace/analytics?org=${encodeURIComponent(subdomain)}` : '/workspace/analytics' },
     { label: 'Security', icon: Shield, href: subdomain ? `/workspace/security?org=${encodeURIComponent(subdomain)}` : '/workspace/security' },
     { label: 'Communication', icon: Mail, href: subdomain ? `/workspace/communication?org=${encodeURIComponent(subdomain)}` : '/workspace/communication' },
+    { label: 'Intelligence', icon: Brain, href: subdomain ? `/workspace/intelligence?org=${encodeURIComponent(subdomain)}` : '/workspace/intelligence' },
     { label: 'Audit Logs', icon: ScrollText, href: '#' },
     { label: 'Settings', icon: SettingsIcon, href: subdomain ? `/workspace/settings?org=${encodeURIComponent(subdomain)}` : '/workspace/settings' },
   ]
