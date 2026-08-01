@@ -41,16 +41,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ act
         certifiedById: official.id,
       },
     })
-    // Post-certify: mirror candidateId/isNota onto EncryptedVote rows for
-    // fast public reads (the ciphertext remains for audit).
-    const votes = await db.encryptedVote.findMany({ where: { electionSessionId: election.id }, select: { id: true, ciphertext: true, iv: true, keyId: true } })
-    const { decryptVote } = await import('@/lib/crypto')
-    for (const v of votes) {
-      try {
-        const dec = decryptVote({ ciphertext: v.ciphertext, iv: v.iv, keyId: v.keyId })
-        await db.encryptedVote.update({ where: { id: v.id }, data: { candidateId: dec.candidateId, isNota: dec.isNota } })
-      } catch { /* skip */ }
-    }
+    // Note: EncryptedVote mirroring has been removed. The legacy
+    // /api/vote/cast route is deprecated (returns 410 Gone). All vote
+    // casting now goes through VoteRecord via the workspace flow.
+    // CandidateTally provides fast live-result reads.
   }
 
   await writeAudit({
