@@ -2810,3 +2810,58 @@ Stage Summary:
 - **Unresolved / next-phase (Chapter 5):** Active Sessions UI, configurable
   voter login methods UI, invitation accept page UI, re-authentication for
   critical platform actions (suspend org), passkeys/authenticator app support.
+
+---
+Task ID: CHAPTER-4-ACCEPTANCE-CRITERIA-UI
+Agent: Lead Developer (main)
+Task: Complete the remaining Chapter 4 acceptance criteria that need UI:
+configurable voter login methods + active sessions management.
+
+Work Log:
+- **Sessions tab added** to workspace settings (14 tabs total):
+  - Shows "Active Sessions" with device (Monitor/Smartphone icon), browser
+    name (Chrome/Firefox/Safari/Edge parsed from userAgent), IP address,
+    approximate location, last active time, and "This device" badge for the
+    current session.
+  - "Logout All" button for terminating all other sessions.
+  - Individual "Logout" buttons for non-current sessions.
+  - Trust-increasing: "If you see a session you don't recognize, log out
+    immediately."
+- **Voter Login tab added** — configurable voter authentication methods:
+  - Primary method dropdown: Email + OTVP, Phone + OTVP, Matric Number +
+    OTVP, Employee ID + OTVP, Membership ID + OTVP, Custom Voter ID + OTVP.
+  - Multi-select toggles: Allow Email/Phone/Matric/Employee ID/Membership ID
+    login.
+  - OTVP separation note: "OTVP is always required for ballot access,
+    regardless of login method. This is election authentication, separate from
+    account login. Never reused."
+  - Ties directly into dynamic voter fields from Chapter 3.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Settings now has 14 tabs (General, Branding, Domain, Roles, Voter Fields,
+    Security, Sessions, Billing, Notifications, OTP, Voter Login, Support,
+    Election Defaults, Audit).
+  - Sessions tab: "Active Sessions", "Chrome", "This device", "Lagos, Nigeria",
+    "Last active", "Logout All".
+  - Voter Login tab: "Email + OTVP" dropdown + Allow toggles + OTVP note.
+  - Zero console/runtime errors.
+
+Acceptance Criteria — Final Status:
+1. ✅ A single user can belong to multiple organizations with different roles
+   (email no longer globally unique; @@unique([organizationId, email])).
+2. ✅ Every API route validates authentication, organization, and permissions
+   consistently (requirePermission middleware).
+3. ✅ Organizations can configure how voters authenticate (Voter Login tab
+   with 6 login methods + multi-select toggles).
+4. ✅ Platform staff have stronger security controls (password policy +
+   mandatory 2FA + account status checks + IAM middleware).
+5. ✅ OTVP is separated from login auth (VotingCredential model + explicit
+   note in Voter Login tab: "Never reused").
+6. ✅ Every security-sensitive event is auditable (auditIAMEvent + writeAudit
+   in all privileged routes + login/invitation/registration audited).
+
+Stage Summary:
+- ✅ Chapter 4 is now 100% spec-complete. All 6 acceptance criteria met. All
+  10 refactoring tasks addressed. VoteWise has an enterprise-grade identity
+  system: one identity, many organizations, flexible roles, permission-driven
+  access, secure sessions, and a clear separation between who you are and
+  what you're allowed to do.
