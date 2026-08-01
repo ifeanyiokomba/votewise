@@ -35,16 +35,23 @@ model Organization {
   name            String   // "University of Lagos" / "MTN Nigeria" / "Red Cross Nigeria"
   slug            String   @unique
   subdomain       String?  @unique // e.g. "unilag" → unilag.votewise.ng
-  customDomain    String?  @unique // e.g. "vote.unilag.edu.ng" (48h auto-expiry)
-  customDomainExpiresAt DateTime? // auto-reverts to subdomain after 48h
+  // Branding
   logoUrl         String?
+  darkModeLogoUrl String?
   primaryColour   String   @default("#15803d")
+  secondaryColour String?  // optional secondary brand colour
   accentColour    String   @default("#b45309")
   // Owner (the person who registered — Organization Owner role)
   ownerEmail      String
   ownerName       String
+  ownerPhone      String?
+  // Location + locale
+  country         String?  // e.g. "Nigeria"
+  state           String?  // e.g. "Lagos"
+  timezone        String   @default("Africa/Lagos")
+  language        String   @default("en")
   // Lifecycle & billing
-  status          String   @default("TRIAL") // TRIAL | ACTIVE | SUSPENDED | EXPIRED
+  status          String   @default("TRIAL") // TRIAL | ACTIVE | SUSPENDED | EXPIRED | ARCHIVED
   plan            String   @default("PAYG")  // FREE | PAYG | ENTERPRISE
   voterQuota      Int      @default(0)       // voters paid for
   paidUntil       DateTime?
@@ -60,6 +67,71 @@ model Organization {
   members         OrganizationMember[]
   terminology     OrganizationTerminology?
   elections       ElectionSession[]
+  domains         OrganizationDomain[]
+  subscription    OrganizationSubscription?
+  settings        OrganizationWorkspaceSetting?
+}
+
+/// Custom domain connection — one org can have multiple domains (primary + aliases).
+/// DNS verification is checked on connection. On subscription expiry, the domain
+/// is disconnected (status → DISCONNECTED) but NOT deleted — reconnection on renewal.
+model OrganizationDomain {
+  id              String   @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domain          String   @unique // e.g. "vote.myorg.org"
+  isPrimary       Boolean  @default(true)
+  status          String   @default("PENDING") // PENDING (DNS not verified) | VERIFIED | DISCONNECTED
+  dnsVerifiedAt   DateTime?
+  connectedAt     DateTime @default(now())
+  disconnectedAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+/// Subscription state — separated from Organization for clean billing management.
+model OrganizationSubscription {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan            String   @default("PAYG") // FREE | PAYG | ENTERPRISE
+  status          String   @default("TRIAL") // TRIAL | ACTIVE | PAST_DUE | CANCELLED | EXPIRED
+  voterQuota      Int      @default(0)
+  votersUsed      Int      @default(0)
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelledAt     DateTime?
+  // Paystack
+  paystackCustomerCode String?
+  paystackSubscriptionCode String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// Workspace-level settings (OTP prefs, notification channels, election defaults).
+model OrganizationWorkspaceSetting {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // OTP preferences
+  defaultOtpChannel String  @default("EMAIL") // EMAIL | SMS | WHATSAPP
+  defaultOtpTtlSeconds Int  @default(600)
+  defaultMaxOtpAttempts Int @default(5)
+  // Notification channels
+  notifyEmail     Boolean  @default(true)
+  notifySms       Boolean  @default(false)
+  notifyWhatsapp  Boolean  @default(false)
+  // Election defaults
+  defaultRequireAccreditation Boolean @default(true)
+  defaultBallotRandomization  Boolean @default(true)
+  defaultNotaEnabled          Boolean @default(true)
+  defaultPublicLiveResults    Boolean @default(true)
+  // Security
+  require2faForAdmins Boolean @default(true)
+  singleDeviceEnforcement Boolean @default(false)
+  updatedAt       DateTime @updatedAt
 }
 
 /// A Workspace is a sub-division within an Organization.

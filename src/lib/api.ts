@@ -41,6 +41,15 @@ export const api = {
   listOrganizations: () => req('/api/organizations'),
   getOrganization: (slug: string) => req(`/api/organizations/${slug}`),
   registerOrganization: (data: any) => req('/api/organizations/register', { method: 'POST', body: JSON.stringify(data) }),
+  checkSubdomain: (sub: string) => req(`/api/organizations/check-subdomain?sub=${encodeURIComponent(sub)}`),
+
+  // Workspace (Chapter 2 — org-scoped, resolved from subdomain/custom domain)
+  workspaceDashboard: (subdomain?: string) => req(`/api/workspace/dashboard${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceSettings: (subdomain?: string) => req(`/api/workspace/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceUpdateSettings: (data: any, subdomain?: string) => req(`/api/workspace/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  workspaceDomains: (subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  workspaceConnectDomain: (domain: string, isPrimary = true, subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ domain, isPrimary }) }),
+  workspaceDisconnectDomain: (domain: string, subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ domain }) }),
 
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),

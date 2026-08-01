@@ -17,6 +17,7 @@ import { SignupView } from '@/components/votewise/signup'
 import { OfficialLoginView, OfficialDashboard } from '@/components/votewise/official'
 import { ObserverAnalyticsView } from '@/components/votewise/observer-analytics'
 import { OrganizationsView } from '@/components/votewise/organizations'
+import { WorkspaceView } from '@/components/votewise/workspace'
 import { ChatbotWidget } from '@/components/votewise/chatbot'
 import { api } from '@/lib/api'
 
@@ -67,6 +68,7 @@ export default function Home() {
           {v === 'about' && <AboutView />}
           {v === 'signup' && <SignupView />}
           {v === 'organizations' && <OrganizationsView />}
+          {v === 'workspace' && <WorkspaceView />}
           {v === 'official-login' && <OfficialLoginView />}
           {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
         </main>

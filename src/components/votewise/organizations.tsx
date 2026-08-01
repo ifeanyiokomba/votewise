@@ -81,6 +81,14 @@ export function OrganizationsView() {
                 <div className="mt-2 flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
                   <Globe className="h-3 w-3" /> {o.subdomain}.votewise.ng
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 w-full gap-1.5"
+                  onClick={() => { window.location.href = `/workspace?org=${encodeURIComponent(o.subdomain)}` }}
+                >
+                  <Building2 className="h-3.5 w-3.5" /> Open Workspace
+                </Button>
               </CardContent>
             </Card>
           ))}

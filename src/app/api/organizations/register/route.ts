@@ -23,8 +23,10 @@ export const dynamic = 'force-dynamic'
 // Principle 5: Simple onboarding — under 5 minutes.
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
-  const { name, category, description, primaryColour, accentColour, logoUrl,
-    ownerName, ownerEmail, ownerPassword, terminology } = body
+  const { name, category, description, primaryColour, accentColour, secondaryColour, logoUrl,
+    ownerName, ownerEmail, ownerPassword, ownerPhone,
+    country, state, timezone, language, subdomain: requestedSubdomain,
+    terminology } = body
 
   if (!name || typeof name !== 'string' || name.trim().length < 2)
     return errorJson('Organization name is required', 400)
@@ -32,6 +34,24 @@ export async function POST(req: NextRequest) {
     return errorJson('Owner name, email, and password are required', 400)
   if (ownerPassword.length < 8)
     return errorJson('Password must be at least 8 characters', 400)
+
+  // Validate requested subdomain if provided (Step 4 of registration flow).
+  let subdomain: string
+  if (requestedSubdomain) {
+    const sub = String(requestedSubdomain).toLowerCase().trim()
+    if (!/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(sub)) {
+      return errorJson('Subdomain must be 3-30 chars, lowercase letters, numbers, hyphens only', 400)
+    }
+    const taken = await db.organization.findUnique({ where: { subdomain: sub } })
+    if (taken) return errorJson('This subdomain is already taken. Try another.', 409)
+    subdomain = sub
+  } else {
+    // Auto-generate from org name.
+    const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    subdomain = baseSlug.slice(0, 30)
+    const existing = await db.organization.findFirst({ where: { OR: [{ slug: baseSlug }, { subdomain }] } })
+    if (existing) subdomain = `${baseSlug.slice(0, 26)}-${Math.random().toString(36).slice(2, 6)}`
+  }
 
   const emailLower = ownerEmail.toLowerCase()
 
@@ -41,21 +61,17 @@ export async function POST(req: NextRequest) {
   const existingOfficial = await db.electionOfficial.findUnique({ where: { email: emailLower } })
   if (existingOfficial) return errorJson('An account with this email already exists', 409)
 
-  // Generate slug + subdomain from org name
+  // Generate slug from org name (subdomain already validated above).
   const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   let finalSlug = baseSlug
-  let subdomain = baseSlug.slice(0, 30)
-  // Ensure uniqueness
-  const existing = await db.organization.findFirst({ where: { OR: [{ slug: finalSlug }, { subdomain }] } })
-  if (existing) {
-    const suffix = Math.random().toString(36).slice(2, 6)
-    finalSlug = `${baseSlug}-${suffix}`
-    subdomain = `${baseSlug.slice(0, 26)}-${suffix}`
-  }
+  const existingSlug = await db.organization.findUnique({ where: { slug: finalSlug } })
+  if (existingSlug) finalSlug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
 
   const pwHash = hashPassword(ownerPassword)
 
-  // Create organization + member + terminology + bridging official (transaction)
+  // Create organization + member + terminology + workspace settings +
+  // subscription + bridging official (transaction). This is the full
+  // "Workspace Created" step (Step 5 of the registration flow).
   const result = await db.$transaction(async (tx) => {
     const newOrg = await tx.organization.create({
       data: {
@@ -64,9 +80,15 @@ export async function POST(req: NextRequest) {
         subdomain,
         logoUrl: logoUrl || null,
         primaryColour: primaryColour || '#15803d',
+        secondaryColour: secondaryColour || null,
         accentColour: accentColour || '#b45309',
         ownerEmail: emailLower,
         ownerName: ownerName.trim(),
+        ownerPhone: ownerPhone || null,
+        country: country || null,
+        state: state || null,
+        timezone: timezone || 'Africa/Lagos',
+        language: language || 'en',
         status: 'TRIAL', // new orgs start on trial; pay to go live
         plan: 'PAYG',
         category: category || 'OTHER',
@@ -81,6 +103,7 @@ export async function POST(req: NextRequest) {
         role: 'ORG_OWNER',
         passwordHash: pwHash,
         emailVerified: true, // auto-verify for onboarding simplicity (Principle 5)
+        phone: ownerPhone || null,
       },
     })
     await tx.organizationTerminology.create({
@@ -96,6 +119,14 @@ export async function POST(req: NextRequest) {
         officialLabel: terminology?.officialLabel || 'Electoral Officer',
         observerLabel: terminology?.observerLabel || 'Observer',
       },
+    })
+    // Create default workspace settings (OTP prefs, notification channels, election defaults).
+    await tx.organizationWorkspaceSetting.create({
+      data: { organizationId: newOrg.id },
+    })
+    // Create subscription record (TRIAL status).
+    await tx.organizationSubscription.create({
+      data: { organizationId: newOrg.id, plan: 'PAYG', status: 'TRIAL' },
     })
     // Bridging ElectionOfficial so the existing cookie-based auth + org portal
     // work immediately. Role mapped ORG_OWNER → SUPER_ADMIN (legacy equivalent).

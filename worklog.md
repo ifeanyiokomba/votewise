@@ -2075,3 +2075,106 @@ Stage Summary:
 - ✅ Improved "The Morph" v2: gradient + gloss + aura pulse + expanding ring +
   bouncing ballot box + checkmark flash + richer shimmer + letter-by-letter
   wordmark. More polished, deeper, better choreographed. ~1.9s, zero errors.
+
+---
+Task ID: CHAPTER-2-SAAS-FOUNDATION
+Agent: Lead Developer (main)
+Task: Chapter 2 — SaaS Architecture & Multi-Tenant Foundation. Transform VoteWise
+into a true multi-tenant SaaS where every org has its own isolated workspace.
+
+Work Log:
+- **Schema (Chapter 2 models):** Added 3 new models to `prisma/schema.prisma`:
+  - `OrganizationDomain` — custom domain connections (domain, isPrimary, status
+    PENDING|VERIFIED|DISCONNECTED, dnsVerifiedAt, connectedAt, disconnectedAt).
+    One org can have multiple domains. DNS verified on connection. On
+    subscription expiry → DISCONNECTED (not deleted), reconnection on renewal.
+  - `OrganizationSubscription` — subscription state separated from Organization
+    for clean billing (plan, status TRIAL|ACTIVE|PAST_DUE|CANCELLED|EXPIRED,
+    voterQuota, votersUsed, currentPeriodStart/End, paystack codes).
+  - `OrganizationWorkspaceSetting` — workspace-level settings (OTP prefs,
+    notification channels, election defaults, security 2FA/single-device).
+  - Enhanced `Organization` with Chapter 2 fields: darkModeLogoUrl,
+    secondaryColour, ownerPhone, country, state, timezone, language, + relations
+    to domains/subscription/settings.
+  - Enhanced `OrganizationMember` with phone field.
+  - Pushed schema + regenerated Prisma client.
+- **OrganizationContext (`src/lib/org-context.ts`):** The heart of tenant
+  isolation. `resolveOrganization(req)` resolves the current org from:
+  1. Custom domain (vote.myorg.org → OrganizationDomain.domain)
+  2. Subdomain (myorg.votewise.ng → Organization.subdomain)
+  3. Explicit `?x-vw-org=` query param / header (sandbox dev / platform admin)
+  4. Fallback: null (public website)
+  Results cached 30s (negative cache 15s) via Cache module. `requireOrganization()`
+  helper returns 404 if no org resolved. `officialMatchesOrg()` for membership
+  checks. **Every org-scoped API must use this — never trust client IDs.**
+- **Cache module fix:** Changed `Cache.get` return type from `T | null` to
+  `T | undefined` to support negative caching (distinguish "not cached" from
+  "cached as null"). Added CACHE_KEYS.organizationSubdomain + organizationDomain.
+- **Multi-tenant Proxy (`src/proxy.ts`):** Next.js proxy (formerly middleware)
+  that extracts the host from `x-forwarded-host`/`host` headers and forwards it
+  via `x-vw-org-host`. Also supports `?x-vw-org=` override for sandbox dev.
+  Matcher excludes static assets.
+- **Tenant-scoped Workspace APIs:**
+  - `GET /api/workspace/dashboard` — alive workspace overview: elections, members,
+    admins, observers, voter groups, workspaces, support tickets, recent activity,
+    notifications, domains, settings. All scoped by organizationId.
+  - `GET /api/workspace/settings` — org branding + workspace settings + terminology
+    + subscription.
+  - `PATCH /api/workspace/settings` — update branding/settings/terminology (RBAC:
+    owner/admin only). Audited.
+  - `GET/POST/DELETE /api/workspace/domain` — list/connect/disconnect custom
+    domains. DNS auto-verified in demo (real DNS lookup in production). Cache
+    invalidated on connect/disconnect. Audited.
+  - `GET /api/organizations/check-subdomain?sub=` — subdomain availability check
+    with suggestions (e.g. "demo-ng", "demo01", "demohq") if taken.
+- **Registration flow enhanced:** `/api/organizations/register` now accepts
+  Chapter 2 fields (ownerPhone, country, state, timezone, language,
+  secondaryColour, requestedSubdomain). Validates subdomain format + uniqueness.
+  Transaction now creates: Organization + OrganizationMember + OrganizationTerminology
+  + OrganizationWorkspaceSetting + OrganizationSubscription + bridging
+  ElectionOfficial. Full "Workspace Created" step.
+- **Organization Workspace dashboard (`src/components/votewise/workspace.tsx`):**
+  A new alive, multi-election overview page:
+  - Workspace header: org logo/name, subdomain, status badge, plan badge, manage
+    button.
+  - Workspace nav: Dashboard, Elections, Voters, Candidates, Observers, Support,
+    Reports, Notifications, Audit Logs, Settings (10 items, horizontally scrollable).
+  - Greeting: "Good morning/afternoon/evening, Welcome back, {org name}."
+  - 4 stat cards: Elections, Total Voters, Observers, Upcoming.
+  - Main column: Elections list (with voter/candidate/position counts + status),
+    Recent Activity feed, Voter Groups + Workspaces side-by-side.
+  - Sidebar: Subscription (plan/status/quota/paid-until + upgrade button), Support
+    tickets, Notifications, Domains (subdomain + custom domains + connect button).
+  - Auto-refreshes every 30s.
+- **Routing:** Added `workspace` view to store + page.tsx. Created dedicated
+  `/workspace?org=<subdomain>` page route. Organizations directory now has an
+  "Open Workspace" button on each org card that navigates to the workspace.
+- **Client API methods added:** checkSubdomain, workspaceDashboard,
+  workspaceSettings, workspaceUpdateSettings, workspaceDomains,
+  workspaceConnectDomain, workspaceDisconnectDomain.
+- **Verification:** `bun run lint` → 0 errors. Dev server restarted with new
+  proxy. agent-browser QA:
+  - `/workspace?org=demo` renders the Demo University workspace: greeting, stat
+    cards, all 10 nav items, elections section, voter groups, workspaces,
+    subscription, support, notifications, domains.
+  - `/api/workspace/dashboard?x-vw-org=demo` returns Demo University data.
+  - `/api/organizations/check-subdomain?sub=neworg123` → available: true.
+  - `/api/organizations/check-subdomain?sub=demo` → available: false + 4
+    suggestions.
+  - Zero console/runtime errors.
+
+Stage Summary:
+- ✅ Multi-tenant SaaS foundation: OrganizationContext resolves org from
+  subdomain/custom domain, caches, and is used by all workspace APIs.
+- ✅ Tenant isolation: every workspace API scopes by organizationId.
+- ✅ Three logical applications separated: Public Website (home), Organization
+  Workspace (/workspace), Platform Dashboard (/admin) — one codebase.
+- ✅ Organization Lifecycle: registration creates the full workspace (org +
+  member + terminology + settings + subscription + bridging official).
+- ✅ Custom Domain: connect/disconnect with DNS verification + cache invalidation.
+  Subscription expiry → DISCONNECTED (not deleted).
+- ✅ Workspace Dashboard: alive, multi-election overview with 10-item nav.
+- **Unresolved / next-phase:** Migrate legacy Voter/Candidate/Position/AuditLog
+  to carry organizationId (currently scoped via ElectionSession.organizationId).
+  Full 5-step registration UI rewrite (currently 3-step). Organization Settings
+  page UI. Real DNS verification. Paystack subscription billing.
