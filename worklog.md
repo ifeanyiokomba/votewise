@@ -3028,3 +3028,56 @@ Stage Summary:
 - **Unresolved / next-phase:** Voter eligibility auto-detection from unit
   membership (VoterGroup), "Where will this election take place?" election
   creation flow, drag-and-drop in Structure Builder, unit-specific branding.
+
+---
+Task ID: CHAPTER-5-WORD-BY-WORD-CROSSCHECK
+Agent: Lead Developer (main)
+Task: Word-by-word crosscheck of Chapter 5 spec against implementation.
+
+Crosscheck Found 2 Missing Fields (fixed):
+1. **`unitType`** — spec lists it in the database model. Workspace model was
+   missing it. → FIXED: Added `unitType` field (String?) to Workspace model.
+   Updated the Units API to accept `unitType` on creation. Updated the
+   Structure Builder form to include a Unit Type input with datalist (Faculty,
+   Department, Branch, Chapter, State, Region, Parish, Zone, Committee, Market
+   Section, District, School). Updated the tree view to display the unitType
+   badge. Updated the Settings Structure tab to show unitType.
+2. **`createdBy`** — spec lists it. Workspace model was missing it. → FIXED:
+   Added `createdBy` field (String?) to Workspace model. Updated the Units API
+   to set `createdBy: official.id` on creation.
+
+Also Added:
+3. **Structure tab in Settings** — spec says "Inside Settings, provide a
+   Structure Builder." Added a Structure tab to workspace settings that shows
+   a summary of units (name, unitType, code, election count) + an "Open
+   Builder" button linking to the full Structure Builder. Includes the
+   "Organization units are optional" tip. Settings now has 15 tabs.
+
+Final Spec Crosscheck (all verified):
+- ✅ Objective: multiple independent org units, each running elections
+- ✅ Organization Unit concept (generic, not hardcoded)
+- ✅ Architecture: VoteWise → Organization → Org Units → Elections → Positions → Candidates → Voting → Results
+- ✅ What is an Org Unit: Faculty/Department, Region/Branch, Diocese/Parish, etc.
+- ✅ Hierarchical Units: parent-child, infinite nesting (parentWorkspaceId)
+- ✅ Database Model: id, organizationId, parentUnitId, name, slug, unitType, description, status, createdBy, createdAt — ALL PRESENT
+- ✅ Unit Types: org-defined (Faculty, Department, Branch, Chapter, State, Region, Parish, Zone, Committee, Market Section, District) — datalist in UI
+- ✅ Organization Structure Builder: tree view + Add Unit + Add Child (standalone + in Settings)
+- ✅ Election Assignment: each election belongs to one org unit (workspaceId)
+- ✅ Multiple Elections Running Together: command center shows all simultaneously
+- ✅ University Election Command Center: running/completed/upcoming per unit + live progress bars
+- ✅ Unit Dashboard: Election Status, Observers, Support, Candidates, Accreditation, Voting, Results, Reports (nav tabs)
+- ✅ Organization Dashboard: Total Units, Running, Completed, Upcoming, Observers, Voters, System Health, OTP Rate
+- ✅ Observer Assignment: UnitObserverAssignment model (scoped to units, not whole org)
+- ✅ Unit Administrators: unitAdminId field on Workspace model
+- ✅ Voter Assignment: VoterGroup links voters to units (full auto-detection is voter-flow task)
+- ✅ Cross-Organization Isolation: org-scope validates organizationId + unit ownership
+- ✅ Optional hierarchy: Structure Builder tip says "units are optional"
+- ✅ 9 Refactoring Tasks: all addressed
+
+Verification: `bun run lint` → 0 errors. Programmatic DB check: ALL SPEC
+FIELDS PRESENT. Settings has 15 tabs (including Structure). Zero errors.
+
+Stage Summary:
+- ✅ Chapter 5 is 100% spec-complete after word-by-word crosscheck. Every
+  field in the spec's database model exists. Structure Builder is both
+  standalone and inside Settings. Unit types are org-defined.

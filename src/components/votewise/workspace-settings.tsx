@@ -5,7 +5,7 @@ import {
   Building2, Palette, Globe, Shield, CreditCard, Bell, KeyRound,
   FileCheck2, ScrollText, Loader2, CheckCircle2, AlertCircle, Plus,
   Trash2, Upload, Lock, Users, Headphones, Mail, MessageSquare,
-  Monitor, LogIn, Smartphone, Chrome, MapPin, Clock, X,
+  Monitor, LogIn, Smartphone, Chrome, MapPin, Clock, X, FolderTree,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +24,7 @@ const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: Building2 },
   { value: 'branding', label: 'Branding', icon: Palette },
   { value: 'domain', label: 'Domain', icon: Globe },
+  { value: 'structure', label: 'Structure', icon: FolderTree },
   { value: 'roles', label: 'Roles', icon: Users },
   { value: 'voterfields', label: 'Voter Fields', icon: FileCheck2 },
   { value: 'security', label: 'Security', icon: Shield },
@@ -92,6 +93,11 @@ export function WorkspaceSettings({ subdomain }: { subdomain?: string }) {
         {/* Domain */}
         <TabsContent value="domain">
           <DomainTab org={org} subdomain={subdomain} />
+        </TabsContent>
+
+        {/* Structure */}
+        <TabsContent value="structure">
+          <StructureTab subdomain={subdomain} />
         </TabsContent>
 
         {/* Roles */}
@@ -400,6 +406,51 @@ function AuditTab({ subdomain }: any) {
               ))}
             </tbody>
           </table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Structure tab — link to the Organization Structure Builder (Chapter 5).
+function StructureTab({ subdomain }: { subdomain?: string }) {
+  const [units, setUnits] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let active = true
+    api.workspaceUnits(subdomain).then((d) => { if (active) setUnits(d.units || []) }).catch(() => {}).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [subdomain])
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="font-display text-base flex items-center gap-2"><FolderTree className="h-4 w-4 text-primary" /> Organization Structure</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => { window.location.href = `/workspace/structure?org=${subdomain || ''}` }} className="gap-1.5">
+            <FolderTree className="h-3.5 w-3.5" /> Open Builder
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Build your organization&apos;s hierarchy. Units can represent faculties, departments, regions, branches, parishes, chapters — anything. Units can be nested infinitely.</p>
+        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : units.length === 0 ? (
+          <div className="py-6 text-center"><Building2 className="mx-auto h-10 w-10 text-muted-foreground/40" /><p className="mt-2 text-sm text-muted-foreground">No units yet. Units are optional — create them when you need to run multiple independent elections.</p></div>
+        ) : (
+          <div className="space-y-1">
+            {units.slice(0, 8).map((u) => (
+              <div key={u.id} className="flex items-center gap-2 rounded-lg border border-border/60 p-2 text-sm">
+                <Building2 className="h-3.5 w-3.5 text-primary" />
+                <span className="truncate">{u.name}</span>
+                {u.unitType && <Badge variant="secondary" className="text-[10px]">{u.unitType}</Badge>}
+                {u.code && <Badge variant="outline" className="text-[10px]">{u.code}</Badge>}
+                <span className="ml-auto text-[10px] text-muted-foreground">{u._count?.elections || 0} elections</span>
+              </div>
+            ))}
+            {units.length > 8 && <p className="text-center text-xs text-muted-foreground">+ {units.length - 8} more units…</p>}
+          </div>
+        )}
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+          <p className="text-xs text-blue-700 dark:text-blue-400"><strong>Tip:</strong> Organization units are optional. You can run an election for the entire organization without creating any units.</p>
         </div>
       </CardContent>
     </Card>

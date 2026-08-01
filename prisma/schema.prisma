@@ -162,11 +162,13 @@ model Workspace {
   children        Workspace[] @relation("WorkspaceHierarchy")
   name            String   // "Faculty of Engineering" / "Lagos Region" / "Youth Church"
   slug            String
+  unitType        String?  // Chapter 5: "Faculty" | "Department" | "Branch" | "Region" | "Parish" | "Chapter" | "Zone" | "Committee" | "Market Section" | "District" — org-defined
   code            String?  // "ENG" / "LOS" / "YTH"
   description     String?
   metadata        String?  // JSON for flexible extra attributes
   // Unit-level admin (who manages this unit's elections)
   unitAdminId     String?  // OrganizationMember ID of the unit admin
+  createdBy       String?  // Chapter 5: who created this unit (userId)
   // Unit status
   status          String   @default("ACTIVE") // ACTIVE | ARCHIVED
   createdAt       DateTime @default(now())

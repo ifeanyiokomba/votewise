@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (!official) return errorJson('Unauthorized', 401)
 
   const body = await req.json().catch(() => ({}))
-  const { name, code, description, parentWorkspaceId } = body
+  const { name, code, description, parentWorkspaceId, unitType } = body
   if (!name) return errorJson('Unit name is required', 400)
 
   const slug = String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -43,9 +43,11 @@ export async function POST(req: NextRequest) {
       organizationId: org.id,
       name: String(name).trim(),
       slug,
+      unitType: unitType || null,
       code: code || null,
       description: description || null,
       parentWorkspaceId: parentWorkspaceId || null,
+      createdBy: official.id,
     },
   }).catch(() => null)
 

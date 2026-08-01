@@ -18,6 +18,7 @@ interface Unit {
   id: string
   name: string
   slug: string
+  unitType: string | null
   code: string | null
   description: string | null
   parentWorkspaceId: string | null
@@ -32,7 +33,7 @@ export function StructureBuilder({ subdomain }: { subdomain?: string }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showForm, setShowForm] = useState(false)
   const [formParent, setFormParent] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', code: '', description: '' })
+  const [form, setForm] = useState({ name: '', code: '', description: '', unitType: '' })
 
   function buildTree(flat: Unit[]): Unit[] {
     const map = new Map<string, Unit>()
@@ -73,11 +74,12 @@ export function StructureBuilder({ subdomain }: { subdomain?: string }) {
       await api.workspaceCreateUnit({
         name: form.name,
         code: form.code || undefined,
+        unitType: form.unitType || undefined,
         description: form.description || undefined,
         parentWorkspaceId: formParent || undefined,
       }, subdomain)
       toast.success('Organization unit created')
-      setForm({ name: '', code: '', description: '' })
+      setForm({ name: '', code: '', description: '', unitType: '' })
       setShowForm(false)
       setFormParent(null)
       reload()
@@ -112,6 +114,7 @@ export function StructureBuilder({ subdomain }: { subdomain?: string }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="truncate text-sm font-medium">{unit.name}</span>
+              {unit.unitType && <Badge variant="secondary" className="text-[10px]">{unit.unitType}</Badge>}
               {unit.code && <Badge variant="outline" className="text-[10px]">{unit.code}</Badge>}
               {unit.status === 'ARCHIVED' && <Badge variant="secondary" className="text-[10px]">Archived</Badge>}
             </div>
@@ -166,6 +169,16 @@ export function StructureBuilder({ subdomain }: { subdomain?: string }) {
                 <div className="space-y-1">
                   <Label className="text-[11px]">Unit Name *</Label>
                   <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Faculty of Engineering" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Unit Type</Label>
+                  <Input list="unittypes" value={form.unitType} onChange={(e) => setForm((f) => ({ ...f, unitType: e.target.value }))} placeholder="Faculty" />
+                  <datalist id="unittypes">
+                    <option value="Faculty" /><option value="Department" /><option value="Branch" />
+                    <option value="Chapter" /><option value="State" /><option value="Region" />
+                    <option value="Parish" /><option value="Zone" /><option value="Committee" />
+                    <option value="Market Section" /><option value="District" /><option value="School" />
+                  </datalist>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px]">Code (optional)</Label>
