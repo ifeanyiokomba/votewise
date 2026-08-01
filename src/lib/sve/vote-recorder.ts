@@ -34,6 +34,7 @@ import {
 } from './crypto'
 import { runValidationPipeline } from './validation-pipeline'
 import { incrementLiveCount, getLiveStats } from './live-counter'
+import { recordEvent } from '@/lib/eifdirs'
 import type { CastVoteResult, ValidationContext } from './types'
 import type { NextRequest } from 'next/server'
 
@@ -293,6 +294,25 @@ export async function castVote(opts: CastVoteOptions, req?: NextRequest): Promis
   // 9. Update live count cache (outside txn — best-effort).
   await incrementLiveCount(electionId, receipts.length, isSimulation)
   const liveStats = await getLiveStats(electionId)
+
+  // 10. Record integrity event for EIFDIRS (Chapter 11).
+  if (!isSimulation) {
+    await recordEvent({
+      organizationId: orgId || undefined,
+      electionId,
+      voterId: voterId || undefined,
+      actorId: voterId || undefined,
+      actorName: voter?.fullName || voter?.email || 'Voter',
+      actorRole: 'VOTER',
+      eventType: 'VOTE_SUBMITTED',
+      category: 'VOTING',
+      severity: 'INFO',
+      description: `Vote cast by ${voter?.fullName || 'voter'} — ${receipts.length} position(s) voted`,
+      metadata: { ip, device, receiptCount: receipts.length },
+      ipAddress: ip,
+      deviceFingerprint: device,
+    }).catch(() => {}) // best-effort — don't fail the vote if event recording fails
+  }
 
   // Async: forward receipt codes to the voter (no-op transport in sandbox).
   if (voterId && !isSimulation && voter) {

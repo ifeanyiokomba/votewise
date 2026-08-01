@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeft, Loader2, Vote, Trophy, Users, Eye, Headphones, CheckCircle2,
   TrendingUp, FileCheck2, ScrollText, Settings as SettingsIcon, Building2,
-  Clock, Shield, ShieldCheck, Copy, Zap, Lock, LayoutTemplate, Sparkles, Siren, Bell,
+  Clock, Shield, ShieldAlert, ShieldCheck, Copy, Zap, Lock, LayoutTemplate, Sparkles, Siren, Bell,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +32,7 @@ import { ElectionObservers } from '@/components/votewise/election-observers'
 import { ElectionVoters } from '@/components/votewise/election-voters'
 import { DuplicateElectionDialog } from '@/components/votewise/duplicate-election-dialog'
 import { ElectionNotifications } from '@/components/votewise/election-notifications'
+import { ElectionSecurityTab } from '@/components/votewise/election-security-tab'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -49,6 +50,7 @@ const TABS = [
   { label: 'Reports', icon: FileCheck2 },
   { label: 'Audit Logs', icon: ScrollText },
   { label: 'Settings', icon: SettingsIcon },
+  { label: 'Security', icon: ShieldAlert },
 ]
 
 export function ElectionWorkspace({ electionId, subdomain }: { electionId: string; subdomain?: string }) {
@@ -402,7 +404,11 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         <ElectionNotifications electionId={electionId} subdomain={subdomain} />
       )}
 
-      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Candidates' && tab !== 'Voters' && tab !== 'Observers' && tab !== 'Accreditation' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && tab !== 'Settings' && tab !== 'Support' && tab !== 'Notifications' && (
+      {tab === 'Security' && (
+        <ElectionSecurityTab electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Candidates' && tab !== 'Voters' && tab !== 'Observers' && tab !== 'Accreditation' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && tab !== 'Settings' && tab !== 'Support' && tab !== 'Notifications' && tab !== 'Security' && (
         <Card><CardContent className="py-12 text-center">
           {(() => { const Icon = TABS.find(t => t.label === tab)?.icon || Vote; return <Icon className="mx-auto h-12 w-12 text-muted-foreground/40" /> })()}
           <p className="mt-3 text-sm text-muted-foreground">{tab} — this section is part of the election workspace.</p>

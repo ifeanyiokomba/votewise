@@ -192,6 +192,19 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 11: EIFDIRS — Election Integrity, Fraud Detection & Incident Response
+  getEifdirsEvents: (params: string, subdomain?: string) => req(`/api/eifdirs/events${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getEifdirsIncidents: (params: string, subdomain?: string) => req(`/api/eifdirs/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getEifdirsIncident: (incidentId: string, subdomain?: string) => req(`/api/eifdirs/incidents/${incidentId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  updateEifdirsIncident: (incidentId: string, data: any, subdomain?: string) => req(`/api/eifdirs/incidents/${incidentId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getEifdirsDashboard: (subdomain?: string) => req(`/api/eifdirs/dashboard${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  eifdirsLockdown: (data: any, subdomain?: string) => req(`/api/eifdirs/lockdown${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  getEifdirsCertificate: (electionId: string, subdomain?: string) => req(`/api/eifdirs/certificate/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  generateEifdirsCertificate: (electionId: string, subdomain?: string) => req(`/api/eifdirs/certificate/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+  getEifdirsTransparencyReport: (electionId: string) => req(`/api/eifdirs/transparency/${electionId}`),
+  getEifdirsForensicReplay: (electionId: string, subdomain?: string) => req(`/api/eifdirs/forensic-replay/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  getEifdirsElectionStatus: (electionId: string, subdomain?: string) => req(`/api/eifdirs/election/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
   // Public live results (shareable URL)
   getPublicResults: (electionId: string) => req(`/api/elections/${electionId}/public-results`),
   // Public verification portal for certified elections (shareable URL)

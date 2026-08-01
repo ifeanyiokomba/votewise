@@ -8257,3 +8257,223 @@ Stage Summary:
 - ✅ WAL mode enabled for concurrent read/write performance.
 - ✅ Lint: 0 errors. All committed and pushed to GitHub.
 
+
+---
+Task ID: EIFDIRS-UI
+Agent: Security UI Engineer (sub-agent)
+Task: Build the EIFDIRS Security Center UI — Election Security Operations Center dashboard,
+incident investigation dialog, forensic replay, workspace sidebar entry, and election-level
+security tab.
+
+Work Log:
+
+1. Read `/home/z/my-project/worklog.md` to absorb prior context (AfriVote SUG → VoteWise
+   platform; Next.js 16 + Tailwind v4 + shadcn/ui + Framer Motion; emerald/gold/amber
+   palette; EIFDIRS backend library already built at `src/lib/eifdirs/` with `recordEvent`,
+   `getEventStream`, `getIncidentStats`, `listIncidents`, `getElectionRiskScore`,
+   `getElectionIntegrityScore`, `generateIntegrityCertificate`,
+   `generateTransparencyReport`, `getElectionLock`, `initiateLockdown`).
+
+2. Surveyed existing code:
+   - Analytics dashboard pattern (`src/app/workspace/analytics/page.tsx` +
+     `src/components/votewise/analytics-dashboard.tsx`) for the Suspense + useSearchParams
+     + NavBar + Footer layout.
+   - Workspace sidebar (`src/components/votewise/workspace.tsx`) nav array.
+   - Election workspace (`src/components/votewise/election-workspace.tsx`) tab pattern.
+   - EIFDIRS API routes (`src/app/api/eifdirs/*`) and client methods in `src/lib/api.ts`.
+   - Backend incident manager, election-lock, certificate-generator, event-collector,
+     forensic-replay endpoint shapes.
+
+3. Created `src/app/workspace/security/page.tsx` — the Security Center page route
+   following the analytics page pattern (Suspense fallback, useSearchParams for `?org=`,
+   NavBar + Footer, back-to-dashboard button).
+
+4. Created `src/components/votewise/security-center.tsx` (~900 lines) — the main
+   Security Center dashboard:
+   - Header card with `votewise-card-glow`: "Election Security Center" title +
+     colour-coded threat-level badge (LOW=emerald, MODERATE=amber, ELEVATED=orange,
+     HIGH=red, CRITICAL=red pulsing) + auto-refresh indicator (15s interval, pinging
+     dot when active, paused state when off) + last-updated timestamp + events/hr +
+     incidents today + resolved today mini-stats.
+   - 6 overview stat cards in a responsive grid (sm:2, lg:3, xl:6 cols): Active
+     Elections, Threat Level, Active Incidents (pulsing red if >0), Blocked Attempts,
+     Integrity Score (big number, >95 emerald, >85 amber, <85 red), Platform Health
+     (badge: HEALTHY/DEGRADED/CRITICAL with appropriate icon).
+   - Incidents by Severity section: 4 mini cards (LOW/MEDIUM/HIGH/CRITICAL) with
+     counts + colour-coded left borders + matching icon per severity.
+   - Incidents by Category + Events by Category: two side-by-side cards with
+     horizontal progress bars (animated width via Framer Motion), category labels
+     mapped from constants to friendly names, total counts in badge.
+   - Recent Incidents list (scrollable max-h-80, custom `votewise-scroll`): each row
+     shows incident number, title, severity badge, status badge, risk score, detected
+     time; click opens the IncidentDetail dialog.
+   - Recent Events list (scrollable max-h-80): each row shows event type, category,
+     severity badge, description, actor, time. Detected events have a red indicator
+     (pulsing dot + red-tinted background).
+   - Emergency Lockdown card (only rendered if there are live elections): election
+     selector (shadcn Select populated from `api.electionCenter`), reason input,
+     red "Initiate Lockdown" button that opens an AlertDialog confirmation. On
+     confirm, calls `api.eifdirsLockdown({ electionId, action:'initiate', reason })`
+     and shows a success toast.
+   - Framer Motion: header fade-in (y:8→0), stat cards staggered (delay 0.05 × idx),
+     severity cards staggered (delay 0.1 + i*0.05), recent list rows staggered.
+   - Auto-refresh: every 15s reloads dashboard + live elections.
+
+5. Created `src/components/votewise/incident-detail.tsx` (~700 lines) — full
+   investigation dialog:
+   - Loads incident via `api.getEifdirsIncident(incidentId, subdomain)`.
+   - Header: incident number (mono font), title, severity badge, status badge, false-
+     positive badge (if applicable), category, risk score, detected time.
+   - Description card.
+   - Detection + Assignment grid (2 cols): detected by, detected at, incident ID;
+     assigned to (or italic "Unassigned"), resolved at/by if applicable.
+   - Investigation Actions card (border-primary/30):
+     * "Assign to me" button (disabled if already assigned) → action='assign'.
+     * Status dropdown (DETECTED → OPEN → ASSIGNED → INVESTIGATING → CONTAINMENT →
+       RESOLVED → CLOSED) + "Set" button → action='updateStatus'.
+     * "Add investigation note" textarea + "Add Note" button → action='addNote'.
+     * "Mark as false positive" reason input + emerald "Confirm" button →
+       action='markFalsePositive'.
+     * "Escalate" severity selector (LOW/MEDIUM/HIGH/CRITICAL) + reason input +
+       orange "Escalate" button → action='escalate'.
+   - Investigation Notes timeline (scrollable max-h-72) with author avatars and
+     relative timestamps.
+   - Evidence section (scrollable max-h-72): each item shows type badge (LOG/
+     SCREENSHOT/FILE/WITNESS/SYSTEM_LOG), description, collected by, time.
+   - Chain of Custody timeline (vertical, max-h-72): ol with left border, each step
+     has a coloured dot (emerald for first, primary for last, muted for middle),
+     action text, actor, timestamp.
+   - Related Events card: loads events via `api.getEifdirsEvents('limit=200')` and
+     filters to those linked to the incident (or detected events as fallback).
+     Shows event type, severity badge, description, actor, time, with red tint for
+     detected events.
+   - Resolution Alert (emerald) shown if incident.resolution exists.
+   - Large scrollable Dialog (max-w-4xl, max-h-92vh).
+
+6. Created `src/components/votewise/forensic-replay.tsx` (~400 lines) — vertical
+   timeline (Git-commit-log style):
+   - Loads via `api.getEifdirsForensicReplay(electionId, subdomain)`.
+   - Header card with `votewise-card-glow`: election name + status badge, timeline
+     length, 3 filter buttons (All / Detected / Incidents), refresh button.
+   - 6 summary stats (Integrity, Election, Audit, Incidents, Detected, Votes) with
+     colour-coded icons.
+   - Vertical timeline (`<ol>` with `border-l-2`): each entry has:
+     * Coloured dot marker (red + ping animation for detected, emerald for resolved,
+       amber for vote markers, primary otherwise).
+     * Type badge (INTEGRITY_EVENT/ELECTION_EVENT/AUDIT_LOG/INCIDENT_DETECTED/
+       INCIDENT_RESOLVED/FIRST_VOTE/LAST_VOTE) with matching icon + colour.
+     * Incident number badge (mono) if applicable.
+     * Severity badge if present.
+     * "Detected" red badge if detected.
+     * Timestamp (mono font, full date-time).
+     * Description text.
+     * Actor + risk score + category in footer.
+   - Staggered Framer Motion reveal (delay = min(i * 0.025, 0.6)).
+   - Scrollable: `max-h-[600px] overflow-y-auto votewise-scroll`.
+   - Used both as a standalone component AND inside an ElectionWorkspace dialog.
+
+7. Created `src/components/votewise/election-security-tab.tsx` (~500 lines) — the
+   per-election Security tab content:
+   - Loads 3 endpoints in parallel: `api.getEifdirsElectionStatus(electionId)`,
+     `api.getEifdirsIncidents('electionId=...&limit=20')`, `api.getEifdirsEvents(
+     'electionId=...&limit=30')`. Auto-refreshes every 30s.
+   - Header card (votewise-card-glow): "Election Security Status" + threat badge +
+     "Generate Integrity Certificate" button (calls api.generateEifdirsCertificate)
+     + "View Forensic Replay" button (opens dialog containing ForensicReplay).
+     Below: 4-stat grid (Integrity Score with animated bar, Risk Score, Threat Level,
+     Lockdown Status) + risk factors list (top 6, with +points badges).
+   - Lock Status card: if no lock, shows an Alert "Not locked"; if locked, shows:
+     * Lockdown Alert (red, destructive) if `lockedDown` is true.
+     * Locked-at + locked-by + emergency-overrides count.
+     * 6 LockBadge components (Candidates, Positions, Rules, Eligibility, Ballot,
+       Settings) showing locked/unlocked with appropriate icon + colour.
+   - Incidents + Events side-by-side cards (same pattern as SecurityCenter but
+     filtered to this election).
+   - Clicking an incident opens the IncidentDetail dialog.
+   - Forensic replay opens in a large Dialog (max-w-5xl).
+
+8. Added new API endpoint `src/app/api/eifdirs/election/[electionId]/route.ts`:
+   - GET returns per-election security status: election summary, integrityScore,
+     riskScore, threatLevel, riskFactors, and lock info. Used by the
+     ElectionSecurityTab.
+   - Added `api.getEifdirsElectionStatus(electionId, subdomain)` to `src/lib/api.ts`.
+
+9. Wired the workspace sidebar (`src/components/votewise/workspace.tsx`): added a
+   "Security" nav item with the Shield icon, placed between "Reports" and "Audit
+   Logs" (i.e. after Analytics, before Settings as instructed). Links to
+   `/workspace/security?org=...`.
+
+10. Wired the 14th tab in `src/components/votewise/election-workspace.tsx`:
+    - Imported ShieldAlert icon (was missing — caught and fixed during browser
+      verification).
+    - Added `{ label: 'Security', icon: ShieldAlert }` as the 14th entry in TABS.
+    - Added the conditional render: `{tab === 'Security' && <ElectionSecurityTab
+      electionId={electionId} subdomain={subdomain} />}`.
+    - Updated the fallback "tab not implemented" guard to include `tab !== 'Security'`.
+
+11. Styling adherence:
+    - NO indigo or blue anywhere. Palette: emerald (primary), gold, amber, zinc
+      (low severity), orange (high), red (critical/lockdown).
+    - Severity: LOW=zinc, MEDIUM=amber, HIGH=orange (amber-600), CRITICAL=red.
+    - Used `votewise-card-glow` on the SecurityCenter header card AND the
+      ElectionSecurityTab header card AND the ForensicReplay header card.
+    - Mobile-first: all grids stack on mobile (`grid-cols-1 sm:grid-cols-2 lg:
+      grid-cols-3 xl:grid-cols-6` etc.). Long lists scroll with custom
+      `votewise-scroll` scrollbar.
+    - Consistent padding (`p-4` / `p-5` / `p-6`) and spacing (`gap-4` / `gap-6`).
+
+12. Browser verification (agent-browser):
+    - Opened `/workspace/security?org=demo` — page renders with "Election Security
+      Center" header, Low Threat badge, all 6 overview stat cards (Active Elections:
+      1, Threat Level: Low, Active Incidents: 0, Blocked Attempts: 0, Integrity
+      Score: 100.0, Platform Health: Healthy), 4 severity mini cards, category
+      breakdowns, recent lists, and Emergency Lockdown card with the live "SUG
+      General Elections 2025 (SVE Demo)" election pre-selected in the dropdown.
+    - Verified the new `/api/eifdirs/election/sve-demo?x-vw-org=demo` endpoint
+      returns `{integrityScore:100, riskScore:0, threatLevel:"LOW", lock:null}`.
+    - Opened `/workspace/elections/sve-demo?org=demo` — clicked the new "Security"
+      tab (14th). The Election Security Status card rendered with integrity score
+      100.0, threat "Low Threat", and the "Generate Integrity Certificate" +
+      "View Forensic Replay" buttons.
+    - Clicked "View Forensic Replay" — dialog opened with "Forensic Replay" title,
+      19 timeline events, summary stats, and the vertical timeline showing
+      FIRST_VOTE and LAST_VOTE markers.
+    - Opened `/workspace?org=demo` — verified "Security" link appears in the
+      workspace nav between "Reports" and "Audit Logs". Clicking it navigated to
+      `/workspace/security?org=demo` (200 OK).
+
+13. Lint: `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings**
+    (exit 0).
+
+Stage Summary:
+- ✅ Security Center page (`/workspace/security`) with full dashboard (header +
+  6 stats + 4 severity cards + 2 category breakdowns + 2 recent lists + emergency
+  lockdown card).
+- ✅ Incident Detail dialog (large, scrollable) with full investigation actions
+  (assign, status update, add note, mark false positive, escalate) + notes
+  timeline + evidence list + chain of custody + related events.
+- ✅ Forensic Replay component with vertical timeline (Git-commit-log style),
+  coloured markers, type badges, detected-event red indicators, filter buttons.
+- ✅ Election-level Security tab (14th tab in ElectionWorkspace) with integrity
+  score + threat level, lock status (6 lock badges + emergency overrides),
+  generate-certificate button, view-forensic-replay button, incidents list,
+  events list.
+- ✅ New API endpoint `GET /api/eifdirs/election/[electionId]` returning per-
+  election security status.
+- ✅ Workspace sidebar updated with Security nav link (between Reports and
+  Audit Logs).
+- ✅ All endpoints verified end-to-end via agent-browser (200 OK responses).
+- ✅ Lint: 0 errors, 0 warnings.
+- **Files created:** `src/app/workspace/security/page.tsx`,
+  `src/components/votewise/security-center.tsx`,
+  `src/components/votewise/incident-detail.tsx`,
+  `src/components/votewise/forensic-replay.tsx`,
+  `src/components/votewise/election-security-tab.tsx`,
+  `src/app/api/eifdirs/election/[electionId]/route.ts`.
+- **Files modified:** `src/components/votewise/workspace.tsx` (sidebar nav),
+  `src/components/votewise/election-workspace.tsx` (14th tab + ShieldAlert
+  import), `src/lib/api.ts` (added `getEifdirsElectionStatus` method).
+- **Palette discipline:** emerald/gold/amber/zinc/orange/red only — NO indigo,
+  NO blue. Severity mapping follows spec exactly (LOW=zinc, MEDIUM=amber,
+  HIGH=orange/amber-600, CRITICAL=red). `votewise-card-glow` applied to all
+  primary header cards.

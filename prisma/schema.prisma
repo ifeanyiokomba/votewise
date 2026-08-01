@@ -1570,3 +1570,154 @@ model CandidateTally {
   @@index([electionId])
   @@index([positionId])
 }
+
+// ===========================================================================
+// CHAPTER 11 — ELECTION INTEGRITY, FRAUD DETECTION & INCIDENT RESPONSE (EIFDIRS)
+// ===========================================================================
+
+/// IntegrityEvent — every action in VoteWise becomes an event. This is the
+/// central event stream for the Election SOC. Events are normalized, stored,
+/// analyzed, and scored. Suspicious events become FraudIncidents.
+model IntegrityEvent {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  voterId         String?
+  actorId         String?   // who performed the action
+  actorName       String?
+  actorRole       String?   // VOTER | OBSERVER | ADMIN | ORG_OWNER | PLATFORM_ADMIN | SYSTEM
+  eventType       String   // LOGIN | LOGOUT | OTVP_GENERATED | VOTE_STARTED | VOTE_SUBMITTED | ADMIN_ACTION | etc.
+  category        String   // IDENTITY | AUTHENTICATION | VOTING | ADMIN | OBSERVER | INFRASTRUCTURE | NETWORK | AUTOMATION
+  severity        String   @default("INFO") // INFO | LOW | MEDIUM | HIGH | CRITICAL
+  riskScore       Int      @default(0)      // 0-100, contributes to the actor's aggregate risk
+  description     String
+  metadata        String?  // JSON: { ip, device, browser, country, vpn, ... }
+  ipAddress       String?
+  deviceFingerprint String?
+  detected        Boolean  @default(false)  // true if flagged by fraud detector
+  incidentId      String?  // linked FraudIncident if detected
+  createdAt       DateTime @default(now())
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([actorId])
+  @@index([eventType])
+  @@index([category])
+  @@index([severity])
+  @@index([detected])
+  @@index([createdAt])
+}
+
+/// FraudIncident — every anomaly becomes an incident with a full lifecycle.
+/// Detected → Open → Assigned → Investigating → Containment → Resolved → Closed → Archived
+model FraudIncident {
+  id              String   @id @default(cuid())
+  incidentNumber  String   @unique  // INC-000001 format
+  organizationId  String?
+  electionId      String?
+  title           String
+  description     String
+  category        String   // IDENTITY_FRAUD | LOGIN_ABUSE | OTVP_ABUSE | SESSION_ABUSE | SHARED_DEVICE | NETWORK_ANOMALY | VOTE_TIMING | TURNOUT_ANOMALY | ADMIN_ABUSE | OBSERVER_ABUSE | AUTOMATION | OTHER
+  severity        String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status          String   @default("OPEN") // DETECTED | OPEN | ASSIGNED | INVESTIGATING | CONTAINMENT | RESOLVED | CLOSED | ARCHIVED
+  riskScore       Int      @default(0)  // 0-100
+  detectedAt      DateTime @default(now())
+  detectedBy      String?  // SYSTEM | observer name | admin name
+  assignedToId    String?
+  assignedToName  String?
+  evidence        String?  // JSON: array of evidence items
+  investigationNotes String? // JSON: array of { note, author, timestamp }
+  resolution      String?  // how it was resolved
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedByName  String?
+  falsePositive   Boolean  @default(false)
+  relatedEventIds String?  // JSON array of IntegrityEvent IDs
+  chainOfCustody  String?  // JSON: array of custody steps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([severity])
+  @@index([category])
+  @@index([createdAt])
+}
+
+/// ElectionLock — when voting begins, critical configuration is automatically
+/// locked. Any attempt to modify locked configuration creates an incident
+/// unless an Emergency Override is used.
+model ElectionLock {
+  id              String   @id @default(cuid())
+  electionId      String   @unique
+  organizationId  String?
+  lockedAt        DateTime @default(now())
+  lockedById      String?
+  lockedByName    String?
+  // What's locked
+  candidatesLocked    Boolean @default(true)
+  positionsLocked     Boolean @default(true)
+  rulesLocked         Boolean @default(true)
+  eligibilityLocked   Boolean @default(true)
+  ballotLocked        Boolean @default(true)
+  settingsLocked      Boolean @default(true)
+  // Emergency override
+  emergencyOverrides  Int     @default(0)
+  lastOverrideAt      DateTime?
+  lastOverrideReason  String?
+  lastOverrideById    String?
+  lastOverrideByName  String?
+  // Lockdown (platform-admin initiated freeze)
+  lockedDown      Boolean  @default(false)
+  lockedDownAt    DateTime?
+  lockedDownById  String?
+  lockedDownByName String?
+  lockedDownReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// IntegrityCertificate — generated after certification. A signed report
+/// containing the election's integrity score, threat summary, incident summary,
+/// and audit hash. Downloadable as PDF.
+model IntegrityCertificate {
+  id              String   @id @default(cuid())
+  electionId      String   @unique
+  organizationId  String?
+  electionName    String
+  // Summary stats
+  totalEligible   Int      @default(0)
+  totalVotes      Int      @default(0)
+  turnoutPct      Float    @default(0)
+  integrityScore  Float    @default(100)  // 0-100
+  threatLevel     String   @default("LOW") // LOW | MODERATE | ELEVATED | HIGH | CRITICAL
+  // Incident summary
+  totalIncidents      Int  @default(0)
+  resolvedIncidents   Int  @default(0)
+  criticalIncidents   Int  @default(0)
+  falsePositives      Int  @default(0)
+  // Security events
+  totalEvents         Int  @default(0)
+  detectedEvents      Int  @default(0)
+  blockedAttempts     Int  @default(0)
+  // Observer report
+  observersAssigned   Int  @default(0)
+  observerActions     Int  @default(0)
+  // System
+  systemAvailability  Float @default(100) // uptime %
+  otvpDeliveryRate    Float @default(100)
+  // Cryptographic
+  auditHash           String  // SHA-256 of all integrity events
+  certificationSignature String  // HMAC-SHA256(auditHash + secret)
+  // Chain of custody
+  certifiedById       String?
+  certifiedByName     String?
+  certifiedAt         DateTime @default(now())
+  // Full report data (JSON)
+  reportData          String  // JSON: full report for PDF generation
+  createdAt           DateTime @default(now())
+
+  @@index([electionId])
+  @@index([organizationId])
+}
