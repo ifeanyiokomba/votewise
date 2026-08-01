@@ -22,6 +22,7 @@ import { BallotSimulation } from '@/components/votewise/ballot-simulation'
 import { LiveVoteMonitor } from '@/components/votewise/live-vote-monitor'
 import { ElectionVerification } from '@/components/votewise/election-verification'
 import { RiskLimitingAudit } from '@/components/votewise/risk-limiting-audit'
+import { ElectionExports } from '@/components/votewise/election-exports'
 import { AuditLogs } from '@/components/votewise/audit-logs'
 import { ElectionSettings } from '@/components/votewise/election-settings'
 import { ElectionSupport } from '@/components/votewise/election-support'
@@ -371,6 +372,7 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
 
       {tab === 'Reports' && (
         <div className="space-y-6">
+          <ElectionExports electionId={electionId} subdomain={subdomain} election={e ? { id: e.id, name: e.name, status: e.status, startTime: e.startTime, endTime: e.endTime } : null} />
           <ElectionVerification electionId={electionId} subdomain={subdomain} canTally={false} />
           <div>
             <div className="mb-3 flex items-center gap-2">

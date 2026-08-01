@@ -121,6 +121,13 @@ export const api = {
   sendElectionNotification: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   getNotificationTemplates: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
 
+  // Election Scheduled Notifications — auto-send when voting opens/closes/results published
+  getScheduledNotifications: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  scheduleNotification: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateScheduledNotification: (electionId: string, scheduleId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/${scheduleId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  cancelScheduledNotification: (electionId: string, scheduleId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/${scheduleId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  processScheduledNotifications: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/process${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+
   // Observer Incident Dashboard — real-time incident reporting + monitoring
   getElectionIncidents: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   reportElectionIncident: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
@@ -271,6 +278,35 @@ export const api = {
 
   // Results export (officials)
   exportResults: (format: 'csv' | 'json') => `/api/results/export?format=${format}`,
+
+  // Per-election export & reports — returns a direct-download URL for use
+  // with window.open() or <a href download>. The browser handles auth via
+  // the existing HttpOnly cookies (credentials:'include' isn't honoured by
+  // window.open, but the cookies are sent automatically for same-origin
+  // navigations, which is what we want here).
+  exportElectionData: (
+    electionId: string,
+    type: 'results' | 'audit' | 'voters' | 'full',
+    format: 'csv' | 'json' | 'printable',
+    subdomain?: string,
+  ) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const q = new URLSearchParams()
+    q.set('type', type)
+    q.set('format', format)
+    if (subdomain) q.set('x-vw-org', subdomain)
+    return `${origin}/api/workspace/elections/${electionId}/export?${q.toString()}`
+  },
+
+  // Public printable official result sheet — opens in a new tab. No auth
+  // required (it's a PUBLIC endpoint), so the URL can be shared externally.
+  getPrintableResultSheet: (electionId: string, subdomain?: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const q = new URLSearchParams()
+    if (subdomain) q.set('x-vw-org', subdomain)
+    const qs = q.toString()
+    return `${origin}/api/workspace/elections/${electionId}/export/printable${qs ? `?${qs}` : ''}`
+  },
 
   // Public certificate
   getCertificate: () => req('/api/results/certificate'),

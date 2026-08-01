@@ -1485,3 +1485,38 @@ model ElectionIncident {
   @@index([severity])
   @@index([createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// CHAPTER: Notification Scheduling — auto-sends notifications when a trigger
+// event occurs (voting opens, voting closes, results published) or at a
+// custom datetime. Checked by a background poller since SQLite has no native
+// job scheduler.
+// ---------------------------------------------------------------------------
+
+/// ScheduledNotification — auto-sends a notification when a trigger event
+/// occurs (voting opens, voting closes, results published). Checked by a
+/// background poller since SQLite has no native job scheduler.
+model ScheduledNotification {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  trigger         String   // VOTING_OPENED | VOTING_CLOSED | RESULTS_PUBLISHED | CUSTOM_DATETIME
+  triggerAt       DateTime // when to send (for CUSTOM_DATETIME) or the event time
+  title           String
+  message         String
+  type            String   @default("INFO") // INFO|SUCCESS|WARNING|SECURITY
+  target          String   @default("ALL_VOTERS") // ALL_VOTERS | VERIFIED_ONLY | CUSTOM
+  targetVoterIds  String?  // JSON array if target=CUSTOM
+  status          String   @default("PENDING") // PENDING | SENT | CANCELLED | FAILED
+  sentAt          DateTime?
+  recipientCount  Int      @default(0)
+  createdBy       String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([triggerAt])
+}

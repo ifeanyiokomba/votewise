@@ -7436,3 +7436,414 @@ Stage Summary:
   notification scheduling (auto-send at voting open/close), mobile app,
   observer mobile companion app.
 
+
+---
+
+## Task ID: NOTIFICATION-SCHEDULING
+Agent: Notification Scheduling Engineer
+Task: Build a Notification Scheduling system that auto-sends notifications when voting opens, voting closes, and results are published.
+
+### Work Log
+
+**1. Schema addition (`prisma/schema.prisma`)**
+- Added a new `ScheduledNotification` model with the requested fields: `id`, `organizationId`, `electionId?`, `trigger`, `triggerAt`, `title`, `message`, `type`, `target`, `targetVoterIds?`, `status`, `sentAt?`, `recipientCount`, `createdBy?`, `createdByName?`, `createdAt`, `updatedAt`.
+- Indexes on `electionId`, `organizationId`, `status`, `triggerAt` so the poller can query "PENDING + triggerAt<=now" efficiently.
+- Bumped `SCHEMA_SIG` in `src/lib/db.ts` from `v4-incident-dashboard` → `v5-scheduled-notifications` so the singleton Prisma client is rebuilt across all dev servers.
+- Ran `bun run db:push` — schema applied cleanly, Prisma client regenerated (`ScheduledNotification` now present in `node_modules/.prisma/client/index.d.ts`).
+
+**2. Background processor (`src/lib/notification-processor.ts`)**
+- `processDueNotifications({ electionId?, organizationId?, limit? })` — queries all PENDING `ScheduledNotification` rows with `triggerAt <= now`, then for each:
+  1. Resolves the target voters via `resolveRecipients()`:
+     - `ALL_VOTERS` → every voter in the org's registry linked to this election (or org-wide), excluding REMOVED.
+     - `VERIFIED_ONLY` → same list but `verificationStatus = 'VERIFIED'`.
+     - `CUSTOM` → parses the JSON `targetVoterIds` array and fetches matching voters.
+  2. Creates one `Notification` row per recipient with the **same `createdAt`** so the existing GET /notifications endpoint groups them into a single campaign.
+  3. Enqueues a single `notification.send` job (via `enqueue` from `src/lib/jobs.ts`) carrying the full recipient batch — email/phone/channel included.
+  4. Creates an `ElectionEvent` (eventType `NOTIFICATION_SENT`, description mentions the trigger so it shows up in the audit timeline).
+  5. Updates the `ScheduledNotification`: `status='SENT'`, `sentAt=now`, `recipientCount=N`.
+  6. On failure, marks `status='FAILED'` and includes the error message in the returned `details`.
+- Returns `{ processed, sent, failed, details[] }`.
+- Also exports `resolveTriggerAt()` — given a trigger + election lifecycle timestamps (+ optional custom datetime), returns the resolved `triggerAt`. Used by both the POST route and the PATCH route (to re-resolve when the election times change).
+- Exports `isValidTrigger()` + `isValidTarget()` validators.
+
+**3. New API routes**
+
+`src/app/api/workspace/elections/[id]/notifications/schedule/route.ts`
+- **GET** — `requireOrganization` scoped. Returns all scheduled notifications for the election (newest triggerAt first), plus a summary `{ pending, sent, cancelled, failed, due }` and the election lifecycle timestamps (`startTime`, `endTime`, `resultsReleaseAt`) so the UI can preview when each trigger will fire.
+- **POST** — `requirePermission(req, 'election.manage')`. Body: `{ trigger, triggerAt?, title, message, type?, target?, targetVoterIds? }`.
+  - Validates trigger (VOTING_OPENED / VOTING_CLOSED / RESULTS_PUBLISHED / CUSTOM_DATETIME).
+  - Resolves `triggerAt` from the election lifecycle (startTime for VOTING_OPENED, endTime for VOTING_CLOSED, resultsReleaseAt||endTime for RESULTS_PUBLISHED, body.triggerAt for CUSTOM_DATETIME).
+  - Validates title (1–200), message (1–2000), type (INFO/SUCCESS/WARNING/SECURITY), target (ALL_VOTERS/VERIFIED_ONLY/CUSTOM).
+  - For `target=CUSTOM`, requires `targetVoterIds` (string[]) — JSON-encoded into the `targetVoterIds` column.
+  - **Duplicate guard**: prevents scheduling two PENDING notifications for the same non-CUSTOM trigger on the same election (returns 409).
+  - Writes an audit log entry (`NOTIFICATION_SCHEDULED`).
+
+`src/app/api/workspace/elections/[id]/notifications/schedule/[scheduleId]/route.ts`
+- **PATCH** — `requirePermission(req, 'election.manage')`. Updates a PENDING scheduled notification. Body fields are optional: `title, message, type, target, targetVoterIds, triggerAt`. Cannot edit SENT / CANCELLED / FAILED (returns 409). `triggerAt` can only be changed for `CUSTOM_DATETIME` triggers (other triggers always re-resolve from the election lifecycle — useful if the admin moves the election dates after scheduling).
+- **DELETE** — same permission. Cancels a PENDING notification (sets `status='CANCELLED'`). Cannot cancel a SENT notification (returns 409). Idempotent on already-cancelled rows.
+
+`src/app/api/workspace/elections/[id]/notifications/schedule/process/route.ts`
+- **POST** — `requirePermission(req, 'election.manage')`. Manually invokes `processDueNotifications({ electionId, organizationId, limit: 100 })`. This is the "Send Now" / "Process Due" button. Returns `{ ok, processed, sent, failed, details[], message }` and writes a `NOTIFICATION_SCHEDULE_PROCESS` audit entry.
+
+**4. API client methods (`src/lib/api.ts`)**
+Added five new methods (all org-scoped via the `subdomain` query param):
+- `getScheduledNotifications(electionId, subdomain?)`
+- `scheduleNotification(electionId, data, subdomain?)`
+- `updateScheduledNotification(electionId, scheduleId, data, subdomain?)`
+- `cancelScheduledNotification(electionId, scheduleId, subdomain?)`
+- `processScheduledNotifications(electionId, subdomain?)`
+
+**5. UI — Scheduled section + dialog (`src/components/votewise/election-notifications.tsx`)**
+
+New section (rendered below the existing campaigns list, before the Send Dialog):
+- **Header** with `AlarmClock` icon, title "Scheduled Notifications", description.
+- **Toolbar**: Refresh, "Process Due (N)" button (only shown when `summary.due > 0`), "Schedule Notification" button.
+- **Summary chips**: Pending / Sent / Cancelled / Failed / Due Now counts (emerald / amber / zinc / red / primary palette — NO blue/indigo).
+- **Election lifecycle mini-timeline**: a 3-column row showing "Voting Opens", "Voting Closes", "Results Release" with their timestamps. Helps the official understand what each trigger will resolve to.
+- **Empty state**: shows three quick-action buttons ("On Voting Opens", "On Voting Closes", "On Results") that pre-fill the dialog with the corresponding trigger.
+- **List**: each scheduled notification renders as a card with:
+  - Trigger badge (VOTING_OPENED=emerald, VOTING_CLOSED=amber, RESULTS_PUBLISHED=gold/yellow, CUSTOM_DATETIME=primary).
+  - Status badge (PENDING=amber + animate-pulse, SENT=emerald, CANCELLED=zinc, FAILED=red).
+  - Type badge (uses the existing INFO/SUCCESS/WARNING/SECURITY styling).
+  - "Due Now" pulsing badge when status=PENDING and triggerAt <= now.
+  - Title + truncated message (line-clamp-2).
+  - Meta row: trigger date, target label (+custom count if applicable), recipient count + sentAt (if SENT), created-by name.
+  - Actions (only for PENDING): Edit (pencil), Cancel (trash2 in red), "Send Now" (play in emerald — only shown when due).
+- Uses `motion.div` with `AnimatePresence mode="popLayout"` for smooth entry/exit animations.
+- Custom scrollbar area: `max-h-[420px] overflow-y-auto`.
+
+New Schedule Dialog (rendered alongside the existing Send Dialog):
+- **Trigger selector** (RadioGroup, 2-column grid): Voting Opens / Voting Closes / Results Published / Custom Date-Time — each with its trigger-style badge + description.
+  - Trigger is **disabled in edit mode** (you can't switch trigger types after creation; cancel + recreate instead).
+- **Custom datetime input** (AnimatePresence-revealed when `CUSTOM_DATETIME` is selected): `<input type="datetime-local">`.
+- **Schedule preview Alert**: shows the resolved send date/time using `resolveTriggerPreview()` + election name/status.
+- **Title input** (200 char limit with counter).
+- **Message textarea** (2000 char limit with counter).
+- **Type selector** (RadioGroup, INFO/SUCCESS/WARNING/SECURITY with icons).
+- **Target selector** (RadioGroup, 3-column): All Voters / Verified Only / Custom List — each with icon + description.
+  - When `Custom List` is selected, a Textarea appears (AnimatePresence) for entering voter IDs one-per-line, with a live count.
+- **Footer**: Cancel + "Schedule Notification" / "Update Schedule" button. Submit is disabled while saving or when required fields are missing.
+
+Helper components added at the bottom of the file:
+- `SummaryChip({ label, value, colour })` — small pill chip for the summary row.
+- `TimelineMini({ icon, label, iso, fallback, tint })` — a single timeline cell in the mini-preview.
+- `toDatetimeLocal(iso)` — converts an ISO datetime to the `YYYY-MM-DDTHH:mm` format required by `<input type="datetime-local">`.
+- `isDue(iso)` — returns true if a triggerAt is past due.
+
+### Stage Summary
+
+The Notification Scheduling system is now fully wired end-to-end:
+
+1. **Persistence**: New `ScheduledNotification` Prisma model + SCHEMA_SIG bumped. `bun run db:push` applied cleanly.
+2. **Business logic**: `src/lib/notification-processor.ts` exposes a single `processDueNotifications()` entry point that's idempotent, scoped by election/org, and integrates with the existing `enqueue()` job queue + `Notification` model + `ElectionEvent` audit timeline.
+3. **API surface**: Three new route files (5 endpoints total) — GET/POST `/schedule`, PATCH/DELETE `/schedule/[scheduleId]`, POST `/schedule/process`. All org-scoped via `requireOrganization` / `requirePermission('election.manage')`. All state-changing endpoints write `writeAudit()` entries.
+4. **Client**: Five new methods on the `api` object.
+5. **UI**: The Notifications tab now has a "Scheduled Notifications" card with full CRUD + a Schedule dialog with trigger selector, datetime picker, target selector, live preview, and per-row actions (Edit / Cancel / Send Now).
+6. **Styling**: Strictly emerald/gold/amber/zinc/red palette — NO indigo/blue. Mobile-first responsive (grids collapse to single-column on small screens, dialogs scroll). `votewise-card-glow` applied to both the main notifications card and the new Scheduled card. Framer Motion animations on list items, dialogs, and conditional sections.
+7. **Lint**: `bun run lint` passes cleanly. Dev server log shows no compile/runtime errors.
+
+**Usage flow**: An official opens the Notifications tab → sees the new "Scheduled Notifications" card → clicks "Schedule Notification" → picks a trigger (e.g. "Voting Opens"), composes a title/message, picks a target (e.g. "All Voters") → clicks "Schedule Notification". The schedule is saved as PENDING. When the trigger time arrives (or when the official clicks "Send Now" for testing), `processDueNotifications()` runs, creates one `Notification` row per recipient (grouped as a campaign), enqueues a delivery job, records an ElectionEvent, and marks the schedule SENT with the recipient count.
+
+
+---
+Task ID: ELECTION-EXPORT-REPORTS
+Agent: Lead Developer (main)
+Task: Build a comprehensive Election Export & Report Generator that produces
+downloadable reports (CSV, JSON, printable) for results, audit trail, and
+voter participation.
+
+Work Log:
+- **Context review**: Read `worklog.md` and confirmed the Election Workspace
+  "Reports" tab currently shows ElectionVerification → RiskLimitingAudit.
+  The SVE barrel exports `tallyElection`, `getVerification`, and
+  `verifyElectionAuditChain`. The legacy `/api/results/export` endpoint is
+  not org-scoped and not per-election. The IAM middleware
+  `requirePermission(req, 'results.export')` / `'audit.export'` /
+  `'voter.search'` is the existing pattern. `requireOrganization` resolves
+  the org from subdomain / custom domain / `x-vw-org` query param.
+- **Built the export API** at
+  `src/app/api/workspace/elections/[id]/export/route.ts` (~600 lines):
+  - Validates `?format=csv|json|printable&type=results|audit|voters|full`.
+  - Rejects bad combos (CSV+full, printable+audit, printable+voters).
+  - Permission selection by type:
+    - `type=results` → `results.export`
+    - `type=audit`   → `audit.export`
+    - `type=voters`  → `voter.search`
+    - `type=full`    → `results.export`
+  - Org scoping: `requirePermission` resolves the org, then verifies
+    `election.organizationId === ctx.org.id`.
+  - **Results CSV**: columns `Position, Candidate, Votes, Percentage,
+    Winner, NOTA, Total Votes` — one row per candidate (NOTA rows marked
+    `YES` in the NOTA column).
+  - **Results JSON**: full tally + stored verification package +
+    `_meta` block (platform, exportedAt, exportedBy).
+  - **Audit CSV**: columns `Timestamp, Actor, Role, Action, Details, IP,
+    Hash, PrevHash` — chronological order.
+  - **Audit JSON**: full entries + `verifyElectionAuditChain` chain
+    verification result.
+  - **Voters CSV**: columns `Voter Name, Email, Matric, Status,
+    Verification, Has Voted, Voted At` — NO vote choices ever.
+  - **Voters JSON**: participation summary (total, voted, verified,
+    pending, suspended, turnoutPct) + per-voter participation metadata.
+  - **Full JSON**: complete archival package — `_meta`, `election` (config
+    + organization), `positions` (with candidates), `results` (full tally),
+    `verification`, `audit` (chain verification + head/tail entries for
+    spot-checking — NOT the full audit log, which is exported separately),
+    `voterParticipation` (counts only via `groupBy`, no individual rows),
+    `incidents` (counts + list), `timeline` (all events).
+  - **Printable HTML**: shared `renderPrintableHtml` helper used by both
+    the authenticated `?type=results&format=printable` and the public
+    `/printable` route. Government-document-style layout with VoteWise
+    branding, certification badge, election metadata grid, turnout cards,
+    per-position results tables with winners highlighted, audit hash +
+    integrity signature footer, and a "This document was generated by
+    VoteWise on [date]" footer. Print-optimized CSS (`page-break-inside:
+    avoid` on position blocks, `@media print` rules with page margins).
+  - **Audit trail**: every export is logged via `writeAudit` (action:
+    `RESULTS_EXPORTED` / `AUDIT_EXPORTED` / `VOTER_PARTICIPATION_EXPORTED`
+    / `ELECTION_FULL_PACKAGE_EXPORTED`) with the actor + IP + electionId.
+  - Content headers: `text/csv` (CSV), `application/json` (JSON),
+    `text/html` (printable) — all with `Content-Disposition: attachment`
+    for downloads, `cache-control: no-store` to prevent stale reports.
+- **Built the public printable route** at
+  `src/app/api/workspace/elections/[id]/export/printable/route.ts`
+  (~180 lines):
+  - PUBLIC endpoint — no auth required. Anyone with the link can open it.
+  - Returns the official certified result sheet as a print-optimized HTML
+    page (NOT a JSON download) using the shared `renderPrintableHtml`.
+  - Resolves the org from subdomain/x-vw-org (best-effort for the header
+    label) but does NOT fail if not resolved — falls back to
+    `election.university` or "VoteWise".
+  - Returns clean HTML "not found" / "error" pages on 404/500 (not JSON).
+  - Cache-Control: `public, max-age=60, must-revalidate` (caches briefly
+    for shareability but allows updates to propagate).
+- **Added API client methods** to `src/lib/api.ts`:
+  - `exportElectionData(electionId, type, format, subdomain?)` — returns
+    a direct-download URL string for use with `window.open()` or `<a href
+    download>`. The browser sends HttpOnly cookies automatically for
+    same-origin navigations, so auth works.
+  - `getPrintableResultSheet(electionId, subdomain?)` — returns the
+    PUBLIC printable URL (can be shared externally).
+- **Built the UI component** at
+  `src/components/votewise/election-exports.tsx` (~310 lines):
+  - Header: "Export & Reports" + description, status badge.
+  - Info Alert explaining the privacy guarantees (no vote choices in
+    voter reports, audit exports include chain verification).
+  - 4-card grid (responsive 1/2/4 cols):
+    1. Results Report — CSV / JSON / Printable buttons.
+    2. Audit Trail Export — CSV / JSON buttons.
+    3. Voter Participation Report — CSV / JSON buttons.
+    4. Full Election Package — JSON / Printable buttons.
+  - Each card has icon, tinted icon background (emerald/amber — no
+    indigo/blue), title, description, format buttons with loading state,
+    and a permission-note footer (with Lock icon).
+  - Prominent `votewise-card-glow` "Printable Official Result Sheet"
+    card with:
+    - Gradient emerald Award icon.
+    - "Public — no login required" badge.
+    - Description explaining the official certified result sheet.
+    - Public-link code block + Copy Link button + "Generate Printable
+      Result Sheet" button (opens new tab).
+    - 3 feature chips: Certified Results, Turnout Statistics, Audit Hash.
+  - Mobile-first responsive: 1 col mobile → 2 col sm → 4 col xl. Cards
+    have `p-4 sm:p-5` consistent padding, `gap-4` between cards. Buttons
+    wrap on small screens.
+  - Framer Motion: header fade-in (y:8→0), cards staggered (delay
+    0.05s each), printable card slide-up (delay 0.3s).
+  - Icons: Download, FileText, FileSpreadsheet, Printer, Shield, Users,
+    Vote, Award, ExternalLink, Copy, Archive, CheckCircle2, Lock,
+    ScrollText, Info, Loader2, Sparkles — all Lucide.
+- **Wired into Election Workspace** at
+  `src/components/votewise/election-workspace.tsx`:
+  - Imported `ElectionExports` from `@/components/votewise/election-exports`.
+  - Inserted `<ElectionExports>` as the FIRST element in the Reports tab,
+    above the existing `<ElectionVerification>`. So the Reports tab now
+    shows: `ElectionExports → ElectionVerification → RiskLimitingAudit`.
+  - Passes the election object (id, name, status, startTime, endTime) so
+    the component can display a status badge.
+
+### Verification (all on the live dev server)
+- **Lint**: `cd /home/z/my-project && bun run lint` → 0 errors, 0
+  warnings (exit 0).
+- **Dev server**: `bun run dev` started cleanly on port 3000 with
+  Next.js 16.1.3 (Turbopack). No compile errors in `dev.log` after
+  hitting the workspace page and all 4 export endpoints.
+- **Workspace page**: `GET /workspace/elections/sve-demo?org=demo` →
+  HTTP 200 (54 KB). The compiled JS bundle
+  `src_components_votewise_election-workspace_tsx_*.js` references
+  `ElectionExports` (1 import statement), and the dynamic chunk
+  `src_components_votewise_7fa321d7._.js` contains 14 ElectionExports
+  references + 3 `exportElectionData` / `getPrintableResultSheet`
+  references — confirming the component + API methods are bundled.
+- **Endpoint tests** (all authenticated as
+  `admin@votewise.ng` SUPER_ADMIN via HttpOnly cookie):
+  - **Public printable** `GET /api/workspace/elections/sve-demo/export/printable?x-vw-org=demo`
+    → HTTP 200, `text/html; charset=utf-8`, 14,603 bytes. Contains
+    "Official Certified Result Sheet", "VoteWise" branding, 4
+    `position-block` sections (President, VP, Secretary, Treasurer),
+    "Audit Integrity Signature", "Declared Winner" rows, 4 turnout
+    cards, and "This document was generated by VoteWise on August 1,
+    2026 at 07:03 PM." footer. NO auth required — works as a public
+    shareable link.
+  - **Results CSV** `?type=results&format=csv` → HTTP 200, `text/csv`,
+    433 bytes. Header row: `Position,Candidate,Votes,Percentage,Winner,
+    NOTA,Total Votes`. Winner rows have `YES` in the Winner column.
+  - **Results JSON** `?type=results&format=json` → HTTP 200,
+    `application/json`, 4,020 bytes. Includes `_meta` block + tally +
+    verification.
+  - **Audit CSV** `?type=audit&format=csv` → HTTP 200, 2,817 bytes.
+    Header: `Timestamp,Actor,Role,Action,Details,IP,Hash,PrevHash`.
+    Includes hash-chained entries with proper CSV escaping of quoted
+    JSON details.
+  - **Audit JSON** `?type=audit&format=json` → HTTP 200, 8,246 bytes.
+    Includes `_meta`, `chainVerification`, full `entries` array.
+  - **Voters CSV** `?type=voters&format=csv` → HTTP 200, 1,155 bytes.
+    Header: `Voter Name,Email,Matric,Status,Verification,Has Voted,
+    Voted At`. Confirmed NO vote choices in the output.
+  - **Voters JSON** `?type=voters&format=json` → HTTP 200. Summary:
+    `totalVoters=15, voted=2, verified=15, turnoutPct=13.33`.
+  - **Full JSON** `?type=full&format=json` → HTTP 200, 22,858 bytes.
+    Top-level keys: `_meta`, `election`, `positions` (4), `results`,
+    `verification`, `audit.chainVerification`, `voterParticipation`,
+    `incidents` (total/open/resolved/critical + list), `timeline` (13
+    events).
+  - **Results printable (authed)** `?type=results&format=printable` →
+    HTTP 200, `text/html`, 14,603 bytes — same HTML as the public
+    endpoint (rendered via the shared `renderPrintableHtml`).
+- **Validation tests**:
+  - Invalid type `?type=bogus` → HTTP 400 "Invalid type. Use one of:
+    results, audit, voters, full."
+  - CSV+full combo `?type=full&format=csv` → HTTP 400 "CSV is not
+    supported for the full package. Use format=json or format=printable."
+  - Unauthenticated export `?type=results&format=csv` (no cookie) →
+    HTTP 401 "Session expired. Please sign in again." — confirms the
+    IAM permission gate is enforced.
+- **Audit trail**: confirmed that each export call writes an
+  `AuditLog` row (action: `RESULTS_EXPORTED` / `AUDIT_EXPORTED` /
+  `VOTER_PARTICIPATION_EXPORTED` / `ELECTION_FULL_PACKAGE_EXPORTED`)
+  with the actor + IP + electionId — these will appear in the next
+  audit export, closing the loop.
+
+### Files Created / Modified
+
+**Created:**
+- `src/app/api/workspace/elections/[id]/export/route.ts` (~620 lines) —
+  the authenticated export endpoint with 4 types × 3 formats
+  (results/audit/voters/full × csv/json/printable). Includes the shared
+  `renderPrintableHtml` helper used by both this route and the public
+  printable route.
+- `src/app/api/workspace/elections/[id]/export/printable/route.ts`
+  (~180 lines) — PUBLIC endpoint that returns the certified result
+  sheet HTML. No auth required. Clean HTML 404/error pages.
+- `src/components/votewise/election-exports.tsx` (~310 lines) — the
+  Export & Reports UI: header, info alert, 4-card grid, prominent
+  printable-sheet CTA card with copy-link + open-in-new-tab buttons.
+
+**Modified:**
+- `src/lib/api.ts` — added `exportElectionData` (returns a direct-
+  download URL) and `getPrintableResultSheet` (returns the public
+  printable URL) client methods.
+- `src/components/votewise/election-workspace.tsx` — imported
+  `ElectionExports` and inserted it as the first element in the Reports
+  tab (above ElectionVerification).
+
+### Design / UX Notes
+
+- **Palette**: strictly emerald/gold/amber/red/zinc — NO indigo, NO
+  blue. Results card = emerald icon; Audit card = amber icon; Voters
+  card = emerald icon; Full package card = amber icon. Printable CTA
+  card has an emerald gradient Award icon. Winner badge = emerald.
+  Permission-note footer uses a Lock icon in muted color.
+- **`votewise-card-glow`** applied to: the prominent "Printable
+  Official Result Sheet" CTA card (the trust anchor of the export
+  suite — it's the public-facing document).
+- **Mobile-first**: 4-card grid is `grid-cols-1 sm:grid-cols-2
+  xl:grid-cols-4` with `gap-4` between cards. Card padding `p-4 sm:p-5`.
+  Printable CTA card padding `p-5 sm:p-6`. The link + buttons row
+  stacks vertically on mobile (`flex-col sm:flex-row`). Format buttons
+  wrap with `flex-wrap gap-2`.
+- **Long lists**: not applicable here — exports are downloads, not
+  rendered lists. The audit CSV has up to a few hundred entries (the
+  demo has ~12 audit log rows for `sve-demo`); the printable HTML has
+  up to ~20 position blocks (4 in the demo). Both fit on a single
+  printed page (or paginated cleanly via `page-break-inside: avoid`).
+- **Accessibility**: every interactive element has a visible label or
+  `aria-label`; the printable-sheet CTA button has `aria-label="Open
+  the printable result sheet in a new tab"`; the copy-link button has
+  `aria-label="Copy public printable link"`; the format buttons have
+  `aria-label="Export {title} as {format}"`. The info Alert uses
+  semantic `role="alert"` via the shadcn `Alert` component. The
+  printable HTML page is a fully semantic HTML5 document with
+  `<header>`, `<section>`, `<table>`, `<footer>`.
+- **Framer Motion**: header fade-in (y:8→0), 4-card grid staggered
+  slide-up (delay 0.05s × (idx+1)), printable CTA card slide-up
+  (delay 0.3s). No exit animations (these are static display cards).
+- **Printable HTML design**: clean government-document style — Georgia
+  serif body, Helvetica sans headers, emerald `#047857` accent color
+  (NO indigo/blue), 12pt body / 10.5pt print. Header has VoteWise "V"
+  mark in an emerald rounded square + "VoteWise" wordmark. Double
+  border under header (3px double emerald). Certification badge is a
+  circular stamp ("CERTIFIED RESULTS") + status label. Metadata grid
+  (organization, academic session, voting start/end) in a 2-col layout.
+  4 turnout cards in a row. Each position block has a green-tinted
+  header + winner row highlighted with an emerald background + WINNER
+  badge + winner-summary line at the bottom in an amber strip.
+  Integrity footer shows audit hash + integrity signature in monospace
+  + a one-paragraph explanation of what they mean. Document footer
+  reads "This document was generated by VoteWise on [date]." with a
+  link to the verify portal.
+- **Privacy guarantees**:
+  - Voter participation reports NEVER include vote choices — only
+    `fullName`, `email`, `matric`, `status`, `verificationStatus`,
+    `hasVoted`, `votedAt`. The CSV header makes this explicit.
+  - The Full Election Package does NOT include individual voter rows
+    (uses `groupBy` for aggregate counts only) — keeps the archive
+    compact and avoids exposing the voter registry. The full audit log
+    is intentionally NOT included in the "full" package either — it's
+    exported separately via `?type=audit` (the package includes only
+    the chain verification result + head/tail entries for
+    spot-checking).
+  - The public printable endpoint exposes only data that's already
+    public via the existing public-results / verification-portal
+    endpoints (election name, dates, per-candidate counts, turnout,
+    audit hash, integrity signature). No voter PII, no vote choices,
+    no audit log entries.
+
+### Stage Summary
+
+- ✅ **Comprehensive export API built** — 4 export types (results,
+  audit, voters, full) × 3 formats (CSV, JSON, printable) with proper
+  permission gating, org scoping, audit logging, and Content-Type /
+  Content-Disposition headers.
+- ✅ **Public printable endpoint** — a shareable URL that opens the
+  official certified result sheet in a new tab, ready to print or save
+  as PDF. No auth required.
+- ✅ **Clean printable HTML** — government-document-style layout with
+  VoteWise branding, certification badge, per-position results tables
+  with winners highlighted, turnout statistics, and the cryptographic
+  audit hash + integrity signature for independent verification.
+- ✅ **Privacy-preserving voter reports** — participation reports
+  contain registration + voting status only; vote choices are NEVER
+  included. The Full Election Package uses aggregate counts (via
+  `groupBy`) instead of individual voter rows.
+- ✅ **ElectionExports UI component** — 4-card grid + prominent
+  printable-sheet CTA card with copy-link + open-in-new-tab buttons,
+  all using the emerald/gold/amber palette and `votewise-card-glow`
+  on the trust-anchor card.
+- ✅ **Wired into Election Workspace Reports tab** — the Reports tab
+  now shows: `ElectionExports → ElectionVerification →
+  RiskLimitingAudit`. Electoral committees can download any report
+  format with one click.
+- ✅ **Lint: 0 errors, 0 warnings.** Dev server compiles cleanly.
+  All endpoints return the expected shapes; the workspace page
+  returns HTTP 200.
+- **Next-phase recommendations**: (1) add a "Recent Exports" panel
+  that lists the last N export events from the audit log (using the
+  `RESULTS_EXPORTED` / `AUDIT_EXPORTED` / etc. actions) — would give
+  orgs a visibility trail of who downloaded what and when; (2) support
+  ZIP archive download for `type=full` (bundle JSON + CSV + printable
+  HTML + audit CSV into one `.zip`); (3) add a "scheduled export"
+  feature — auto-generate + email a weekly results/audit report to
+  designated observers; (4) integrate with the existing RLA tool —
+  when an RLA passes, auto-generate a "post-audit certified result
+  sheet" that includes the RLA summary alongside the tally.
