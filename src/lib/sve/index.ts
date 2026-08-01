@@ -34,3 +34,18 @@ export { getLiveStats, getAllLiveStats, incrementLiveCount, clearLiveCache } fro
 export { runSimulation, resetSimulation, previewBallot, listSimulations } from './simulation'
 export { tallyElection, persistVerification, getVerification, verifyElectionAuditChain } from './tally'
 export type { TallyOptions, TallyResult } from './tally'
+// Risk-Limiting Audit (post-election statistical audit of a certified tally).
+export {
+  computeSampleSize,
+  selectRandomSample,
+  auditSample,
+  runRiskLimitingAudit,
+  generateAuditSeed,
+} from './rla'
+export type {
+  RLAOptions,
+  AuditSampleMismatch,
+  AuditSampleResult,
+  RLAPositionResult,
+  RLAResult,
+} from './rla'

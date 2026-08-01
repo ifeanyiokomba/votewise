@@ -116,6 +116,11 @@ export const api = {
   createElectionSupport: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   updateElectionSupport: (electionId: string, ticketId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support/${ticketId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Election Notifications — broadcast / direct-send + templates + stats
+  getElectionNotifications: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  sendElectionNotification: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  getNotificationTemplates: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
   // Observer Incident Dashboard — real-time incident reporting + monitoring
   getElectionIncidents: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   reportElectionIncident: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
@@ -166,6 +171,9 @@ export const api = {
   tallyElection: (electionId: string, tieStrategy?: string, force?: boolean, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ tieStrategy, force }) }),
   getElectionTally: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getElectionVerification: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/verification${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Risk-Limiting Audit — statistically sample ballots to verify a certified tally.
+  runRiskLimitingAudit: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit-rla${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  getRiskLimitingAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit-rla${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getDemoVoters: (electionId: string, subdomain?: string) => req(`/api/workspace/ballot/demo-voters?electionId=${electionId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   // Chapter 10: Voter Portal SVE data (voting status, receipts, timeline)
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),

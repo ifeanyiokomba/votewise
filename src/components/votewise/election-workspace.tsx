@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeft, Loader2, Vote, Trophy, Users, Eye, Headphones, CheckCircle2,
   TrendingUp, FileCheck2, ScrollText, Settings as SettingsIcon, Building2,
-  Clock, Shield, Copy, Zap, Lock, LayoutTemplate, Sparkles, Siren,
+  Clock, Shield, ShieldCheck, Copy, Zap, Lock, LayoutTemplate, Sparkles, Siren, Bell,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,7 @@ import { StatusBadge } from '@/components/votewise/shared'
 import { BallotSimulation } from '@/components/votewise/ballot-simulation'
 import { LiveVoteMonitor } from '@/components/votewise/live-vote-monitor'
 import { ElectionVerification } from '@/components/votewise/election-verification'
+import { RiskLimitingAudit } from '@/components/votewise/risk-limiting-audit'
 import { AuditLogs } from '@/components/votewise/audit-logs'
 import { ElectionSettings } from '@/components/votewise/election-settings'
 import { ElectionSupport } from '@/components/votewise/election-support'
@@ -29,6 +30,7 @@ import { ElectionPositions } from '@/components/votewise/election-positions'
 import { ElectionObservers } from '@/components/votewise/election-observers'
 import { ElectionVoters } from '@/components/votewise/election-voters'
 import { DuplicateElectionDialog } from '@/components/votewise/duplicate-election-dialog'
+import { ElectionNotifications } from '@/components/votewise/election-notifications'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -42,6 +44,7 @@ const TABS = [
   { label: 'Voting', icon: Shield },
   { label: 'Results', icon: TrendingUp },
   { label: 'Support', icon: Headphones },
+  { label: 'Notifications', icon: Bell },
   { label: 'Reports', icon: FileCheck2 },
   { label: 'Audit Logs', icon: ScrollText },
   { label: 'Settings', icon: SettingsIcon },
@@ -367,7 +370,18 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
       )}
 
       {tab === 'Reports' && (
-        <ElectionVerification electionId={electionId} subdomain={subdomain} canTally={false} />
+        <div className="space-y-6">
+          <ElectionVerification electionId={electionId} subdomain={subdomain} canTally={false} />
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="grid h-7 w-7 place-items-center rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <h3 className="font-display text-lg font-semibold tracking-tight">Risk-Limiting Audit</h3>
+            </div>
+            <RiskLimitingAudit electionId={electionId} subdomain={subdomain} />
+          </div>
+        </div>
       )}
 
       {tab === 'Audit Logs' && (
@@ -382,7 +396,11 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         <ElectionSupport electionId={electionId} subdomain={subdomain} />
       )}
 
-      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Candidates' && tab !== 'Voters' && tab !== 'Observers' && tab !== 'Accreditation' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && tab !== 'Settings' && tab !== 'Support' && (
+      {tab === 'Notifications' && (
+        <ElectionNotifications electionId={electionId} subdomain={subdomain} />
+      )}
+
+      {tab !== 'Overview' && tab !== 'Positions' && tab !== 'Candidates' && tab !== 'Voters' && tab !== 'Observers' && tab !== 'Accreditation' && tab !== 'Voting' && tab !== 'Results' && tab !== 'Reports' && tab !== 'Audit Logs' && tab !== 'Settings' && tab !== 'Support' && tab !== 'Notifications' && (
         <Card><CardContent className="py-12 text-center">
           {(() => { const Icon = TABS.find(t => t.label === tab)?.icon || Vote; return <Icon className="mx-auto h-12 w-12 text-muted-foreground/40" /> })()}
           <p className="mt-3 text-sm text-muted-foreground">{tab} — this section is part of the election workspace.</p>
