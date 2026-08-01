@@ -8082,3 +8082,61 @@ Stage Summary:
   (4) persist language choice server-side per user; (5) add a
   crowdsourcing tool for native speakers to improve the
   Yoruba/Hausa/Igbo dictionaries.
+
+---
+Task ID: I18N-COMPARISON-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — Multi-Language Support + Election Comparison Analytics.
+
+Work Log:
+- **QA Assessment**: Platform stable — all services running, lint 0 errors.
+  Previous round built Notification Scheduling + Election Export. This round
+  built 2 new features from the next-phase recommendations.
+- **Multi-Language Support (i18n)** (new translation system + UI + 8 components):
+  - New `src/lib/i18n.ts` (~2970 lines) with 5 languages: English (en),
+    French (fr), Yoruba (yo), Hausa (ha), Igbo (ig). ~200 translation keys
+    across 9 namespaces (common, home, auth, workspace, election, voting,
+    voterPicker, publicResults, verification, voterStatus, errors).
+  - Proper diacritics: Yoruba (à, é, ì, ò, ṣ), Hausa (ɓ, ɗ, ƙ), Igbo (ṅ, Ọ, ụ).
+  - `useTranslation()` Zustand hook — reads language from store, returns
+    `t(key)` with fallback to English.
+  - Locale-aware `formatDate()` and `formatRelativeTime()` via Intl API.
+  - Language store: persisted to localStorage, loaded on init.
+  - Language switcher: compact dropdown in navbar with flags (🇬🇧🇫🇷🇳🇬).
+  - Applied to: homepage (all sections), voter-picker, ballot-view,
+    public-results, verification-portal, voter-status-portal, shared
+    navbar/footer.
+- **Election Comparison Analytics** (new API + component):
+  - New API: POST /api/workspace/elections/compare — accepts up to 5 election
+    IDs, returns per-election comparison (basic info, participation with
+    unique voter count, structure, integrity with chain verification, incidents,
+    results with winners + margin, timeline) + summary stats.
+  - New component: election-comparison.tsx with multi-select election picker,
+    side-by-side cards (turnout color-coded), comparison table (14 metrics),
+    turnout bar chart (Recharts), eligible-vs-voted grouped chart, winners-by-
+    position matrix, auto-generated insights.
+  - Added "Compare Elections" tab to Analytics page (toggle with Overview).
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Language switcher: 5 languages in dropdown.
+  - French: hero translates to "Organisez des Élections Sûres, Transparentes
+    & en Temps Réel pour Toute Organisation."
+  - Yoruba: hero translates to "Ṣe Ìdìbò Ààrọ̀, Ìhòó Tótọ́ & ní Àkókò Gidi"
+    with proper diacritics.
+  - Language persists across page reloads (localStorage).
+  - Election Comparison: tab renders with election selector (0/5 selected).
+  - Compare API: returns correct comparison data (1 election, 13.3% turnout).
+  - Zero runtime errors.
+
+Stage Summary:
+- ✅ Multi-Language Support — VoteWise now supports 5 languages including 3
+  major Nigerian languages (Yoruba, Hausa, Igbo) with proper diacritics. This
+  makes the platform accessible to millions of African voters in their native
+  languages.
+- ✅ Election Comparison Analytics — organizations can now compare up to 5
+  elections side-by-side with detailed metrics, charts, and auto-generated
+  insights. This helps identify trends and best practices across elections.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Mobile app, observer mobile companion,
+  election notification delivery tracking, API rate limiting dashboard,
+  voter education portal.
+
