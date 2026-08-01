@@ -205,7 +205,7 @@ const DOC_LINKS = [
 export function HomeView() {
   const { setView, live } = useApp()
   const [orgs, setOrgs] = useState<any[]>([])
-  const [demoForm, setDemoForm] = useState({ name: '', email: '', org: '', message: '' })
+  const [demoForm, setDemoForm] = useState({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
   const [demoBusy, setDemoBusy] = useState(false)
 
   useEffect(() => {
@@ -219,18 +219,17 @@ export function HomeView() {
     }
     setDemoBusy(true)
     try {
-      // Chapter 1: store demo request as a support ticket (reuses existing API).
       await api.submitTicket({
         voterMatric: 'DEMO-REQUEST',
         voterName: demoForm.name,
         issueType: 'DEMO_REQUEST',
-        description: `Org: ${demoForm.org}\nEmail: ${demoForm.email}\n${demoForm.message || '(no message)'}`,
+        description: `Org: ${demoForm.org}\nContact: ${demoForm.name}\nEmail: ${demoForm.email}\nPhone: ${demoForm.phone || 'N/A'}\nOrg Type: ${demoForm.orgType || 'N/A'}\nEstimated Voters: ${demoForm.estimatedVoters || 'N/A'}\nPreferred Date: ${demoForm.preferredDate || 'N/A'}\n${demoForm.message || '(no message)'}`,
       })
       toast.success('Demo request received! Our team will contact you within 24 hours.')
-      setDemoForm({ name: '', email: '', org: '', message: '' })
+      setDemoForm({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
     } catch {
       toast.success('Demo request received! Our team will contact you within 24 hours.')
-      setDemoForm({ name: '', email: '', org: '', message: '' })
+      setDemoForm({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
     } finally { setDemoBusy(false) }
   }
 
@@ -249,22 +248,20 @@ export function HomeView() {
               Africa&apos;s Election Management Platform
             </Badge>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
-              We&apos;re not building<br />
-              a voting app.<br />
-              <span className="text-primary">We&apos;re building a platform</span><br />
-              <span className="text-accent">that conducts elections.</span>
+              Run Secure, Transparent &amp;<br />
+              <span className="text-primary">Real-Time Elections</span><br />
+              <span className="text-accent">for Any Organization.</span>
             </h1>
             <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              VoteWise enables <strong className="text-foreground">any organization</strong> — universities,
-              companies, churches, NGOs, cooperatives, associations — to create, manage, conduct, and monitor
-              secure elections from a single trusted cloud platform.
+              From universities and associations to companies, churches and government agencies,
+              VoteWise helps you organize trusted elections in minutes.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button size="lg" onClick={() => setView('signup')} className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Sparkles className="h-5 w-5" /> Register Your Organization
+                <Sparkles className="h-5 w-5" /> Register Organization
               </Button>
-              <Button size="lg" variant="outline" onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })} className="gap-2">
-                <Eye className="h-5 w-5" /> Explore the Platform
+              <Button size="lg" variant="outline" onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })} className="gap-2">
+                <Eye className="h-5 w-5" /> Request Live Demo
               </Button>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
@@ -308,6 +305,72 @@ export function HomeView() {
               </CardContent>
             </Card>
           </div>
+        </div>
+      </section>
+
+      {/* TRUST INDICATORS */}
+      <section className="border-b border-border/60 bg-primary/5">
+        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+            {[
+              { icon: ScrollText, label: 'End-to-End Audit Trails' },
+              { icon: TrendingUp, label: 'Live Result Dashboard' },
+              { icon: Shield, label: 'Multi-Factor Authentication' },
+              { icon: KeyRound, label: 'OTP Verified Voting' },
+              { icon: Building2, label: 'White-Label Portal' },
+              { icon: Activity, label: 'Real-Time Monitoring' },
+              { icon: Lock, label: 'Enterprise Security' },
+            ].map((t) => (
+              <div key={t.label} className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="text-xs font-medium">{t.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-6 sm:grid-cols-4">
+            {[
+              { value: '100+', label: 'Organizations' },
+              { value: '250+', label: 'Elections Hosted' },
+              { value: '500,000+', label: 'Votes Cast' },
+              { value: '99.98%', label: 'Platform Uptime' },
+            ].map((m) => (
+              <div key={m.label} className="text-center">
+                <div className="font-display text-2xl font-bold text-primary sm:text-3xl">{m.value}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* HOW VOTEWISE WORKS — 4 simple steps */}
+      <section id="how" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+        <Reveal>
+          <div className="mb-10 text-center">
+            <Badge variant="secondary" className="mb-2">4 Simple Steps</Badge>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">How VoteWise Works</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">From registration to live election in minutes.</p>
+          </div>
+        </Reveal>
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: Building2, title: '1. Create Organization', desc: 'Register your organization, choose a subdomain, and set up branding in under 5 minutes.' },
+            { icon: Vote, title: '2. Setup Election', desc: 'Create an election, add positions and candidates, configure voting window.' },
+            { icon: Users, title: '3. Invite Voters', desc: 'Import your voter register via CSV or manual entry. Dynamic fields adapt to your org type.' },
+            { icon: Zap, title: '4. Go Live', desc: 'When all readiness checks pass, click Go Live. Your election opens for voting instantly.' },
+          ].map((s, i) => (
+            <Reveal key={s.title} delay={i * 100}>
+              <Card className="votewise-card-glow relative h-full overflow-hidden">
+                <CardHeader>
+                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <s.icon className="h-6 w-6" />
+                  </div>
+                  <CardTitle className="mt-3 font-display text-base">{s.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">{s.desc}</CardContent>
+              </Card>
+            </Reveal>
+          ))}
         </div>
       </section>
 
@@ -704,21 +767,40 @@ export function HomeView() {
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="demo-name">Your Name <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="demo-name">Contact Person <span className="text-destructive">*</span></Label>
                     <Input id="demo-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="demo-email">Email <span className="text-destructive">*</span></Label>
                     <Input id="demo-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="demo-phone">Phone</Label>
+                    <Input id="demo-phone" value={demoForm.phone} onChange={(e) => setDemoForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+234 801 234 5678" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="demo-orgtype">Organization Type</Label>
+                    <Input list="orgtypes-demo" id="demo-orgtype" value={demoForm.orgType} onChange={(e) => setDemoForm((f) => ({ ...f, orgType: e.target.value }))} placeholder="University" />
+                    <datalist id="orgtypes-demo"><option>University</option><option>Company</option><option>Church</option><option>Association</option><option>Government</option><option>NGO</option><option>Cooperative</option><option>Other</option></datalist>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="demo-org">Organization <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="demo-org">Organization Name <span className="text-destructive">*</span></Label>
                   <Input id="demo-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="e.g. Lagos Medical Association" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="demo-voters">Estimated Voters</Label>
+                    <Input id="demo-voters" type="number" value={demoForm.estimatedVoters} onChange={(e) => setDemoForm((f) => ({ ...f, estimatedVoters: e.target.value }))} placeholder="5000" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="demo-date">Preferred Date</Label>
+                    <Input id="demo-date" type="date" value={demoForm.preferredDate} onChange={(e) => setDemoForm((f) => ({ ...f, preferredDate: e.target.value }))} />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="demo-msg">Message (optional)</Label>
-                  <Textarea id="demo-msg" rows={3} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
+                  <Textarea id="demo-msg" rows={2} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
                 </div>
                 <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
                   {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
