@@ -6201,3 +6201,66 @@ page where anyone can verify the integrity of a certified election's results.
   receipt verification works, download works, navigation from public
   results + homepage works, mobile viewport works.
 
+
+---
+Task ID: PORTAL-IMPORT-DUPLICATE-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — Public Verification Portal + Import Wizard enhancement + Duplicate with date shifting.
+
+Work Log:
+- **QA Assessment**: Platform stable — all services running, lint 0 errors.
+  Previous round built Election Templates + Observer Incident Dashboard.
+  This round built 3 features from the next-phase recommendations.
+- **Public Verification Portal** (new page + API + SVE function):
+  - New API: GET /api/elections/[id]/verification-portal — public endpoint
+    (no auth) returning full verification package for CERTIFIED elections:
+    audit hash, integrity signature (recomputed + verified), chain integrity
+    (election-scoped), certified results, vote count cross-verification,
+    4 per-check statuses + `verified` boolean.
+  - New SVE function: verifyElectionAuditChain(electionId) — walks
+    election-scoped audit entries, recomputes hashes, validates prevHash
+    links to genesis/previous/global.
+  - New page: /verify/[id] — VerificationPortal component with:
+    - Verification status banner (4 checks: certified, chain intact,
+      signature valid, vote count matches)
+    - 5 summary stats (eligible, votes, invalid, blank, turnout)
+    - Cryptographic proof (audit hash + integrity signature, copyable)
+    - Certified results tables with winner highlighting
+    - Audit chain visualization (GENESIS → entries → Chain Intact badge)
+    - Download JSON + Share buttons (Twitter/WhatsApp/Facebook/LinkedIn)
+    - Inline receipt verification form
+  - Homepage: "Verify an entire election" section with election ID/URL input.
+  - Public results page: "View Full Verification" button when certified.
+- **Import Wizard Enhancement**:
+  - New API: GET /api/workspace/voters/import-template — generates CSV
+    template based on org's voter fields (firstName, lastName, email, phone
+    + custom fields) with 3 example rows.
+  - Download Template button in Step 1 (fetch + Blob + object URL, reads
+    filename from Content-Disposition).
+  - Prominent helper card explaining the template.
+- **Duplicate with Date Shifting**:
+  - Updated API: accepts { name?, startTime?, endTime?, shiftDays? }.
+    - Custom dates: uses provided start/end, shifts other timestamps
+      proportionally (preserves offsets).
+    - Shift by days: shifts all original timestamps by N days (365=next year).
+    - Default: 1 week from now (backward compatible).
+  - New DuplicateDialog component: 3 mode radio cards (1 Week / Shift by
+    Days / Custom Dates), datetime inputs, live computed dates preview,
+    validation, success toast + navigation.
+  - Wired into Election Workspace header.
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Verification portal: "Verified" with all 4 checks passing.
+  - Homepage: "Verify an entire election" section present.
+  - Duplicate dialog: 3 date modes with descriptions + live preview.
+  - Zero runtime errors.
+
+Stage Summary:
+- ✅ Public Verification Portal — anyone can verify a certified election's
+  integrity at /verify/[id]. This completes the end-to-end trust loop:
+  cast vote → get receipt → verify receipt → verify election.
+- ✅ Import Wizard enhanced with CSV template download (reduces user friction).
+- ✅ Duplicate now supports date shifting (365 days = next year, custom dates).
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Risk-limiting audit tool, election
+  comparison/analytics dashboard, multi-language support, mobile app.
+
