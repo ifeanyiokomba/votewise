@@ -5011,3 +5011,611 @@ Stage Summary:
   observer real-time incident dashboard, election templates (save as
   template), election duplication with date shifting.
 
+
+---
+Task ID: ELECTION-TEMPLATES
+Agent: Fullstack Developer (main)
+Task: Build the Election Templates feature — save an election as a reusable
+template, and create new elections from a template (built-in or org-created).
+
+Work Log:
+
+**1. Schema Addition** — added the new `ElectionTemplate` model to
+`prisma/schema.prisma` (placed in the section after ChatMessage, before the
+VoterActivityLog). Fields match the spec exactly:
+`id, organizationId, name, description?, category?, electionType?,
+votingMethod?, visibility (default PRIVATE), settings?, templateData (JSON
+string), isBuiltIn (default false), createdBy?, createdAt, updatedAt` with
+`@@index([organizationId])` and `@@index([category])`.
+
+- Bumped `SCHEMA_SIG` in `src/lib/db.ts` from `v2-support-ticket-electionId`
+  to `v3-election-templates` so the singleton PrismaClient refreshes after
+  the schema change in dev (no dev-server restart needed).
+- Ran `bun run db:push` — applied cleanly. Prisma Client regenerated.
+
+**2. APIs** — three new route files:
+
+  a. `src/app/api/workspace/election-templates/route.ts`
+     - **GET**: lists all templates available to the current org. Built-in
+       templates (where `organizationId = "built-in"`) are shared across
+       all orgs; org-created templates are scoped to the current org.
+       Response includes `id, name, description, category, electionType,
+       votingMethod, visibility, isBuiltIn, createdBy, positionCount,
+       candidateCount, createdAt, updatedAt` — counts are computed by
+       parsing the stored `templateData` JSON. Uses `requireOrganization`
+       (read access for any org member). Ordered by isBuiltIn desc, then
+       createdAt desc so built-ins surface first.
+     - **POST**: saves a new template from an existing election. Body
+       `{ electionId, templateName, templateDescription? }`. Loads the
+       election + positions + candidates (with org ownership check),
+       serializes them into `templateData` JSON stripping all IDs and
+       election-specific data (no dates, no voter data, no audit logs —
+       just title/description/scope/maximumVotes per position and
+       fullName/slogan/manifesto/biography/photoUrl per candidate).
+       Carries over the election-level config (category, electionType,
+       votingMethod, visibility, settings JSON). Sets `isBuiltIn = false`,
+       `createdBy = ctx.user.id`. Writes a `TEMPLATE_SAVED` audit entry.
+       Uses `requirePermission(req, 'election.manage')`.
+
+  b. `src/app/api/workspace/election-templates/[templateId]/route.ts`
+     - **GET**: returns a single template with the full `templateData`
+       payload (parsed) so the UI can preview positions/candidates.
+       Tenant-isolated: built-in templates are shared; org templates are
+       org-scoped. Uses `requireOrganization`.
+     - **DELETE**: deletes a template. Refuses with HTTP 400 if the
+       template is built-in (built-ins are immutable). Otherwise only the
+       owning org can delete it (returns 404 otherwise). Writes a
+       `TEMPLATE_DELETED` audit entry. Uses
+       `requirePermission(req, 'election.manage')`.
+
+  c. `src/app/api/workspace/election-templates/[templateId]/apply/route.ts`
+     - **POST**: creates a new ElectionSession from a template. Body
+       `{ name, startTime, endTime, workspaceId? }`. Validates that
+       endTime > startTime. Looks up the template, verifies org access
+       (built-in shared, org-scoped otherwise), parses the templateData,
+       creates the new ElectionSession in DRAFT status (carrying over
+       category/electionType/votingMethod/visibility/settings), then
+       creates positions + candidates from the snapshot with fresh IDs
+       and unique random-suffix slugs. Writes a `CREATED` ElectionEvent
+       (with metadata noting the source template) and a `TEMPLATE_APPLIED`
+       audit entry capturing positionCount + candidateCount. Returns the
+       new election ID + the stats. Uses
+       `requirePermission(req, 'election.create')`.
+
+**3. Built-in Templates Seed** — `scripts/seed-templates.ts`:
+
+- Creates 4 built-in templates with `organizationId = "built-in"` and
+  `isBuiltIn = true`:
+  1. **University SUG Election** (Student Union, General, Single Choice) —
+     President, VP, Secretary General, Treasurer, PRO. Each position has
+     1–2 placeholder candidates ("Candidate A/B") with sample slogans and
+     manifestos.
+  2. **Corporate Board Election** (Executive, General, Single Choice) —
+     Chairman, Vice Chairman, Secretary, Treasurer. Placeholder candidates.
+  3. **Association Executive Election** (Executive, General, Single Choice)
+     — President, VP, Secretary, Financial Secretary, PRO.
+  4. **Church Committee Election** (Committee, General, Single Choice) —
+     Chairman, Vice Chairman, Secretary, Treasurer, Auditor.
+- Each template stores a default `settings` JSON (requireAccreditation,
+  showLiveTurnout, hideResultsUntilEnd, notaEnabled, etc.).
+- Idempotent: looks up by `(organizationId, name)`; updates if exists,
+  creates otherwise. Safe to re-run.
+- Output of the run: "4 created, 0 updated. Built-in templates in DB: 4".
+
+**4. API Client Methods** — added 5 methods to `src/lib/api.ts` next to the
+existing election helpers, following the established
+`?x-vw-org=<subdomain>` query convention:
+
+- `getElectionTemplates(subdomain?)`
+- `saveElectionTemplate(data, subdomain?)` (POST)
+- `getElectionTemplate(templateId, subdomain?)`
+- `deleteElectionTemplate(templateId, subdomain?)` (DELETE)
+- `applyElectionTemplate(templateId, data, subdomain?)` (POST)
+
+**5. UI Component** — `src/components/votewise/election-templates.tsx`
+(~600 lines). Exports `ElectionTemplates` with props `{ subdomain }`.
+
+Layout (top-down):
+
+1. **Header card** (`votewise-card-glow`): LayoutTemplate icon + title
+   "Election Templates" + description. On the right, 3 stat chips:
+   Built-in (emerald), My Templates (amber), Total (zinc) — each with a
+   small icon.
+
+2. **Save-Current-Election-as-Template card**: an Alert explaining the
+   feature, then a 4-column grid (sm:grid-cols-2 lg:grid-cols-4):
+   - Select dropdown of the org's elections (loaded via `api.electionCenter`
+     and flattened from running/upcoming/completed/draft/archived).
+   - Template Name input.
+   - Description input (spans 2 cols on lg).
+   - "Save Template" button (emerald, disabled while saving or if name/
+     election empty). Shows a loader while saving.
+   - Empty-state Alert when the org has no elections yet.
+
+3. **Filter row**: search Input (with Search icon) on the left, filter
+   chips on the right (All / Built-in / My Templates) — each chip shows a
+   count badge and highlights when active (primary background).
+
+4. **Template grid**: `sm:grid-cols-2 lg:grid-cols-3` of `TemplateCard`s
+   wrapped in `AnimatePresence mode="popLayout"` with `motion.div` per card
+   (layout, opacity+y enter/exit transitions).
+
+5. **Empty state**: when the filtered list is empty, shows a LayoutTemplate
+   icon + helpful message. For the "My Templates" filter specifically,
+   suggests browsing built-ins (with a button that flips the filter).
+
+**TemplateCard subcomponent**: a Card with hover lift + shadow. Header has
+the LayoutTemplate icon (emerald tinted) and two badges:
+- Built-in (emerald, with Sparkles icon) OR My Template (amber, with
+  FileText icon).
+- Category badge with colour-mapped style (student union → emerald,
+  executive/board → amber, committee/church → accent, else zinc).
+Card body shows description (2-line clamp), a meta row with position count
+(Vote icon, primary), candidate count (Users icon, amber), electionType
+(Building2 icon), and created date (Calendar icon). Separator. Footer has
+a "Use Template" button (emerald, full-width) and a Delete button (red
+outline, only shown for org-created templates — built-ins cannot be
+deleted through the API).
+
+**Apply dialog**: opens when "Use Template" is clicked. Shows the
+template name + position/candidate counts. Inputs: new election name
+(pre-filled with the template name), Voting Opens (datetime-local,
+default +1h from now), Voting Closes (datetime-local, default +25h).
+Amber Alert explaining the new election will be created in DRAFT status.
+On confirm: calls `api.applyElectionTemplate`, shows a success toast with
+the position/candidate counts, then navigates to the new election
+workspace after 600ms.
+
+**Delete AlertDialog**: standard destructive confirmation with red Action
+button. Calls `api.deleteElectionTemplate`, shows a toast, reloads the
+list.
+
+**Accessibility**: ARIA labels on icon-only buttons, `aria-pressed` on
+filter chips, semantic `<button>` elements, sr-only text for the Delete
+button label on small screens.
+
+**Palette compliance**: NO indigo, NO blue anywhere. Emerald (primary
+CTAs, built-in badge, success), amber (my templates badge, accent
+warnings), zinc (neutral counts/badges), red (destructive delete only).
+Dark-mode variants included throughout.
+
+**6. Election Center Wiring** — `src/components/votewise/election-center.tsx`:
+
+- Imported `LayoutTemplate` icon, `ElectionTemplates` component, and
+  shadcn `Dialog` primitives.
+- Added `templatesOpen` state (default false).
+- Added a new "Templates" outline button (with LayoutTemplate icon) to
+  the header, before the existing "Duplicate" and "Create Election"
+  buttons.
+- Added a `<Dialog>` at the end of the component that renders
+  `<ElectionTemplates subdomain={subdomain} />` inside a wide
+  (`sm:max-w-5xl`) scrollable (`max-h-[90vh] overflow-y-auto`) dialog
+  content when `templatesOpen` is true.
+- Enhanced the empty state (when `stats.total === 0`) to also show a
+  "Browse Templates" button next to the existing "Create Your First
+  Election" button, with updated copy mentioning templates.
+
+**7. Election Workspace Wiring** — `src/components/votewise/election-workspace.tsx`:
+
+- Imported `LayoutTemplate` and `Sparkles` icons, plus shadcn `Input`,
+  `Label`, `Textarea`, and `Dialog` primitives.
+- Added state: `tplOpen, tplName, tplDesc, tplSaving`.
+- Added `openSaveTemplate()` — pre-fills the template name with
+  `<election.name> Template` and opens the dialog.
+- Added `saveTemplate()` — calls `api.saveElectionTemplate` with the
+  current electionId + name + description, shows a success toast on
+  success, error toast on failure.
+- Added a "Save as Template" ghost button (with LayoutTemplate icon)
+  next to the existing "Duplicate" button in the election header.
+- Added a `<Dialog>` at the end of the component (after the tab content,
+  before the closing div) that contains: template name Input,
+  description Textarea (3 rows), and an emerald info box explaining
+  what gets saved vs. what's stripped. Cancel + Save Template buttons
+  in the footer. The dialog cannot be dismissed while saving
+  (`onOpenChange={(o) => !tplSaving && setTplOpen(o)}`).
+
+**8. Lint Cleanup** — `bun run lint` initially surfaced one pre-existing
+error in `src/components/votewise/incident-dashboard.tsx` (the
+`const TypeIcon = typeIcon(incident.type)` pattern trips ESLint's
+`react-hooks/static-components` rule). Fixed by introducing a small
+`IncidentTypeIcon` wrapper component that uses an explicit JSX `switch`
+to render the right Lucide icon — no capitalized const assignment during
+render. Replaced both call sites. Removed an unused `createElement`
+import I'd briefly tried. Final lint: **0 errors, 0 warnings** (exit 0).
+
+### Verification
+- `bun run db:push` — applied cleanly, Prisma Client regenerated.
+- `bun run scripts/seed-templates.ts` — seeded 4 built-in templates
+  ("4 created, 0 updated. Built-in templates in DB: 4").
+- `bun run lint` — **0 errors, 0 warnings** (exit 0). Ran twice (once
+  after my own code, once after the incident-dashboard cleanup).
+- Dev server log shows clean compilation (`✓ Compiled in 156ms`,
+  `✓ Compiled in 295ms`, etc.) with no TypeScript or import errors
+  related to the new files.
+
+Stage Summary:
+- ✅ New `ElectionTemplate` Prisma model with full templateData JSON
+  snapshot, isBuiltIn flag, and indexes on organizationId + category.
+- ✅ Three new API routes: GET/POST `/api/workspace/election-templates`,
+  GET/DELETE `/api/workspace/election-templates/[templateId]`, and POST
+  `/api/workspace/election-templates/[templateId]/apply`. All privileged
+  mutations go through `requirePermission(req, 'election.create' | 'election.manage')`;
+  reads go through `requireOrganization` for tenant isolation. Built-in
+  templates (organizationId = "built-in") are shared across all orgs.
+- ✅ `scripts/seed-templates.ts` seeds 4 built-in templates (University SUG,
+  Corporate Board, Association Executive, Church Committee) with positions
+  and placeholder candidates. Idempotent.
+- ✅ 5 API client methods added to `src/lib/api.ts`.
+- ✅ New `ElectionTemplates` UI component: header card with stats, save-
+  current-election-as-template form, search + filter chips, animated
+  template grid with category badges + counts, Apply dialog (with name +
+  datetime-local inputs + DRAFT-status notice), Delete confirmation.
+  Mobile-first responsive. Emerald/gold/amber palette (no indigo/blue).
+  Framer Motion `AnimatePresence` for grid animations.
+- ✅ Election Center: new "Templates" outline button + dialog that renders
+  `<ElectionTemplates />`. Empty state now also offers "Browse Templates".
+- ✅ Election Workspace: new "Save as Template" ghost button next to
+  "Duplicate" + a dialog with name/description inputs + info box.
+- ✅ Bonus: fixed a pre-existing lint error in `incident-dashboard.tsx`
+  (the `const TypeIcon = typeIcon(...)` pattern) by introducing a static
+  `IncidentTypeIcon` wrapper component using a JSX switch.
+- ✅ Lint: 0 errors, 0 warnings. Dev server compiles cleanly.
+
+---
+Task ID: OBSERVER-INCIDENT-DASHBOARD
+Agent: Observer Incident Dashboard Builder (fullstack)
+Task: Build an Observer Incident Dashboard — real-time incident reporting
+and monitoring for election observers. New schema, 3 API routes, a feature-
+rich UI component, wiring into the Observers tab + Live Vote Monitor, plus
+a header badge for the Election Workspace.
+
+Work Log:
+
+### 1. Schema Addition — `prisma/schema.prisma`
+
+Added a new `ElectionIncident` model at the end of the file:
+
+```prisma
+model ElectionIncident {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  reportedById    String?
+  reportedByName  String
+  type            String   // VOTER_INTIMIDATION | SYSTEM_MALFUNCTION | IRREGULARITY | DISPUTE | TECHNICAL_ISSUE | OTHER
+  severity        String   @default("MEDIUM")
+  status          String   @default("OPEN")
+  title           String
+  description     String
+  location        String?
+  affectedVoterId String?
+  metadata        String?  // JSON: { device, ip, timestamp, evidence }
+  assignedToId    String?
+  assignedToName  String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+}
+```
+
+Bumped `SCHEMA_SIG` in `src/lib/db.ts` from `v3-election-templates` →
+`v4-incident-dashboard` so the cached PrismaClient singleton is discarded
+and the new model is picked up by the dev server without a manual restart.
+
+Ran `bun run db:push` — schema applied cleanly, Prisma client regenerated.
+
+### 2. New APIs
+
+**`src/app/api/workspace/elections/[id]/incidents/route.ts`**
+- **GET** — org-scoped via `requireOrganization`. Verifies the election
+  belongs to the resolved org (404 otherwise). Accepts query params
+  `?status=...&severity=...&type=...&search=...`. Only valid enum values
+  are accepted as filters (unknown values silently ignored). Returns the
+  filtered incidents (newest first, capped at 200) PLUS a comprehensive
+  `stats` object computed over the *entire* election's incident set (so
+  totals stay stable as the user types in search):
+  - `total, open, investigating, resolved, escalated, critical`
+  - `bySeverity: { LOW, MEDIUM, HIGH, CRITICAL }`
+  - `byStatus: { OPEN, INVESTIGATING, RESOLVED, ESCALATED, DISMISSED }`
+  - `byType: Record<type, count>` for all 6 incident types
+- **POST** — requires `support.handle` via `requirePermission(req,
+  'support.handle')`. Body: `{ type, severity, title, description,
+  location?, affectedVoterId? }`. Validates every field (rejects unknown
+  type/severity, requires title + description, caps description at 10000
+  chars). Captures reporter name + device + IP in the `metadata` JSON
+  column for forensic evidence. Creates both:
+  1. An `ElectionIncident` row.
+  2. An `ElectionEvent` (`eventType: INCIDENT_REPORTED`) so the incident
+     surfaces in the audit timeline.
+  3. A hash-chained `AuditLog` entry (`action: INCIDENT_REPORTED`).
+  Returns 201 with the new incident (serialized to ISO timestamps).
+
+**`src/app/api/workspace/elections/[id]/incidents/[incidentId]/route.ts`**
+- **PATCH** — requires `support.handle`. Body (all optional):
+  `{ status?, severity?, assignedToId?, assignedToName?, resolutionNotes? }`.
+  - Auto-sets `resolvedAt = now` when `status` becomes `RESOLVED` or
+    `DISMISSED`.
+  - Clears `resolvedAt` when the status moves away from a terminal state
+    (reopening a previously-resolved incident).
+  - Always bumps `updatedAt`.
+  - When status changes, emits a timeline `ElectionEvent`
+    (`INCIDENT_ESCALATED` for escalations, `INCIDENT_UPDATED` otherwise).
+  - Writes a hash-chained `AuditLog` entry describing each change.
+  - Returns `{ ok, changed, changes, incident }` (or `{ ok, changed: false }`
+    when no meaningful changes were detected).
+
+**`src/app/api/workspace/elections/[id]/incidents/stats/route.ts`**
+- **GET** — org-scoped via `requireOrganization`. Lightweight stats-only
+  endpoint used by the Live Vote Monitor + workspace header badge.
+  Returns:
+  - `total, open, critical, resolved, escalated`
+  - `bySeverity, byStatus, byType` (same shape as the collection GET)
+  - `recent: [last 5 incidents]` (id, type, severity, status, title,
+    description, location, reportedByName, createdAt, resolvedAt)
+  - `electionId, electionName, electionStatus`
+
+### 3. API Client Methods — `src/lib/api.ts`
+
+Added 4 methods alongside the existing Support-tab block:
+
+```ts
+getElectionIncidents(electionId, params, subdomain?)
+reportElectionIncident(electionId, data, subdomain?)
+updateElectionIncident(electionId, incidentId, data, subdomain?)
+getElectionIncidentStats(electionId, subdomain?)
+```
+
+All follow the existing `?x-vw-org=<subdomain>` org-context pattern
+used throughout the workspace API surface.
+
+### 4. New UI Component — `src/components/votewise/incident-dashboard.tsx`
+
+A ~1050-line client component implementing the full Observer Incident
+Dashboard. Props: `{ electionId, subdomain }`. Auto-refreshes every 10
+seconds (silent — no spinner), with a Live/Paused toggle.
+
+**Layout (top → bottom):**
+
+1. **Header card** (`votewise-card-glow`): Siren icon + "Incident
+   Dashboard" title + critical-count badge (red pulsing if > 0). Right
+   side: auto-refresh indicator (Live/Paused + last-updated relative
+   time), Pause/Resume toggle, Refresh button, "Report Incident" button
+   (emerald).
+
+2. **Stats row** (4 cards, 2-col mobile → 4-col desktop):
+   - Total Incidents (primary, with "N active" trend sub-label)
+   - Open (amber, pulses when > 0)
+   - Critical (red, pulses when > 0)
+   - Resolved (emerald)
+
+3. **Severity breakdown card**: progress bars for each of LOW / MEDIUM /
+   HIGH / CRITICAL showing percentage of total. Each row has a colored
+   dot + label + "N · X%" + a Progress bar.
+
+4. **Filter bar card**: search Input (filters title, description,
+   location, reporter) + 3 Select filters (Status, Severity, Type) +
+   "Clear" button when any filter is active.
+
+5. **Recent incidents feed**: scrollable list (`max-h-[400px]
+   overflow-y-auto votewise-scroll`) showing the latest 10 incidents.
+   Each row has:
+   - Type icon (color-coded by severity: Critical = red border +
+     red-tinted bg, Escalated = red border, default = neutral)
+   - Severity badge (CRITICAL = red pulsing, HIGH = amber-600,
+     MEDIUM = amber, LOW = zinc)
+   - Type badge
+   - Status badge (Open = amber, Investigating = primary, Resolved =
+     emerald, Escalated = red, Dismissed = zinc)
+   - Title (line-clamp-1) + description (line-clamp-2, full when expanded)
+   - Footer: reporter name, time ago, location, assignee
+   - Click anywhere on the row to expand → shows full description +
+     metadata grid (created/updated/affected voter/assignee/resolved
+     at/resolution notes) + "Manage Incident" button
+   - Framer Motion `layout` + `AnimatePresence` with staggered entry
+
+6. **Report Incident Dialog**: form with type Select (6 options),
+   severity Select (4 options, each with colored dot), title Input,
+   description Textarea (with 10000-char counter), location Input
+   (optional). Amber Alert explaining the reporter identity is logged.
+   Reset on close. Submit calls `api.reportElectionIncident` + toast +
+   reload.
+
+7. **Incident Detail Dialog**: full details (4-cell summary: type,
+   severity, status, location), full description (in a bordered box),
+   then update controls: status Select (5 options), severity Select (4
+   options with colored dots), assignee name Input, resolution notes
+   Textarea. Contextual Alerts:
+   - RESOLVED/DISMISSED → emerald "marking as resolved/dismissed, the
+     resolvedAt timestamp will be set automatically"
+   - ESCALATED → red "escalated incidents appear with a red border and
+     trigger alerts in the Live Vote Monitor"
+   Save button calls `api.updateElectionIncident` + toast + reload.
+
+**Helpers**:
+- `severityStyle(sev)` → `{ badge, dot, label, pulsing? }` (zinc/amber/
+  amber-600/red palette — NO indigo or blue).
+- `statusStyle(status)` → `{ badge, label }` (amber/primary/emerald/red/
+  zinc).
+- `typeLabel(type)` → human-readable label ("VOTER_INTIMIDATION" →
+  "Voter Intimidation").
+- `IncidentTypeIcon({type, className})` → explicit JSX switch on type
+  returning the right Lucide icon. Written as a sub-component (NOT a
+  `const Icon = ...` inside render) so ESLint's
+  `react-hooks/static-components` rule passes.
+- `buildQuery(...)` → builds the `?status=...&severity=...&type=...&
+  search=...` query string for the API.
+
+**Icons used** (lucide-react): `AlertTriangle, AlertCircle, Bell, Shield,
+Activity, Plus, Search, Filter, Clock, User, MapPin, CheckCircle2,
+XCircle, Zap, Siren, Loader2, RefreshCw, ChevronDown, ChevronRight`.
+
+**shadcn/ui components used**: Card, CardContent, CardHeader, CardTitle,
+Button, Input, Textarea, Label, Badge, Select (+ all subcomponents),
+Dialog (+ all subcomponents), Alert (+ AlertTitle/AlertDescription),
+Separator, Progress.
+
+**Palette**: strictly emerald/gold/amber/zinc/red — NO indigo, NO blue.
+- LOW = zinc
+- MEDIUM = amber
+- HIGH = amber-600
+- CRITICAL = red (destructive)
+
+**Mobile-first**: stats grid 2-col on mobile, 4-col on sm. Filter bar
+stacks on mobile. Dialog uses `sm:max-w-lg` / `sm:max-w-2xl` to be full-
+width on mobile.
+
+### 5. Wire into Election Observers tab
+
+`src/components/votewise/election-observers.tsx`:
+- Imported `IncidentDashboard` from `@/components/votewise/incident-dashboard`.
+- Rendered `<IncidentDashboard electionId={electionId} subdomain={subdomain} />`
+  at the bottom of the component (after the Remove confirmation dialog).
+  This puts the dashboard below the observer list, so observers see both
+  their assignments AND the live incident feed in the same tab.
+
+### 6. Enhance Live Vote Monitor
+
+`src/components/votewise/live-vote-monitor.tsx`:
+- Imported `Siren` icon + `Alert`/`AlertTitle`/`AlertDescription`.
+- Added `incidents` state (`IncidentStatsLite`) + `loadIncidents()` that
+  calls `api.getElectionIncidentStats` every 10 seconds. Failures are
+  silent — the monitor keeps working without incident stats.
+- **Critical alert banner** at the very top: red `Alert` (Framer Motion
+  height transition) shown ONLY when `incidents.critical > 0`. Banner
+  text: "⚠ N critical incident(s) require immediate attention" + sub-
+  text with open count + instruction to open the Incident Dashboard.
+- **Header card**: added a red `ring-2 ring-red-500/40` when
+  `incidents.critical > 0` (in addition to the existing emerald pulse
+  on vote-cast).
+- **Stat grid**: replaced the 4th card (was "Active Sessions" in purple)
+  with "Open Incidents" — color flips between emerald (0) / amber (>0) /
+  red (critical > 0), pulsing when critical.
+- **New Incidents Overview card** (shown only when `incidents.total > 0`):
+  4-cell metric grid (Total / Open / Critical / Resolved) with pulsing
+  animation on Open/Critical when > 0. Footer note with escalated count
+  + cross-link to the Observers tab → Incident Dashboard.
+- **Palette fix**: replaced `text-blue-600 bg-blue-100` (Eligible Voters
+  + Active Sessions) with `text-zinc-700 bg-zinc-100 dark:text-zinc-300
+  dark:bg-zinc-800/60` to comply with the project's NO-indigo/blue rule.
+
+### 7. Workspace Header Incidents Badge
+
+`src/components/votewise/election-workspace.tsx`:
+- Imported `Siren` from lucide-react.
+- Added `openIncidents` + `criticalIncidents` state, with a useEffect
+  that polls `api.getElectionIncidentStats` every 30 seconds (silent
+  failures — badge is non-critical).
+- Added a red outline `Button` between `StatusBadge` and "Public Results":
+  - Shows only when `openIncidents > 0`.
+  - Siren icon (pulses if `criticalIncidents > 0`), big tabular-nums
+    count, "Incident" / "Incidents" label (label hidden on mobile).
+  - `title` attr: "N open incident(s) · M critical — open the Incident
+    Dashboard".
+  - Click → `setTab('Observers')` (which renders the IncidentDashboard
+    at the bottom).
+
+### 8. Type-Safe IAM Pattern
+
+The PATCH and POST handlers use the `instanceof Response` narrowing
+pattern (introduced by the Candidates-tab agent) for the
+`requirePermission(req, 'support.handle')` result. This is type-safe
+and avoids the loose `'error' in ctx` check that doesn't actually
+narrow `NextResponse` properly.
+
+### 9. Lint + Build
+
+- `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings**
+  (exit 0). Verified twice after fixing one ESLint issue: the initial
+  `IncidentTypeIcon` was assigning a Lucide icon to a capitalized const
+  during render (`const Icon = typeIcon(type); return <Icon .../>`),
+  which trips the `react-hooks/static-components` rule. Refactored to
+  an explicit JSX `switch` so each branch directly returns
+  `<LucideIcon className={className} />` — no const assignment.
+- Dev server log shows clean compilation throughout — no TypeScript
+  or runtime errors after the new routes + component were added.
+- Schema migration applied cleanly via `bun run db:push`.
+
+### Files Created / Modified
+
+**Created:**
+- `src/app/api/workspace/elections/[id]/incidents/route.ts` (202 lines)
+- `src/app/api/workspace/elections/[id]/incidents/[incidentId]/route.ts` (146 lines)
+- `src/app/api/workspace/elections/[id]/incidents/stats/route.ts` (76 lines)
+- `src/components/votewise/incident-dashboard.tsx` (1047 lines)
+
+**Modified:**
+- `prisma/schema.prisma` — added `ElectionIncident` model.
+- `src/lib/db.ts` — bumped `SCHEMA_SIG` from `v3-election-templates` →
+  `v4-incident-dashboard`.
+- `src/lib/api.ts` — added 4 new methods.
+- `src/components/votewise/election-observers.tsx` — imported +
+  rendered `<IncidentDashboard />` at the bottom.
+- `src/components/votewise/live-vote-monitor.tsx` — added incident
+  stats polling, critical alert banner, "Open Incidents" stat card,
+  Incidents Overview card, palette fix (zinc replaces blue).
+- `src/components/votewise/election-workspace.tsx` — added header
+  badge button (red outline) showing open-incident count, jumps to the
+  Observers tab on click.
+
+### Design / UX Notes
+
+- **Palette**: strictly emerald/gold/amber/zinc/red — NO indigo or blue.
+  Severity colors: LOW=zinc, MEDIUM=amber, HIGH=amber-600, CRITICAL=red
+  (with `animate-pulse` on the dot/icon when CRITICAL > 0).
+- **`votewise-card-glow`** applied to the Incident Dashboard header card
+  (preserved existing usage on the Live Vote Monitor header card).
+- **Mobile-first**: every layout uses `flex-wrap` + responsive grids
+  (`grid-cols-2 sm:grid-cols-4`). Dialogs are `sm:max-w-lg` /
+  `sm:max-w-2xl` (full-width on mobile). Stats row collapses to 2-col on
+  mobile. Header badge hides the "Incident(s)" label on `<md`.
+- **Scrollbars**: incident feed uses `max-h-[400px] overflow-y-auto
+  votewise-scroll` (the project's existing custom-scrollbar class).
+- **Padding**: consistent `p-4` / `p-5` on cards; `gap-3` / `gap-4`
+  between grid items; `space-y-3` inside card bodies.
+- **Accessibility**: every interactive element has `aria-label`;
+  expandable rows use `aria-expanded`; the critical alert uses semantic
+  Alert roles; severity dots are paired with text labels (not color-
+  only).
+- **Framer Motion**: staggered list entry on the incidents feed,
+  height-animated expand/collapse per row, height-animated critical
+  alert banner.
+- **Auto-refresh**: silent 10s interval on the dashboard, 10s on the
+  Live Vote Monitor's incident stats, 30s on the workspace header
+  badge. All three can fail independently without breaking the UI.
+- **Toast feedback** (sonner) for every mutation: report incident,
+  update incident, errors.
+
+### Stage Summary
+
+- ✅ New `ElectionIncident` model added to the Prisma schema with 5
+  indexes (electionId, organizationId, status, severity, createdAt) for
+  fast filtered queries. `SCHEMA_SIG` bumped so the dev server picks up
+  the new client automatically.
+- ✅ Three new API endpoints (collection GET + POST, item PATCH, stats
+  GET) — all org-scoped via `requireOrganization`, mutations guarded by
+  `requirePermission(req, 'support.handle')`. Every mutation writes a
+  hash-chained `AuditLog` entry + an `ElectionEvent` timeline entry so
+  incidents appear in both the audit chain AND the election timeline.
+- ✅ Feature-rich Incident Dashboard UI (~1050 lines): real-time stats,
+  severity breakdown, filter bar, scrollable incident feed with
+  expandable rows, Report Incident dialog, Incident Detail dialog with
+  status/severity/assignee/resolution update controls.
+- ✅ Wired into the Observers tab (rendered below the observer list) so
+  observers see both their assignments AND the live incident feed.
+- ✅ Enhanced the Live Vote Monitor with a critical-incident alert
+  banner, an "Open Incidents" stat card, and an Incidents Overview card.
+  Fixed two pre-existing blue usages (Eligible Voters + Active Sessions
+  → zinc).
+- ✅ Added a header badge to the Election Workspace showing the open-
+  incident count (red outline, pulses on critical, click → Observers
+  tab).
+- ✅ Lint: 0 errors, 0 warnings. Dev server compiles cleanly.
+- ✅ All 4 new API client methods follow the existing `?x-vw-org=
+  <subdomain>` org-context pattern.

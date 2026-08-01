@@ -4,12 +4,13 @@ import { useEffect, useState, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import {
   Users, Vote, TrendingUp, Activity, Clock, Shield, AlertCircle,
-  Server, Zap, Eye, Radio,
+  Server, Zap, Eye, Radio, Siren,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -32,8 +33,17 @@ interface LiveStats {
   votingWindow: { start: string; end: string }
 }
 
+interface IncidentStatsLite {
+  total: number
+  open: number
+  critical: number
+  resolved: number
+  escalated: number
+}
+
 export function LiveVoteMonitor({ electionId, subdomain }: { electionId: string; subdomain?: string }) {
   const [stats, setStats] = useState<LiveStats | null>(null)
+  const [incidents, setIncidents] = useState<IncidentStatsLite | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pulse, setPulse] = useState(false)
@@ -49,9 +59,27 @@ export function LiveVoteMonitor({ electionId, subdomain }: { electionId: string;
     finally { setLoading(false) }
   }
 
+  // Load incident stats (non-blocking — failures don't break the monitor).
+  async function loadIncidents() {
+    try {
+      const s = await api.getElectionIncidentStats(electionId, subdomain)
+      setIncidents({
+        total: s.total ?? 0,
+        open: s.open ?? 0,
+        critical: s.critical ?? 0,
+        resolved: s.resolved ?? 0,
+        escalated: s.escalated ?? 0,
+      })
+    } catch {
+      // Silently ignore — the monitor keeps working without incident stats.
+    }
+  }
+
   useEffect(() => {
     load()
+    loadIncidents()
     const interval = setInterval(load, 5000)
+    const incidentInterval = setInterval(loadIncidents, 10000)
 
     // WebSocket for real-time updates.
     const socket = io('/?XTransformPort=3030', { path: '/', transports: ['websocket', 'polling'], reconnection: true })
@@ -68,7 +96,11 @@ export function LiveVoteMonitor({ electionId, subdomain }: { electionId: string;
       setPulse(true)
       setTimeout(() => setPulse(false), 600)
     })
-    return () => { clearInterval(interval); socket.disconnect() }
+    return () => {
+      clearInterval(interval)
+      clearInterval(incidentInterval)
+      socket.disconnect()
+    }
   }, [electionId, subdomain])
 
   if (loading) {
@@ -80,11 +112,35 @@ export function LiveVoteMonitor({ electionId, subdomain }: { electionId: string;
   if (!stats) return null
 
   const timeRemaining = new Date(stats.votingWindow.end).getTime() - Date.now()
+  const incidentPulse = (incidents?.critical ?? 0) > 0
 
   return (
     <div className="space-y-4">
+      {/* Critical incidents alert banner */}
+      <AnimatePresence>
+        {incidents && incidents.critical > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Alert className="border-red-500/60 bg-red-50 dark:bg-red-950/30">
+              <Siren className="h-4 w-4 animate-pulse text-red-600" />
+              <AlertTitle className="text-red-700 dark:text-red-400">
+                {incidents.critical} critical incident{incidents.critical === 1 ? '' : 's'} require{incidents.critical === 1 ? 's' : ''} immediate attention
+              </AlertTitle>
+              <AlertDescription className="text-red-800 dark:text-red-300">
+                Observers have flagged {incidents.critical} critical incident{incidents.critical === 1 ? '' : 's'} during this election.
+                {incidents.open > 0 && ` ${incidents.open} incident${incidents.open === 1 ? '' : 's'} currently open.`}
+                {' '}Open the Incident Dashboard on the Observers tab to review and respond.
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
-      <Card className={cn('votewise-card-glow transition-all', pulse && 'ring-2 ring-emerald-500/40')}>
+      <Card className={cn('votewise-card-glow transition-all', pulse && 'ring-2 ring-emerald-500/40', incidentPulse && 'ring-2 ring-red-500/40')}>
         <CardContent className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -109,11 +165,33 @@ export function LiveVoteMonitor({ electionId, subdomain }: { electionId: string;
 
       {/* Stat grid */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={Users} label="Eligible Voters" value={stats.eligibleVoters.toLocaleString()} color="text-blue-600" bg="bg-blue-100" />
-        <StatCard icon={Vote} label="Votes Cast" value={stats.votesCast.toLocaleString()} color="text-emerald-600" bg="bg-emerald-100" pulse={pulse} />
-        <StatCard icon={TrendingUp} label="Turnout" value={`${stats.turnoutPct}%`} color="text-amber-600" bg="bg-amber-100" />
-        <StatCard icon={Activity} label="Active Sessions" value={stats.systemHealth.activeSessions.toLocaleString()} color="text-purple-600" bg="bg-purple-100" />
+        <StatCard icon={Users} label="Eligible Voters" value={stats.eligibleVoters.toLocaleString()} color="text-zinc-700 dark:text-zinc-300" bg="bg-zinc-100 dark:bg-zinc-800/60" />
+        <StatCard icon={Vote} label="Votes Cast" value={stats.votesCast.toLocaleString()} color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-950/40" pulse={pulse} />
+        <StatCard icon={TrendingUp} label="Turnout" value={`${stats.turnoutPct}%`} color="text-amber-600" bg="bg-amber-100 dark:bg-amber-950/40" />
+        <StatCard icon={Siren} label="Open Incidents" value={(incidents?.open ?? 0).toLocaleString()} color={incidentPulse ? 'text-red-600' : (incidents && incidents.open > 0 ? 'text-amber-600' : 'text-emerald-600')} bg={incidentPulse ? 'bg-red-100 dark:bg-red-950/40' : (incidents && incidents.open > 0 ? 'bg-amber-100 dark:bg-amber-950/40' : 'bg-emerald-100 dark:bg-emerald-950/40')} pulse={incidentPulse} />
       </div>
+
+      {/* Incidents summary card (under the stat grid) */}
+      {incidents && incidents.total > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Siren className="h-4 w-4 text-primary" /> Incidents Overview</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <IncidentMetric label="Total" value={incidents.total} colour="text-foreground" />
+              <IncidentMetric label="Open" value={incidents.open} colour="text-amber-600" pulsing={incidents.open > 0} />
+              <IncidentMetric label="Critical" value={incidents.critical} colour="text-red-600" pulsing={incidents.critical > 0} />
+              <IncidentMetric label="Resolved" value={incidents.resolved} colour="text-emerald-600" />
+            </div>
+            <Separator className="my-3" />
+            <p className="text-xs text-muted-foreground">
+              {incidents.escalated > 0 && (
+                <span className="font-medium text-red-700 dark:text-red-400">{incidents.escalated} escalated · </span>
+              )}
+              Observer-reported incidents are tracked in real time. Open the Observers tab → Incident Dashboard for full details.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Turnout progress */}
       <Card>
@@ -227,7 +305,7 @@ export function LiveVoteMonitor({ electionId, subdomain }: { electionId: string;
               <div className="text-xs text-muted-foreground">Ballots Generated</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-600">{stats.systemHealth.activeSessions.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-zinc-700 dark:text-zinc-300">{stats.systemHealth.activeSessions.toLocaleString()}</div>
               <div className="text-xs text-muted-foreground">Active Sessions</div>
             </div>
             <div>
@@ -252,13 +330,22 @@ function StatCard({ icon: Icon, label, value, color, bg, pulse }: { icon: any; l
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className={cn('grid h-9 w-9 place-items-center rounded-lg', bg)}>
-            <Icon className={cn('h-4 w-4', color)} />
+            <Icon className={cn('h-4 w-4', color, pulse && 'animate-pulse')} />
           </div>
         </div>
         <div className="mt-2 text-2xl font-bold tabular-nums">{value}</div>
         <div className="text-xs text-muted-foreground">{label}</div>
       </CardContent>
     </Card>
+  )
+}
+
+function IncidentMetric({ label, value, colour, pulsing }: { label: string; value: number; colour: string; pulsing?: boolean }) {
+  return (
+    <div className="rounded-lg border border-border/50 bg-muted/20 p-2 text-center">
+      <div className={cn('font-display text-xl font-bold tabular-nums', colour, pulsing && 'animate-pulse')}>{value.toLocaleString()}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+    </div>
   )
 }
 

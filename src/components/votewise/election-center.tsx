@@ -4,14 +4,18 @@ import { useEffect, useState } from 'react'
 import {
   Vote, Plus, Loader2, ArrowLeft, Copy, CheckCircle2, Clock, Archive,
   Activity, FileText, Calendar, ChevronRight, Building2, Eye, Zap,
-  List as ListIcon,
+  List as ListIcon, LayoutTemplate,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 import { StatusBadge } from '@/components/votewise/shared'
 import { ElectionCalendar } from '@/components/votewise/election-calendar'
+import { ElectionTemplates } from '@/components/votewise/election-templates'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -19,6 +23,7 @@ export function ElectionCenter({ subdomain }: { subdomain?: string }) {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'list' | 'calendar'>('list')
+  const [templatesOpen, setTemplatesOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -57,6 +62,9 @@ export function ElectionCenter({ subdomain }: { subdomain?: string }) {
           <p className="text-sm text-muted-foreground">Manage all your elections in one place.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setTemplatesOpen(true)}>
+            <LayoutTemplate className="h-4 w-4" /> Templates
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5"><Copy className="h-4 w-4" /> Duplicate</Button>
           <Button size="sm" className="gap-1.5" onClick={() => { window.location.href = `/workspace/elections/create?org=${subdomain || ''}` }}><Plus className="h-4 w-4" /> Create Election</Button>
         </div>
@@ -118,14 +126,34 @@ export function ElectionCenter({ subdomain }: { subdomain?: string }) {
             <Card><CardContent className="py-16 text-center">
               <Vote className="mx-auto h-16 w-16 text-muted-foreground/30" />
               <h3 className="mt-4 font-display text-lg font-bold">No elections yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Create your first election in less than 5 minutes. Just a name, date, and voting window — that&apos;s it.</p>
-              <Button className="mt-4 gap-2" onClick={() => { window.location.href = `/workspace/elections/create?org=${subdomain || ''}` }}>
-                <Plus className="h-4 w-4" /> Create Your First Election
-              </Button>
+              <p className="mt-1 text-sm text-muted-foreground">Create your first election in less than 5 minutes — or start from a ready-made template.</p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button className="gap-2" onClick={() => { window.location.href = `/workspace/elections/create?org=${subdomain || ''}` }}>
+                  <Plus className="h-4 w-4" /> Create Your First Election
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={() => setTemplatesOpen(true)}>
+                  <LayoutTemplate className="h-4 w-4" /> Browse Templates
+                </Button>
+              </div>
             </CardContent></Card>
           )}
         </>
       )}
+
+      {/* Templates dialog */}
+      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display text-xl">
+              <LayoutTemplate className="h-5 w-5 text-primary" /> Election Templates
+            </DialogTitle>
+            <DialogDescription>
+              Save past elections as reusable templates, or spin up a new election from a built-in blueprint in seconds.
+            </DialogDescription>
+          </DialogHeader>
+          <ElectionTemplates subdomain={subdomain} />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

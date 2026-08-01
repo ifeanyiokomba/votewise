@@ -83,6 +83,12 @@ export const api = {
   validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   getElectionAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  // Election Templates — list/save/get/delete/apply (built-in + org-created)
+  getElectionTemplates: (subdomain?: string) => req(`/api/workspace/election-templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  saveElectionTemplate: (data: any, subdomain?: string) => req(`/api/workspace/election-templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  getElectionTemplate: (templateId: string, subdomain?: string) => req(`/api/workspace/election-templates/${templateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  deleteElectionTemplate: (templateId: string, subdomain?: string) => req(`/api/workspace/election-templates/${templateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  applyElectionTemplate: (templateId: string, data: any, subdomain?: string) => req(`/api/workspace/election-templates/${templateId}/apply${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   // Positions — within an election workspace
   getElectionPositions: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   addElectionPosition: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
@@ -95,6 +101,12 @@ export const api = {
   getElectionSupport: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   createElectionSupport: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   updateElectionSupport: (electionId: string, ticketId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support/${ticketId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Observer Incident Dashboard — real-time incident reporting + monitoring
+  getElectionIncidents: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  reportElectionIncident: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateElectionIncident: (electionId: string, incidentId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents/${incidentId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getElectionIncidentStats: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents/stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
 
   // Candidates — within an election workspace
   getElectionCandidates: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

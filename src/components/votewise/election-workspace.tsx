@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeft, Loader2, Vote, Trophy, Users, Eye, Headphones, CheckCircle2,
   TrendingUp, FileCheck2, ScrollText, Settings as SettingsIcon, Building2,
-  Clock, Shield, Copy, Zap, Lock,
+  Clock, Shield, Copy, Zap, Lock, LayoutTemplate, Sparkles, Siren,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 import { StatusBadge } from '@/components/votewise/shared'
 import { BallotSimulation } from '@/components/votewise/ballot-simulation'
@@ -47,6 +53,37 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('Overview')
 
+  // Save-as-template dialog state.
+  const [tplOpen, setTplOpen] = useState(false)
+  const [tplName, setTplName] = useState('')
+  const [tplDesc, setTplDesc] = useState('')
+  const [tplSaving, setTplSaving] = useState(false)
+
+  // Open-incident count for the header badge (fetched from the incident stats
+  // endpoint every 30s). When > 0 we render a red badge button in the header
+  // that jumps to the Observers tab (which now hosts the IncidentDashboard).
+  const [openIncidents, setOpenIncidents] = useState<number | null>(null)
+  const [criticalIncidents, setCriticalIncidents] = useState<number>(0)
+
+  useEffect(() => {
+    let active = true
+    async function loadIncidentCount() {
+      try {
+        const s = await api.getElectionIncidentStats(electionId, subdomain)
+        if (!active) return
+        setOpenIncidents(s.open ?? 0)
+        setCriticalIncidents(s.critical ?? 0)
+      } catch {
+        // Silently ignore — header badge is non-critical.
+        if (!active) return
+        setOpenIncidents(null)
+      }
+    }
+    loadIncidentCount()
+    const interval = setInterval(loadIncidentCount, 30000)
+    return () => { active = false; clearInterval(interval) }
+  }, [electionId, subdomain])
+
   useEffect(() => {
     let active = true
     Promise.all([
@@ -67,6 +104,34 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
 
   async function duplicate() {
     try { await api.duplicateElection(electionId, subdomain); toast.success('Election duplicated!') } catch (e: any) { toast.error(e.message) }
+  }
+
+  function openSaveTemplate() {
+    // Pre-fill the template name with the election name + " Template".
+    setTplName(election ? `${election.name} Template` : '')
+    setTplDesc('')
+    setTplOpen(true)
+  }
+
+  async function saveTemplate() {
+    if (!tplName.trim()) { toast.error('Template name is required'); return }
+    setTplSaving(true)
+    try {
+      const res = await api.saveElectionTemplate(
+        {
+          electionId,
+          templateName: tplName.trim(),
+          templateDescription: tplDesc.trim() || undefined,
+        },
+        subdomain,
+      )
+      toast.success(`Saved as template "${res?.template?.name || tplName.trim()}"`)
+      setTplOpen(false)
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save template')
+    } finally {
+      setTplSaving(false)
+    }
   }
 
   if (loading) return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -98,8 +163,23 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={e.status} />
+          {openIncidents !== null && openIncidents > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setTab('Observers')}
+              className="gap-1.5 border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50"
+              aria-label={`${openIncidents} open incident${openIncidents === 1 ? '' : 's'}`}
+              title={`${openIncidents} open incident${openIncidents === 1 ? '' : 's'}${criticalIncidents > 0 ? ` · ${criticalIncidents} critical` : ''} — open the Incident Dashboard`}
+            >
+              <Siren className={cn('h-3.5 w-3.5', criticalIncidents > 0 && 'animate-pulse')} />
+              <span className="tabular-nums">{openIncidents}</span>
+              <span className="hidden md:inline">Incident{openIncidents === 1 ? '' : 's'}</span>
+            </Button>
+          )}
           <Button size="sm" variant="ghost" onClick={() => window.open(`/results/${electionId}`, '_blank')} className="gap-1"><Eye className="h-3.5 w-3.5" /> Public Results</Button>
           <Button size="sm" variant="ghost" onClick={duplicate} className="gap-1"><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
+          <Button size="sm" variant="ghost" onClick={openSaveTemplate} className="gap-1"><LayoutTemplate className="h-3.5 w-3.5" /> Save as Template</Button>
         </div>
       </div>
 
@@ -303,6 +383,55 @@ export function ElectionWorkspace({ electionId, subdomain }: { electionId: strin
           <p className="mt-1 text-xs text-muted-foreground">Full functionality for this tab will be available as the platform evolves.</p>
         </CardContent></Card>
       )}
+
+      {/* Save-as-template dialog */}
+      <Dialog open={tplOpen} onOpenChange={(o) => !tplSaving && setTplOpen(o)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <LayoutTemplate className="h-5 w-5 text-primary" /> Save as Template
+            </DialogTitle>
+            <DialogDescription>
+              Snapshot this election&apos;s positions, candidates, and configuration into a reusable template you can apply to future elections.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="tpl-name-input">Template Name</Label>
+              <Input
+                id="tpl-name-input"
+                value={tplName}
+                onChange={(e) => setTplName(e.target.value)}
+                placeholder="e.g. Annual SUG Elections Template"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tpl-desc-input">Description (optional)</Label>
+              <Textarea
+                id="tpl-desc-input"
+                value={tplDesc}
+                onChange={(e) => setTplDesc(e.target.value)}
+                placeholder="Short note about what this template is for…"
+                rows={3}
+              />
+            </div>
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <Sparkles className="mb-1 inline h-3.5 w-3.5" />{' '}
+              <span className="font-semibold">What gets saved:</span>{' '}
+              election config (category, type, voting method, visibility, settings), all positions and candidates.
+              <br />
+              <span className="font-semibold">What&apos;s stripped:</span> IDs, dates, voter data, and audit logs.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTplOpen(false)} disabled={tplSaving}>Cancel</Button>
+            <Button onClick={saveTemplate} disabled={tplSaving || !tplName.trim()} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+              {tplSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LayoutTemplate className="h-4 w-4" />}
+              Save Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

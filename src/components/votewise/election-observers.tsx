@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { IncidentDashboard } from '@/components/votewise/incident-dashboard'
 
 // -----------------------------------------------------------------------------
 // Types
@@ -415,6 +416,9 @@ export function ElectionObservers({ electionId, subdomain }: { electionId: strin
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Real-time Incident Dashboard — observer-reported incidents during the election */}
+      <IncidentDashboard electionId={electionId} subdomain={subdomain} />
     </div>
   )
 }

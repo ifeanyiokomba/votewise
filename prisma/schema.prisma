@@ -1401,6 +1401,37 @@ model ChatMessage {
 }
 
 // ---------------------------------------------------------------------------
+// Election Templates — reusable election configurations saved from past
+// elections (or seeded as built-ins). Contains the election config + positions
+// + candidates as JSON, so it can be applied to create a new election with the
+// same structure in one click.
+// ---------------------------------------------------------------------------
+
+/// ElectionTemplate — a reusable election configuration saved from a past election.
+/// Contains the election config + positions + candidates as JSON, so it can be
+/// applied to create a new election with the same structure.
+model ElectionTemplate {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // template name (e.g. "Annual SUG Elections Template")
+  description     String?
+  category        String?  // Student Union, Executive, Board, etc.
+  electionType    String?  // General, Single Position, etc.
+  votingMethod    String?  // Single Choice, Multiple Choice, etc.
+  visibility      String   @default("PRIVATE")
+  settings        String?  // JSON: election settings
+  // Template data (JSON snapshot of positions + candidates structure)
+  templateData    String   // JSON: { positions: [{ title, description, scope, maximumVotes, candidates: [{ fullName, slogan, manifesto }] }] }
+  isBuiltIn       Boolean  @default(false) // built-in templates vs org-created
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([category])
+}
+
+// ---------------------------------------------------------------------------
 // Voter activity log — tracks voter lifecycle events (NOT vote choices)
 // ---------------------------------------------------------------------------
 model VoterActivityLog {
@@ -1417,5 +1448,40 @@ model VoterActivityLog {
 
   @@index([voterId])
   @@index([action])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Election Incidents — real-time incident reports by observers during an
+// election. Examples: voter intimidation, system malfunction, irregularity,
+// dispute, technical issue. Used by the Observer Incident Dashboard.
+// ---------------------------------------------------------------------------
+/// ElectionIncident — real-time incidents reported by observers during an election.
+/// Examples: voter intimidation, system malfunction, irregularity, dispute.
+model ElectionIncident {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  reportedById    String?  // observer member ID
+  reportedByName  String
+  type            String   // VOTER_INTIMIDATION | SYSTEM_MALFUNCTION | IRREGULARITY | DISPUTE | TECHNICAL_ISSUE | OTHER
+  severity        String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status          String   @default("OPEN") // OPEN | INVESTIGATING | RESOLVED | ESCALATED | DISMISSED
+  title           String
+  description     String
+  location        String?  // polling unit, faculty, department, etc.
+  affectedVoterId String?
+  metadata        String?  // JSON: { device, ip, timestamp, evidence }
+  assignedToId    String?
+  assignedToName  String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([severity])
   @@index([createdAt])
 }
