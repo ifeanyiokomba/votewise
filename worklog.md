@@ -1873,3 +1873,49 @@ Stage Summary:
   emerald-green rounded square — clearly communicates "secure verified voting,"
   which is exactly what VoteWise does. Rated 9/10 by VLM. Applied as the web
   app logo (NavBar, Footer, admin header) + favicon + apple-touch-icon.
+
+---
+Task ID: LOGO-LOADER-ANIMATION
+Agent: Lead Developer (main)
+Task: Create a transformative animated brand logo to be shown during load time.
+
+Work Log:
+- **Created `src/components/votewise/logo-loader.tsx`** — a Framer Motion
+  animated splash screen using a custom SVG recreation of the VoteWise logo
+  (green rounded square + gold ballot box + white checkmark). Animation
+  sequence (total ~2.8s visible):
+  1. **0.1s**: Logo container springs in (scale 0.3 → 1, opacity 0 → 1)
+  2. **0.15s**: Green rounded square background scales up from center
+  3. **0.3s**: Subtle inner gradient overlay fades in for depth
+  4. **0.5s**: Gold ballot box body scales up vertically (transformOrigin bottom)
+  5. **0.55s**: Slot on top of the box slides down into place
+  6. **0.7s**: Ballot box inner shadow line fades in
+  7. **0.85s**: White checkmark **draws itself** via SVG pathLength animation
+     (0 → 1, easeInOut, 0.6s) — the hero transformative moment
+  8. **1.0s**: Expanding pulse ring scales outward (1 → 2.4) + fades
+  9. **1.2s**: "VoteWise" wordmark fades in letter-by-letter (8 chars × 0.04s
+     stagger)
+  10. **1.4s**: Progress bar fades in, then fills 0 → 100% over 1.3s with a
+      primary→accent gradient
+  11. **1.6s**: "Election Platform" tagline fades in (uppercase, tracked)
+  12. **2.8s**: Entire loader fades out (opacity 1 → 0) + scales up slightly
+      (1 → 1.05), revealing the app beneath
+- **Background**: solid `bg-background` + a subtle radial primary/10 glow blur
+  behind the logo that scales in.
+- **Integration**: Wired into `src/app/page.tsx` — shows on first load only
+  (useState `loading=true`), calls `onDone` callback to unmount, uses
+  `AnimatePresence` for the exit animation so the fade-out is smooth.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Confirmed loader is visible immediately on page load (DOM check:
+    `.fixed.inset-0.z-[100]` present).
+  - Captured screenshots at multiple timestamps; VLM confirmed at 1.3s:
+    "green rounded square containing an orange ballot box symbol with a white
+    checkmark" + "VoteWise" wordmark fading in.
+  - Confirmed loader disappears after ~2.8s ("loader gone — app visible").
+  - Zero console/runtime errors.
+
+Stage Summary:
+- ✅ Transformative animated logo loader implemented with Framer Motion. The
+  logo builds itself piece-by-piece (square → box → slot → checkmark draws →
+  wordmark → progress bar), pulses, then fades away to reveal the app. Plays
+  on every initial page load.

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useApp } from '@/lib/store'
 import { getResultsSocket } from '@/lib/socket'
 import { NavBar, Footer } from '@/components/votewise/shared'
+import { LogoLoader } from '@/components/votewise/logo-loader'
 import { HomeView } from '@/components/votewise/home'
 import { VerifyView } from '@/components/votewise/verify'
 import { VoteView, SuccessView, ReceiptVerifyView } from '@/components/votewise/vote'
@@ -21,6 +22,8 @@ import { api } from '@/lib/api'
 
 export default function Home() {
   const { view, hydrate, voterToken, official, setVoterProfile, setOfficial, setLive } = useApp()
+  // Show the transformative logo loader on first load only.
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => { hydrate() }, [hydrate])
   useEffect(() => {
@@ -46,27 +49,30 @@ export default function Home() {
     : view
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <a href="#main-content" className="skip-link">Skip to content</a>
-      <NavBar />
-      <main id="main-content" className="flex-1">
-        {v === 'home' && <HomeView />}
-        {v === 'verify' && <VerifyView />}
-        {v === 'vote' && <VoteView />}
-        {v === 'success' && <SuccessView />}
-        {v === 'verify-receipt' && <ReceiptVerifyView />}
-        {v === 'voter-dashboard' && <VoterDashboard />}
-        {v === 'compare' && <CompareCandidatesView />}
-        {v === 'certificate' && <CertificateView />}
-        {v === 'guide' && <GuideView />}
-        {v === 'about' && <AboutView />}
-        {v === 'signup' && <SignupView />}
-        {v === 'organizations' && <OrganizationsView />}
-        {v === 'official-login' && <OfficialLoginView />}
-        {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
-      </main>
-      <Footer />
-      <ChatbotWidget />
-    </div>
+    <>
+      {loading && <LogoLoader onDone={() => setLoading(false)} />}
+      <div className="flex min-h-screen flex-col">
+        <a href="#main-content" className="skip-link">Skip to content</a>
+        <NavBar />
+        <main id="main-content" className="flex-1">
+          {v === 'home' && <HomeView />}
+          {v === 'verify' && <VerifyView />}
+          {v === 'vote' && <VoteView />}
+          {v === 'success' && <SuccessView />}
+          {v === 'verify-receipt' && <ReceiptVerifyView />}
+          {v === 'voter-dashboard' && <VoterDashboard />}
+          {v === 'compare' && <CompareCandidatesView />}
+          {v === 'certificate' && <CertificateView />}
+          {v === 'guide' && <GuideView />}
+          {v === 'about' && <AboutView />}
+          {v === 'signup' && <SignupView />}
+          {v === 'organizations' && <OrganizationsView />}
+          {v === 'official-login' && <OfficialLoginView />}
+          {v === 'official' && (official?.role === 'OBSERVER' ? <ObserverAnalyticsView /> : <OfficialDashboard />)}
+        </main>
+        <Footer />
+        <ChatbotWidget />
+      </div>
+    </>
   )
 }
