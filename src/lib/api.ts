@@ -93,6 +93,13 @@ export const api = {
   accreditationDashboard: (electionId: string | null, subdomain?: string) => req(`/api/workspace/accreditation${electionId ? `?electionId=${electionId}` : ''}${subdomain ? `${electionId ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   createAccreditationRule: (data: any, subdomain?: string) => req(`/api/workspace/accreditation${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
 
+  // Chapter 9: Rules Engine
+  ruleSets: (electionId: string | null, subdomain?: string) => req(`/api/workspace/rules${electionId ? `?electionId=${electionId}` : ''}${subdomain ? `${electionId ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  createRuleSet: (data: any, subdomain?: string) => req(`/api/workspace/rules${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  testRules: (ruleSetId: string, sampleVoter: any, subdomain?: string) => req(`/api/workspace/rules/test${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ruleSetId, sampleVoter }) }),
+  policies: (subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  savePolicy: (data: any, subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),

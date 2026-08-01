@@ -651,6 +651,89 @@ model ElectionEvent {
   @@index([createdAt])
 }
 
+// ===========================================================================
+// CHAPTER 9 — ELECTION RULES ENGINE & BUSINESS LOGIC AUTOMATION
+// ===========================================================================
+
+/// RuleSet — a versioned collection of rules for an election.
+model RuleSet {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  name            String
+  version         Int      @default(1)
+  status          String   @default("DRAFT") // DRAFT | ACTIVE | ARCHIVED
+  isSnapshot      Boolean  @default(false)
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  rules           ElectionRule[]
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([status])
+}
+
+/// ElectionRule — a single configurable rule with conditions, action, priority.
+model ElectionRule {
+  id              String   @id @default(cuid())
+  ruleSetId       String
+  ruleSet         RuleSet  @relation(fields: [ruleSetId], references: [id], onDelete: Cascade)
+  organizationId  String
+  electionId      String?
+  name            String
+  description     String?
+  category        String   // ELIGIBILITY | ACCREDITATION | AUTHENTICATION | VOTING | CANDIDATES | RESULTS | NOTIFICATIONS | OBSERVERS | SUPPORT | SECURITY | AUTOMATION
+  conditions      String   // JSON: { logic: "AND"|"OR", groups: [{ field, operator, value }] }
+  action          String   // ALLOW | DENY | REQUIRE | NOTIFY | AUTOMATE | FLAG | REJECT
+  actionParams    String?  // JSON
+  priority        Int      @default(0)
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([ruleSetId])
+  @@index([category])
+  @@index([electionId])
+}
+
+/// PolicyLibrary — reusable rule configurations.
+model PolicyLibrary {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  name            String
+  description     String?
+  category        String
+  isBuiltIn       Boolean  @default(false)
+  policy          String   // JSON: array of rule definitions
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([category])
+}
+
+/// RuleEvaluationLog — every rule evaluation stored for explainability.
+model RuleEvaluationLog {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  voterId         String?
+  ruleSetId       String?
+  ruleId          String?
+  ruleName        String?
+  category        String?
+  passed          Boolean
+  failedCondition String?  // JSON: { field, operator, expected, actual }
+  evaluatedAt     DateTime @default(now())
+
+  @@index([voterId])
+  @@index([electionId])
+  @@index([ruleId])
+  @@index([evaluatedAt])
+}
+
 /// Chapter 8: AccreditationRule — configurable rules that determine which
 /// voters are eligible for accreditation in a specific election. Rules match
 /// against voter metadata fields. Examples:
