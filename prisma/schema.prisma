@@ -734,6 +734,87 @@ model RuleEvaluationLog {
   @@index([evaluatedAt])
 }
 
+// ===========================================================================
+// CHAPTER 10 — SECURE VOTING ENGINE (SVE)
+// Ballots, vote casting, receipts, simulation, post-election verification.
+// ===========================================================================
+
+/// Ballot — a dynamically generated, signed ballot for a specific voter session.
+/// Contains positions + candidates + voting rules. Signed for integrity.
+model Ballot {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  voterId         String?
+  sessionId       String?  // VotingSession ID
+  // Ballot content (JSON: positions + candidates + voting rules)
+  content         String   // JSON: [{ positionId, title, candidates: [{ id, name, photo, manifesto }] }]
+  // Security
+  integrityToken  String   // sha256(content + voterHash + timestamp) — tamper detection
+  digitalSignature String? // HMAC-SHA256 of content + integrityToken
+  version         Int      @default(1) // ballot schema version
+  expiresAt       DateTime // ballot becomes invalid after this time
+  status          String   @default("GENERATED") // GENERATED | SUBMITTED | EXPIRED | CANCELLED
+  isSimulation    Boolean  @default(false) // Chapter 10: Ballot Preview & Simulation
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([electionId])
+  @@index([voterId])
+  @@index([sessionId])
+  @@index([status])
+}
+
+/// VoteRecord — the actual recorded vote. Identity is separated from ballot
+/// content to preserve secrecy. Only an opaque voterHash is stored, never the
+/// voter ID alongside the candidate choice.
+model VoteRecord {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  positionId      String?
+  candidateId     String?
+  // Anonymous: only the hash of the voter, never the voter ID
+  voterHash       String   // sha256(voterId + pepper)
+  // Encrypted ballot content (AES-256-GCM)
+  encryptedChoice String   // ciphertext of { candidateId, isNota, timestamp }
+  iv              String   // initialization vector
+  keyId           String   // which encryption key was used
+  // Receipt
+  receiptCode     String   @unique // voter uses this to verify their vote was counted
+  // Idempotency
+  idempotencyKey  String   @unique // sha256(voterId + electionId + positionId)
+  // Audit
+  ballotId        String?  // reference to the Ballot that generated this vote
+  ipAddress       String?
+  deviceFingerprint String?
+  isSimulation    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([electionId])
+  @@index([positionId])
+  @@index([voterHash])
+  @@index([receiptCode])
+}
+
+/// ElectionVerification — post-election verification package. Generated after
+/// certification. Contains total counts, audit hash, and integrity signature.
+model ElectionVerification {
+  id              String   @id @default(cuid())
+  electionId      String   @unique
+  organizationId  String?
+  totalEligible   Int      @default(0)
+  totalVotes      Int      @default(0)
+  invalidVotes    Int      @default(0)
+  blankVotes      Int      @default(0)
+  turnoutPct      Float    @default(0)
+  auditHash       String   // sha256 of all vote records
+  integritySignature String // HMAC-SHA256(auditHash + secret)
+  generatedAt     DateTime @default(now())
+
+  @@index([electionId])
+}
+
 /// Chapter 8: AccreditationRule — configurable rules that determine which
 /// voters are eligible for accreditation in a specific election. Rules match
 /// against voter metadata fields. Examples:

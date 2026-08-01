@@ -100,6 +100,12 @@ export const api = {
   policies: (subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   savePolicy: (data: any, subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
 
+  // Chapter 10: Secure Voting Engine
+  generateBallot: (electionId: string, voterId?: string, isSimulation?: boolean, subdomain?: string) => req(`/api/workspace/ballot${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, voterId, isSimulation }) }),
+  submitVote: (ballotId: string, selections: Record<string, string>, subdomain?: string) => req(`/api/workspace/ballot/submit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ballotId, selections }) }),
+  verifyReceipt: (receiptCode: string, subdomain?: string) => req(`/api/workspace/ballot/receipt${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  simulateBallot: (electionId: string, subdomain?: string) => req(`/api/workspace/ballot/simulate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId }) }),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),
