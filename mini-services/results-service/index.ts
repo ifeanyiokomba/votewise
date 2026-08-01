@@ -20,7 +20,22 @@ import { createHash, createHmac, createDecipheriv } from 'crypto'
 
 const db = new PrismaClient({ log: ['error', 'warn'] })
 
-const VOTE_ENC_KEY_RAW = process.env.VOTE_ENC_KEY || 'votewise-sug-vote-encryption-key-v2-32bytes!'
+// SECRET MANAGEMENT — no hardcoded fallbacks.
+// This MUST match src/lib/secrets.ts in the main app. If the env var is
+// missing, the process fails immediately. Both processes MUST use the same
+// key value or votes encrypted by the app won't decrypt here.
+function requireSecret(name: string): string {
+  const value = process.env[name]
+  if (!value || value.length < 16) {
+    console.error(`[security] FATAL: Required secret "${name}" is missing or too short (min 16 chars).`)
+    console.error(`[security] Set it in the environment (e.g. openssl rand -hex 32).`)
+    console.error(`[security] This MUST match the value used by the main Next.js app.`)
+    process.exit(1)
+  }
+  return value
+}
+
+const VOTE_ENC_KEY_RAW = requireSecret('VOTE_ENC_KEY')
 const VOTE_ENC_KEY = VOTE_ENC_KEY_RAW.length >= 32 ? VOTE_ENC_KEY_RAW.slice(0, 32) : createHash('sha256').update(VOTE_ENC_KEY_RAW).digest().subarray(0, 32)
 
 function decryptVote(ciphertextB64: string, ivB64: string) {
@@ -284,9 +299,12 @@ const internalServer = createServer(async (req, res) => {
   res.end('not found')
 })
 
+// Bind to loopback only — the internal bump endpoint (3031) must NEVER be
+// reachable from outside the host. The Socket.io server (3030) is also
+// loopback-only; Caddy is the sole public entry point.
 const PORT = 3030
-httpServer.listen(PORT, () => console.log(`[results-service] WebSocket server running on port ${PORT}`))
-internalServer.listen(3031, () => console.log(`[results-service] internal HTTP on port 3031`))
+httpServer.listen(PORT, '127.0.0.1', () => console.log(`[results-service] WebSocket server running on 127.0.0.1:${PORT}`))
+internalServer.listen(3031, '127.0.0.1', () => console.log(`[results-service] internal HTTP on 127.0.0.1:3031`))
 
 process.on('SIGTERM', () => { httpServer.close(() => process.exit(0)); internalServer.close() })
 process.on('SIGINT', () => { httpServer.close(() => process.exit(0)); internalServer.close() })

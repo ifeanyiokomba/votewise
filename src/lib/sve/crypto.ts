@@ -25,10 +25,7 @@ import {
   type EncryptedBlob,
 } from '@/lib/crypto'
 import { timingSafeEqual } from 'crypto'
-
-// Peppers (separate from the Voter.hashVoter pepper to isolate concerns).
-const SVE_BALLOT_PEPPER = process.env.SVE_BALLOT_PEPPER || 'votewise-sve-ballot-pepper-v1'
-const SVE_VOTER_PEPPER = process.env.SVE_VOTER_PEPPER || 'votewise-sve-voter-pepper-v1'
+import { SVE_BALLOT_PEPPER, SVE_VOTER_PEPPER } from '@/lib/secrets'
 
 // ---------------------------------------------------------------------------
 // Ballot integrity & signing

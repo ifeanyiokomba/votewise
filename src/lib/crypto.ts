@@ -10,6 +10,12 @@ import {
   randomBytes, scryptSync, timingSafeEqual, createHash, createHmac,
   randomInt, createCipheriv, createDecipheriv,
 } from 'crypto'
+import {
+  VOTE_ENC_KEY as VOTE_ENC_KEY_ENV,
+  VOTER_HASH_PEPPER as VOTER_HASH_PEPPER_ENV,
+  HMAC_SECRET as HMAC_SECRET_ENV,
+  VOTE_KEY_ID as VOTE_KEY_ID_ENV,
+} from '@/lib/secrets'
 
 // ---------------------------------------------------------------------------
 // Passwords (scrypt)
@@ -69,8 +75,7 @@ export function generateBackupCodes(count = 8): { plain: string[]; hashed: strin
   return { plain, hashed }
 }
 
-// One-way voter hash (so votes can't be traced back to a voter row).
-const VOTER_HASH_PEPPER = process.env.VOTER_HASH_PEPPER || 'votewise-sug-pepper-v2'
+const VOTER_HASH_PEPPER = VOTER_HASH_PEPPER_ENV
 export function hashVoter(matric: string): string {
   return createHash('sha256').update(`${matric}:${VOTER_HASH_PEPPER}`).digest('hex')
 }
@@ -82,7 +87,7 @@ export function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex')
 }
 
-const HMAC_SECRET = process.env.HMAC_SECRET || 'votewise-sug-hmac-secret-dev-only'
+const HMAC_SECRET = HMAC_SECRET_ENV
 export function hmacSign(input: string): string {
   return createHmac('sha256', HMAC_SECRET).update(input).digest('hex')
 }
@@ -97,11 +102,12 @@ export function hmacVerify(input: string, sig: string): boolean {
 // ---------------------------------------------------------------------------
 // AES-256-GCM vote encryption
 // ---------------------------------------------------------------------------
-// In sandbox the key is derived from env. In production this would be an
-// envelope key fetched from KMS and the data key itself encrypted at rest.
-const VOTE_ENC_KEY_RAW = process.env.VOTE_ENC_KEY || 'votewise-sug-vote-encryption-key-v2-32bytes!'
+// The key MUST come from env (VOTE_ENC_KEY). No hardcoded fallback — if it's
+// missing, the process fails at startup (see src/lib/secrets.ts).
+// In production this would be an envelope key fetched from KMS.
+const VOTE_ENC_KEY_RAW = VOTE_ENC_KEY_ENV
 const VOTE_ENC_KEY = VOTE_ENC_KEY_RAW.length >= 32 ? VOTE_ENC_KEY_RAW.slice(0, 32) : sha256(VOTE_ENC_KEY_RAW).slice(0, 32)
-export const VOTE_KEY_ID = process.env.VOTE_KEY_ID || 'v1'
+export const VOTE_KEY_ID = VOTE_KEY_ID_ENV
 
 export interface EncryptedBlob { ciphertext: string; iv: string; keyId: string }
 

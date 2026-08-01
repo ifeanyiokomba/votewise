@@ -1,10 +1,23 @@
-:81 {
-	@transform_port_query {
-		query XTransformPort=*
-	}
+# VoteWise — Caddy Gateway Configuration
+#
+# SECURITY: Fixed routes only. The dynamic XTransformPort query rule has been
+# removed — it allowed proxying to ANY local port, which is unsafe on a public
+# domain. Only the Next.js app (3000) and the Socket.io server (3030) are
+# exposed. The internal bump port (3031) is NEVER proxied — it's bound to
+# 127.0.0.1 only and reachable solely from the Next.js app process.
+#
+# The Socket.io client connects via path "/" with ?XTransformPort=3030 in the
+# query string. Caddy matches the Socket.io upgrade requests and proxies them
+# to port 3030. Everything else goes to the Next.js app on port 3000.
 
-	handle @transform_port_query {
-		reverse_proxy localhost:{query.XTransformPort} {
+:81 {
+	# Socket.io live-results connections — proxy to the results-service (port 3030).
+	# The client connects to "/?XTransformPort=3030" with path "/".
+	@socketio {
+		query XTransformPort=3030
+	}
+	handle @socketio {
+		reverse_proxy localhost:3030 {
 			header_up Host {host}
 			header_up X-Forwarded-For {remote_host}
 			header_up X-Forwarded-Proto {scheme}
@@ -12,6 +25,7 @@
 		}
 	}
 
+	# Everything else — proxy to the Next.js app (port 3000).
 	handle {
 		reverse_proxy localhost:3000 {
 			header_up Host {host}
