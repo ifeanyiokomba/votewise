@@ -224,6 +224,9 @@ model VoterGroup {
   description     String?
   metadata        String?  // JSON: { level: "300", branch: "Lagos", ... }
   voterCount      Int      @default(0) // cached count for billing/display
+  // Chapter 8: dynamic group rules
+  isDynamic       Boolean  @default(false) // true = rule-based, auto-updating
+  rules           String?  // JSON array: [{ field: "faculty", operator: "equals", value: "Engineering" }, { field: "level", operator: "equals", value: "400" }]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -643,6 +646,49 @@ model ElectionEvent {
   metadata        String?  // JSON for extra context
   createdAt       DateTime @default(now())
 
+  @@index([electionId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+/// Chapter 8: AccreditationRule — configurable rules that determine which
+/// voters are eligible for accreditation in a specific election. Rules match
+/// against voter metadata fields. Examples:
+///   { field: "faculty", operator: "equals", value: "Engineering" }
+///   { field: "level", operator: "in", value: ["300", "400"] }
+///   { field: "duesPaid", operator: "equals", value: "Yes" }
+model AccreditationRule {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  workspaceId     String?
+  name            String   // "Engineering 400-Level Only"
+  description     String?
+  rules           String   // JSON array of rule conditions
+  method          String   @default("automatic") // automatic | manual | hybrid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([electionId])
+}
+
+/// Chapter 8: VoterTimelineEvent — per-voter audit timeline. Records every
+/// lifecycle event: imported, verified email, accredited, received OTVP,
+/// verified OTVP, vote cast, result published, etc.
+model VoterTimelineEvent {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  voterId         String
+  electionId      String?
+  eventType       String   // IMPORTED | EMAIL_VERIFIED | PHONE_VERIFIED | ACCREDITED | OTVP_ISSUED | OTVP_VERIFIED | VOTE_CAST | RESULT_PUBLISHED | SUSPENDED | REACTIVATED | GROUP_ASSIGNED | PROFILE_UPDATED
+  description     String?
+  actorId         String?
+  actorName       String?
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+
+  @@index([voterId])
   @@index([electionId])
   @@index([eventType])
   @@index([createdAt])

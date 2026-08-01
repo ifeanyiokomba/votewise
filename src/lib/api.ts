@@ -83,6 +83,16 @@ export const api = {
   validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
 
+  // Chapter 8: Voter Management
+  voterRegistry: (params: string, subdomain?: string) => req(`/api/workspace/voters${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  addVoter: (data: any, subdomain?: string) => req(`/api/workspace/voters${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bulkVoterAction: (action: string, voterIds: string[], subdomain?: string) => req(`/api/workspace/voters${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify({ action, voterIds }) }),
+  getVoterProfile: (id: string, subdomain?: string) => req(`/api/workspace/voters/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  voterGroups: (subdomain?: string) => req(`/api/workspace/voter-groups${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  createVoterGroup: (data: any, subdomain?: string) => req(`/api/workspace/voter-groups${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  accreditationDashboard: (electionId: string | null, subdomain?: string) => req(`/api/workspace/accreditation${electionId ? `?electionId=${electionId}` : ''}${subdomain ? `${electionId ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  createAccreditationRule: (data: any, subdomain?: string) => req(`/api/workspace/accreditation${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),

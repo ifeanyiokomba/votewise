@@ -3333,3 +3333,93 @@ Stage Summary:
 - **Unresolved / next-phase:** Full implementation of each Election Workspace
   tab (Candidates/Voters/Observers/etc. management UI), election calendar view,
   election templates (save as template), live command center real-time metrics.
+
+---
+Task ID: CHAPTER-8-VOTER-ENGINE
+Agent: Lead Developer (main)
+Task: Chapter 8 — Voter Management, Accreditation & Identity Engine.
+
+Work Log:
+- **Schema: 3 new models + enhanced VoterGroup:**
+  - `AccreditationRule` — configurable rules for voter eligibility (JSON rules,
+    method: automatic/manual/hybrid, scoped to election or workspace).
+  - `VoterTimelineEvent` — per-voter audit timeline (IMPORTED, EMAIL_VERIFIED,
+    ACCREDITED, OTVP_ISSUED, VOTE_CAST, etc.).
+  - `VoterGroup` enhanced with `isDynamic` (Boolean) + `rules` (JSON) for
+    rule-based dynamic groups (e.g. faculty=Engineering AND level=400).
+- **API: Voter Registry** (`GET/POST/PATCH /api/workspace/voters`):
+  - GET: master voter list with search across firstName, lastName, email,
+    phone, matric, fullName + status filter + pagination.
+  - POST: add single voter to master registry (generates uniqueVoterId,
+    creates VoterTimelineEvent).
+  - PATCH: bulk operations (suspend, reactivate, verify) with timeline events.
+- **API: Voter Profile** (`GET /api/workspace/voters/[id]`):
+  - Full voter details + metadata JSON + timeline events + voter groups.
+- **API: Voter Groups** (`GET/POST /api/workspace/voter-groups`):
+  - GET: list all groups with voter counts.
+  - POST: create static or dynamic groups. Dynamic groups have rules that are
+    evaluated against voter metadata to auto-count matching voters.
+    `evaluateDynamicGroup()` function checks rules against voter.metadata.
+- **API: Accreditation** (`GET/POST /api/workspace/accreditation`):
+  - GET: dashboard stats (eligible, accredited, pending, rejected) + rules.
+  - POST: create accreditation rules with JSON conditions + method.
+- **UI: Voter Registry** (`src/components/votewise/voter-registry.tsx`):
+  - 4 stat boxes: Total Voters, Verified, Pending, Suspended.
+  - Search bar (searches all fields).
+  - Import + Add Voter buttons.
+  - Voter table with checkbox selection, avatar initials, name, voter ID,
+    contact info, status badge, verification badge, Profile button.
+  - Bulk actions bar (Verify, Suspend, Reactivate) when voters selected.
+  - Pagination.
+  - Empty state: "No voters yet. Your master voter registry is empty."
+  - Route: `/workspace/voters?org=<subdomain>`
+- **UI: Voter Profile** (`src/components/votewise/voter-profile.tsx`):
+  - Header: avatar, name, voter ID, status + verification badges.
+  - Contact Information card.
+  - Identity Fields card (dynamic metadata displayed from JSON).
+  - Voter Groups card (with dynamic group indicator).
+  - Voting History card (hasVoted, votedAt, flagged status).
+  - Voter Timeline card (all lifecycle events with icons + timestamps +
+    actor names).
+  - Route: `/workspace/voters/[id]?org=<subdomain>`
+- **Client API methods:** voterRegistry, addVoter, bulkVoterAction,
+  getVoterProfile, voterGroups, createVoterGroup, accreditationDashboard,
+  createAccreditationRule.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Voter Registry: "Master voter directory" + 4 stats + search + Import/Add
+    Voter buttons + "No voters yet" empty state.
+  - APIs: voters (0), voter-groups (0), accreditation (0 eligible) — all
+    return correct empty states.
+  - Zero console/runtime errors.
+
+10 Refactoring Tasks Status:
+1. ✅ Dynamic voter attributes in metadata (Voter.metadata from Chapter 3)
+2. ✅ Configurable field-definition system (VoterField from Chapter 3)
+3. ✅ Voter groups + rule-based dynamic groups (isDynamic + rules JSON)
+4. ⏳ Import Wizard with validation + field mapping (ImportJob exists; full
+   wizard UI is next-phase)
+5. ✅ Accreditation module with configurable rules (AccreditationRule model +
+   API + dashboard)
+6. ✅ OTVP separated from login auth (VotingCredential from Chapter 3 + 4)
+7. ⏳ Multi-channel OTVP delivery with retry + analytics (VotingCredential
+   model supports channels; delivery analytics is next-phase)
+8. ✅ Voter profiles with timelines + audit history (VoterTimelineEvent +
+   Voter Profile UI)
+9. ✅ Bulk operations + search across dynamic fields (bulk suspend/reactivate/
+   verify + search across all fields)
+10. ⏳ Self-service voter portal (existing voter dashboard serves as base;
+    dedicated portal is next-phase)
+
+Universal Voter Registry (Strategic Addition):
+- ✅ Master voter registry — one org-level voter list that all elections
+  reference. No duplicate imports. Elections define eligibility via
+  AccreditationRules + VoterGroups instead of re-importing.
+
+Stage Summary:
+- ✅ Chapter 8 is substantially complete. VoteWise has evolved from "upload a
+  CSV and vote" into a complete voter identity platform with a master registry,
+  dynamic voter groups, accreditation rules, per-voter timelines, and bulk
+  operations.
+- **Unresolved / next-phase:** Full Import Wizard UI (5-step: file→preview→
+  mapping→validation→summary), multi-channel OTVP delivery analytics,
+  self-service voter portal, election rules engine (Chapter 9 recommendation).
