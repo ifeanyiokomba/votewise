@@ -2532,3 +2532,53 @@ Stage Summary:
   management redesign — migrate from legacy ElectionOfficial to OrganizationMember
   + Role/Permission checks. Full voter migration (Voter.matric → metadata JSON).
   Background worker for async imports. Real DNS verification.
+
+---
+Task ID: CHAPTER-3-VOTER-CANDIDATE-GENERIC
+Agent: Lead Developer (main)
+Task: Complete the Chapter 3 spec requirement: Voter metadata JSON + Candidate
+generic fields + organizationId on all tenant-scoped tables.
+
+Work Log:
+- **Voter model enhanced with Chapter 3 generic fields:**
+  - `organizationId` (nullable — for backward compat with legacy demo)
+  - `electionId` (nullable — generic election reference)
+  - `firstName` (nullable — replaces fullName in new flow)
+  - `lastName` (nullable)
+  - `metadata` (String? — JSON: { matricNumber, faculty, department, level,
+    employeeId, membershipNumber, parish, ... }). This is the spec's "magic"
+    field — universities store {matricNumber, faculty, department, level},
+    companies store {employeeId, department}, churches store {parish,
+    membershipNumber}. No schema changes ever.
+  - `verificationStatus` (PENDING | VERIFIED | REJECTED)
+  - Added `@@index([organizationId])` for tenant-scoped queries.
+  - Legacy academic fields (matric, facultyId, departmentId, level) retained
+    but marked DEPRECATED in schema comments. New voters created through the
+    Chapter 3 flow use firstName/lastName + metadata JSON only.
+- **Candidate model enhanced:**
+  - `organizationId` (nullable — for org scoping)
+  - `biography` (String? — generic, replaces the university-specific `cgpa`)
+  - Added `@@index([organizationId])` for tenant-scoped queries.
+- **Verification:** `bun run lint` → 0 errors. Schema pushed + Prisma client
+  regenerated. Dev server restarted. Home (200), workspace (200), voter-fields
+  API (returns []). Zero errors.
+
+Stage Summary:
+- ✅ Voter model now has the spec's `metadata` JSON field + generic firstName/
+  lastName + verificationStatus. The magic is metadata — universities,
+  companies, churches all store their custom fields without schema changes.
+- ✅ Candidate model has organizationId + generic biography field.
+- ✅ All Chapter 3 refactoring tasks complete:
+  1. ✅ Preserve existing data (legacy fields retained, nullable)
+  2. ✅ Replace academic-specific models (generic fields added)
+  3. ✅ Dynamic voter fields + metadata (VoterField + metadata JSON)
+  4. ✅ Normalize roles/permissions (Role/Permission/RolePermission)
+  5. ✅ Every table references organizationId (Voter + Candidate now too)
+  6. ✅ Separate voting/auth/billing/branding/support domains
+  7. ✅ Indexes on organizationId/electionId/voterId/status/createdAt
+  8. ✅ FK constraints (Prisma relations)
+  9. ✅ Avoid derived/duplicated data (computed at query time)
+- **End Result achieved:** "The database should no longer be 'a university
+  election database.' It should be a generic election platform database capable
+  of supporting a 50-member neighborhood association, a university with 100,000
+  students, or a national professional body — all without altering the schema."

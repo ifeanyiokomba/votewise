@@ -671,6 +671,8 @@ model Position {
 
 model Candidate {
   id               String      @id @default(cuid())
+  // Chapter 3: generic org scoping
+  organizationId   String?
   electionSessionId String?
   electionSession  ElectionSession? @relation(fields: [electionSessionId], references: [id], onDelete: Cascade)
   fullName         String
@@ -689,6 +691,8 @@ model Candidate {
   manifesto        String?
   campaignVideoUrl String?
   photoUrl         String?
+  // Chapter 3: generic biography field (replaces cgpa)
+  biography        String?
   screeningStatus  String      @default("PENDING") // PENDING|APPROVED|DISQUALIFIED|WITHDRAWN
   screeningNotes   String?
   screenedById     String?
@@ -701,14 +705,29 @@ model Candidate {
   updatedAt        DateTime    @updatedAt
 
   @@index([positionId])
+  @@index([organizationId])
   @@index([screeningStatus])
 }
 
 // ---------------------------------------------------------------------------
-// Voters (students on the register)
+// Voters (students on the register) — LEGACY + Chapter 3 generic fields
 // ---------------------------------------------------------------------------
+// Chapter 3: the Voter model now carries generic fields (organizationId,
+// firstName, lastName, metadata, verificationStatus) alongside the legacy
+// academic fields (matric, facultyId, departmentId, level). The legacy fields
+// are DEPRECATED and will be removed once the demo election is migrated to
+// use dynamic VoterField metadata. New voters created through the Chapter 3
+// flow should use firstName/lastName + metadata JSON only.
 model Voter {
   id                String       @id @default(cuid())
+  // Chapter 3 generic fields (nullable for backward compat)
+  organizationId    String?
+  electionId        String?      // generic election reference (future)
+  firstName         String?
+  lastName          String?
+  metadata          String?      // JSON: { matricNumber, faculty, department, level, employeeId, ... }
+  verificationStatus String?     @default("PENDING") // PENDING | VERIFIED | REJECTED
+  // Legacy academic fields (DEPRECATED — use metadata + VoterField instead)
   tenantId          String?
   tenant            Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   electionSessionId String?
@@ -770,6 +789,7 @@ model Voter {
   activityLogs      VoterActivityLog[]
 
   @@index([electionSessionId])
+  @@index([organizationId])
   @@index([facultyId])
   @@index([hasVoted])
   @@index([flagged])
