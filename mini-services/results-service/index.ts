@@ -168,16 +168,29 @@ async function computeSveLive(electionId: string) {
     },
   })
 
-  // SVE vote records (non-simulation).
-  const sveVotes = await db.voteRecord.findMany({
-    where: { electionId, isSimulation: false },
-    select: { id: true, positionId: true, candidateId: true, encryptedChoice: true, iv: true, voterHash: true, createdAt: true },
+  // Use maintained CandidateTally for per-candidate + per-position counts.
+  // This is O(positions × candidates), NOT O(votes) — flat regardless of vote count.
+  const tallies = await db.candidateTally.findMany({
+    where: { electionId },
+    select: { positionId: true, candidateId: true, count: true },
   })
 
-  const uniqueVoters = new Set(sveVotes.map((v) => v.voterHash)).size
+  // Total ballot records (cheap indexed count, not a scan).
+  const ballotRecords = await db.voteRecord.count({
+    where: { electionId, isSimulation: false },
+  })
+
+  // Unique voters — use a distinct count query instead of loading all rows.
+  // SQLite supports COUNT(DISTINCT ...) via Prisma's groupBy.
+  const uniqueVoterAgg = await db.voteRecord.groupBy({
+    by: ['voterHash'],
+    where: { electionId, isSimulation: false },
+    _count: { voterHash: true },
+  })
+  const uniqueVoters = uniqueVoterAgg.length
   const turnoutPct = eligibleVoters > 0 ? Math.round((uniqueVoters / eligibleVoters) * 10000) / 100 : 0
 
-  // Per-position counts.
+  // Per-position counts (from tallies, not from scanning VoteRecord).
   const positions = await db.position.findMany({
     where: { electionSessionId: electionId },
     select: { id: true, title: true },
@@ -186,10 +199,10 @@ async function computeSveLive(electionId: string) {
   const votesByPosition = positions.map((p) => ({
     positionId: p.id,
     title: p.title,
-    count: sveVotes.filter((v) => v.positionId === p.id).length,
+    count: tallies.filter((t) => t.positionId === p.id).reduce((sum, t) => sum + t.count, 0),
   }))
 
-  // Per-candidate counts (only if results visible).
+  // Per-candidate counts (only if results visible) — from maintained tallies.
   let votesByCandidate: any[] = []
   if (showCandidateResults) {
     const candidates = await db.candidate.findMany({
@@ -201,11 +214,30 @@ async function computeSveLive(electionId: string) {
       candidateId: c.id,
       candidateName: c.fullName,
       photo: c.photoUrl,
-      count: sveVotes.filter((v) => v.candidateId === c.id).length,
+      count: tallies.find((t) => t.candidateId === c.id)?.count || 0,
     }))
+    // Include NOTA tally if present (candidateId = '__NOTA__' sentinel).
+    const notaTallies = tallies.filter((t) => t.candidateId === '__NOTA__')
+    for (const nt of notaTallies) {
+      const pos = positions.find((p) => p.id === nt.positionId)
+      if (pos) {
+        votesByCandidate.push({
+          positionId: nt.positionId,
+          candidateId: null,
+          candidateName: 'None of the Above',
+          photo: null,
+          count: nt.count,
+        })
+      }
+    }
   }
 
-  const lastVote = sveVotes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+  // Last vote timestamp — single row, not a full scan.
+  const lastVoteRecord = await db.voteRecord.findFirst({
+    where: { electionId, isSimulation: false },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  })
 
   const data = {
     electionId,
@@ -213,9 +245,9 @@ async function computeSveLive(electionId: string) {
     status: election.status,
     eligibleVoters,
     votesCast: uniqueVoters,
-    ballotRecords: sveVotes.length,
+    ballotRecords,
     turnoutPct,
-    lastVoteAt: lastVote?.createdAt?.toISOString(),
+    lastVoteAt: lastVoteRecord?.createdAt?.toISOString(),
     votesByPosition,
     votesByCandidate,
     showCandidateResults,

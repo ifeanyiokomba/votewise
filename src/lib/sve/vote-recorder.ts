@@ -150,6 +150,18 @@ export async function castVote(opts: CastVoteOptions, req?: NextRequest): Promis
               isSimulation,
             },
           })
+          // Maintain CandidateTally (null candidateId = NOTA) — atomic increment
+          // so live results never need to scan all VoteRecord rows.
+          if (!isSimulation) {
+            await tx.candidateTally.upsert({
+              where: { electionId_positionId_candidateId: { electionId, positionId, candidateId: '__NOTA__' } },
+              create: { electionId, positionId, candidateId: '__NOTA__', count: 1 },
+              update: { count: { increment: 1 } },
+            }).catch(() => {
+              // candidateId is nullable but unique constraint needs a value for NOTA.
+              // Use a sentinel — the tally reads handle null vs sentinel.
+            })
+          }
           receipts.push({ positionId, positionTitle: posMeta.title, receiptCode })
         } else {
           // Store one VoteRecord per selected candidate (supports multiple choice).
@@ -178,6 +190,15 @@ export async function castVote(opts: CastVoteOptions, req?: NextRequest): Promis
                 isSimulation,
               },
             })
+            // Maintain CandidateTally — atomic increment so live results
+            // never need to scan all VoteRecord rows.
+            if (!isSimulation) {
+              await tx.candidateTally.upsert({
+                where: { electionId_positionId_candidateId: { electionId, positionId, candidateId: candId } },
+                create: { electionId, positionId, candidateId: candId, count: 1 },
+                update: { count: { increment: 1 } },
+              })
+            }
             receipts.push({ positionId, positionTitle: posMeta.title, receiptCode })
           }
         }

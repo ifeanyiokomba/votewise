@@ -10,7 +10,7 @@ import { PrismaClient } from '@prisma/client'
 //
 // If you add or remove a Prisma model field, bump SCHEMA_SIG below to force
 // every dev server to pick up the new client on the next request.
-const SCHEMA_SIG = 'v7-notification-delivery-fix'
+const SCHEMA_SIG = 'v8-candidate-tally'
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
@@ -18,7 +18,15 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function makeClient() {
-  return new PrismaClient({ log: ['error', 'warn'] })
+  const client = new PrismaClient({ log: ['error', 'warn'] })
+  // Enable WAL (Write-Ahead Logging) journal mode for SQLite. This lets
+  // readers (live-results queries) avoid blocking on the single writer
+  // (vote-recorder transactions), which is critical for concurrent voting.
+  // No migration cost — it's a PRAGMA, not a schema change.
+  client.$executeRawUnsafe('PRAGMA journal_mode=WAL').catch(() => {
+    // Ignore if not SQLite (e.g., Postgres in production).
+  })
+  return client
 }
 
 let db: PrismaClient

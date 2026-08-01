@@ -79,4 +79,5 @@ screenshot-*.png
 .zscripts/
 
 # Modified marker
-.modified
+.modifieddb/*.db-wal
+db/*.db-shm

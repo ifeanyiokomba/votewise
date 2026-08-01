@@ -5,8 +5,7 @@ import { useApp } from '@/lib/store'
 import { getResultsSocket } from '@/lib/socket'
 import { NavBar, Footer } from '@/components/votewise/shared'
 import { HomeView } from '@/components/votewise/home'
-import { VerifyView } from '@/components/votewise/verify'
-import { VoteView, SuccessView, ReceiptVerifyView } from '@/components/votewise/vote'
+import { SuccessView, ReceiptVerifyView } from '@/components/votewise/vote'
 import { VoterDashboard } from '@/components/votewise/voter-dashboard'
 import { CompareCandidatesView } from '@/components/votewise/compare'
 import { CertificateView } from '@/components/votewise/certificate'
@@ -54,8 +53,8 @@ export default function Home() {
         <NavBar />
         <main id="main-content" className="flex-1">
           {v === 'home' && <HomeView />}
-          {v === 'verify' && <VerifyView />}
-          {v === 'vote' && <VoteView />}
+          {v === 'verify' && <LegacyVoteRedirect />}
+          {v === 'vote' && <LegacyVoteRedirect />}
           {v === 'success' && <SuccessView />}
           {v === 'verify-receipt' && <ReceiptVerifyView />}
           {v === 'voter-dashboard' && <VoterDashboard />}
@@ -74,5 +73,21 @@ export default function Home() {
         <Footer />
         <ChatbotWidget />
       </div>
+  )
+}
+
+// Legacy vote flow redirect — the old single-tenant /api/vote/cast path has
+// been retired in favor of the multi-tenant workspace flow
+// (/workspace/elections/[id]/vote → /api/workspace/ballot/submit → VoteRecord).
+// Any voter who reaches the 'verify' or 'vote' view is redirected to the
+// organizations directory to find their election.
+function LegacyVoteRedirect() {
+  useEffect(() => {
+    window.location.href = '/?view=home#organizations'
+  }, [])
+  return (
+    <div className="mx-auto max-w-md px-4 py-20 text-center">
+      <p className="text-sm text-muted-foreground">Redirecting to organization elections…</p>
+    </div>
   )
 }

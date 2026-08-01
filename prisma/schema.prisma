@@ -1554,3 +1554,19 @@ model NotificationDelivery {
   @@index([status])
   @@index([channel])
 }
+
+/// CandidateTally — maintained per-candidate vote count. Incremented atomically
+/// inside the vote-recorder transaction so live results never need to scan all
+/// VoteRecord rows. Read cost is O(positions × candidates), not O(votes).
+model CandidateTally {
+  id          String   @id @default(cuid())
+  electionId  String
+  positionId  String
+  candidateId String?  // null = NOTA
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([electionId, positionId, candidateId])
+  @@index([electionId])
+  @@index([positionId])
+}

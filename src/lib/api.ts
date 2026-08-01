@@ -220,6 +220,10 @@ export const api = {
   voterLogout: () => req('/api/voter/session', { method: 'POST' }, getVoterToken()),
   accredit: () => req('/api/voter/accredit', { method: 'POST' }, getVoterToken()),
   getBallot: () => req('/api/voter/ballot', {}, getVoterToken()),
+  // @deprecated — use api.submitVote() via /api/workspace/ballot/submit instead.
+  // The legacy /api/vote/cast route writes to EncryptedVote (not VoteRecord)
+  // and is not visible to live results, RLA, or exports. Retained only for
+  // backward compatibility — do not use in new code.
   castVote: (selections: Record<string, string>) =>
     req('/api/vote/cast', { method: 'POST', body: JSON.stringify({ selections }) }, getVoterToken()),
   verifyReceipt: (receiptCode: string) => req('/api/vote/verify-receipt', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
