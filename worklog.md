@@ -5619,3 +5619,60 @@ narrow `NextResponse` properly.
 - ✅ Lint: 0 errors, 0 warnings. Dev server compiles cleanly.
 - ✅ All 4 new API client methods follow the existing `?x-vw-org=
   <subdomain>` org-context pattern.
+
+---
+Task ID: TEMPLATES-INCIDENTS-REVIEW
+Agent: Lead Developer (main)
+Task: Scheduled review — Election Templates + Observer Incident Dashboard.
+
+Work Log:
+- **QA Assessment**: Platform stable — all 3 services running, lint 0 errors.
+  Previous rounds completed SVE (Chapter 10), all 12 Election Workspace tabs,
+  Positions CRUD, and Election Calendar. This round built 2 new high-impact
+  features from the next-phase recommendations.
+- **Election Templates** (new model + 3 APIs + UI + seed):
+  - New `ElectionTemplate` model — reusable election config as JSON snapshot
+    (positions + candidates structure, settings, category, voting method).
+  - 3 new APIs: GET/POST templates, GET/DELETE template, POST apply (creates
+    a new DRAFT election from template with fresh IDs for positions + candidates).
+  - 4 built-in templates seeded: University SUG, Corporate Board, Association
+    Executive, Church Committee (each with positions + placeholder candidates).
+  - Templates UI: grid of cards with search, filter chips (Built-in/My
+    Templates), Apply dialog (name + start/end time), Delete (org-created
+    only), Save-as-template form.
+  - "Templates" button in Election Center header + "Save as Template" button
+    in Election Workspace header.
+- **Observer Incident Dashboard** (new model + 3 APIs + UI):
+  - New `ElectionIncident` model — type (VOTER_INTIMIDATION, SYSTEM_MALFUNCTION,
+    IRREGULARITY, DISPUTE, TECHNICAL_ISSUE, OTHER), severity (LOW/MEDIUM/HIGH/
+    CRITICAL), status (OPEN/INVESTIGATING/RESOLVED/ESCALATED/DISMISSED),
+    location, assignee, resolution notes.
+  - 3 new APIs: GET/POST incidents, PATCH incident, GET stats (lightweight
+    for dashboards).
+  - Incident Dashboard UI: 4 stat cards (Total/Open/Critical/Resolved),
+    severity breakdown bars, search + filter (status/severity/type), Report
+    Incident dialog, Incident Detail dialog with status update, 10s auto-refresh.
+  - Integrated into Observers tab (below observer list).
+  - Live Vote Monitor enhanced: "Open Incidents" stat card + critical alert
+    banner (red, pulsing) when critical incidents > 0.
+  - Election Workspace header: red badge with open incident count (pulsing
+    Siren icon) when incidents exist.
+- **Verification**: Lint 0 errors. agent-browser QA confirmed:
+  - Templates dialog shows 4 built-in templates with Use Template buttons.
+  - Incident Dashboard renders with stats, Report Incident dialog works.
+  - Save as Template button in workspace header.
+  - Live Vote Monitor shows Open Incidents stat card.
+  - Zero runtime errors in dev log.
+
+Stage Summary:
+- ✅ Election Templates — organizations can now save elections as reusable
+  templates and create new elections from built-in or custom templates.
+  This dramatically reduces setup time for recurring elections.
+- ✅ Observer Incident Dashboard — observers can report incidents in real
+  time (voter intimidation, system issues, irregularities) and admins can
+  track + resolve them. The Live Vote Monitor now shows incident counts.
+- ✅ Lint: 0 errors. All committed and pushed to GitHub.
+- **Next-phase recommendations:** Bulk voter import wizard completion,
+  election duplication with date shifting, risk-limiting audit tool,
+  public verification portal for certified elections.
+
