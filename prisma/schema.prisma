@@ -588,13 +588,29 @@ model ElectionSession {
   workspaceId     String?
   workspace       Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   name            String   // e.g. "SUG General Elections 2024/2025" or "2024 Board Election"
+  description     String?  // Chapter 7: election description
+  category        String?  // Chapter 7: "Student Union" | "Executive" | "Board" | "Primary" | "Referendum" | "By-Election"
+  electionType    String?  // Chapter 7: "General" | "Single Position" | "Referendum" | "Poll" | "Multiple Positions" | "Runoff" | "Custom"
+  votingMethod    String?  // Chapter 7: "Single Choice" | "Multiple Choice" | "Ranked Choice" | "Approval" | "Weighted"
+  visibility      String   @default("PRIVATE") // Chapter 7: "Public" | "Private" | "Invite Only"
   university      String   @default("University of Lagos") // LEGACY display field
   academicSession String   // e.g. "2024/2025" — free-form period label
   startTime       DateTime
   endTime         DateTime
   accreditationStart DateTime?
   accreditationEnd   DateTime?
-  status          String   @default("DRAFT") // DRAFT|PUBLISHED|ACCREDITATION|VOTING|CLOSED|CERTIFIED
+  // Chapter 7: full lifecycle timestamps
+  candidateRegStart  DateTime?
+  candidateRegEnd    DateTime?
+  resultsReleaseAt   DateTime?
+  certificationDate  DateTime?
+  // Chapter 7: full lifecycle state machine
+  // DRAFT → PENDING_REVIEW → READY → SCHEDULED → LIVE → PAUSED → COMPLETED → CERTIFIED → ARCHIVED → CANCELLED
+  status          String   @default("DRAFT")
+  // Chapter 7: election-specific settings (JSON for flexibility)
+  settings        String?  // JSON: { requireAccreditation, requireOTVP, allowCandidatePhotos, showLiveTurnout, showLiveResults, hideResultsUntilEnd, allowResultDownload, requireObserverApproval, enableAuditMode }
+  // Chapter 7: who created this election
+  createdById     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -606,9 +622,30 @@ model ElectionSession {
   auditLogs       AuditLog[]
   resultSnapshots ResultSnapshot[]
   notifications   Notification[]
+  timeline        ElectionEvent[]
 
   @@index([status])
   @@index([organizationId])
+}
+
+/// ElectionEvent — timeline events for auditing and reporting. Every significant
+/// election lifecycle event is recorded: created, published, candidate registered,
+/// voter accredited, vote cast, paused, completed, certified, archived, etc.
+model ElectionEvent {
+  id              String   @id @default(cuid())
+  electionId      String
+  election        ElectionSession @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  organizationId  String?
+  eventType       String   // CREATED | PUBLISHED | CANDIDATE_REGISTERED | ACCREDITATION_OPENED | VOTING_OPENED | VOTE_CAST | PAUSED | VOTING_CLOSED | RESULTS_GENERATED | CERTIFIED | ARCHIVED | DUPLICATED | VALIDATION_FAILED | GO_LIVE
+  description     String?
+  actorId         String?
+  actorName       String?
+  metadata        String?  // JSON for extra context
+  createdAt       DateTime @default(now())
+
+  @@index([electionId])
+  @@index([eventType])
+  @@index([createdAt])
 }
 
 model ElectionSetting {

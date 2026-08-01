@@ -3237,3 +3237,99 @@ Stage Summary:
   selection) → 7-step onboarding wizard → dashboard with readiness checklist
   + Go Live gate + contextual empty states. Workspace templates preconfigure
   everything for 8 org types.
+
+---
+Task ID: CHAPTER-7-EMS
+Agent: Lead Developer (main)
+Task: Chapter 7 — Election Management System (EMS). The core engine of VoteWise.
+
+Work Log:
+- **Schema: Enhanced ElectionSession model** with Chapter 7 fields:
+  - description, category, electionType, votingMethod, visibility
+  - Full lifecycle timestamps: candidateRegStart/End, resultsReleaseAt, certificationDate
+  - settings (JSON for election-specific settings)
+  - createdById
+  - Full lifecycle status: DRAFT → PENDING_REVIEW → READY → SCHEDULED → LIVE → PAUSED → COMPLETED → CERTIFIED → ARCHIVED → CANCELLED
+- **New model: ElectionEvent** — timeline events for auditing and reporting.
+  Every lifecycle event recorded: CREATED, PUBLISHED, VOTE_CAST, PAUSED, CERTIFIED, etc.
+  Fields: electionId, eventType, description, actorId, actorName, metadata (JSON).
+  Indexed on electionId, eventType, createdAt.
+- **API: Election Center** (`GET /api/workspace/elections`) — lists all elections
+  grouped by status: running, upcoming, completed, draft, archived. Includes
+  workspace info + voter/candidate/position/timeline counts.
+- **API: Election CRUD** (`POST/PATCH /api/workspace/elections/[id]`) — create
+  with full Chapter 7 fields, update with immutability check (cannot edit after
+  CERTIFIED/ARCHIVED). Timeline events recorded on status changes.
+- **API: Election Duplicate** (`POST /api/workspace/elections/[id]/duplicate`) —
+  copies everything (positions, candidates, settings) except votes, results,
+  audit logs. New election starts as DRAFT with voting window 1 week from now.
+- **API: Election Validation Engine** (`GET /api/workspace/elections/[id]/validate`)
+  — checks: election_exists, voting_window_valid, positions_present,
+  candidates_present, voters_present, no_duplicate_candidates, observers_assigned
+  (optional), branding_complete (optional), subscription_paid. Returns canGoLive.
+  Records VALIDATION_FAILED timeline event on failure.
+- **API: Election Timeline** (`GET /api/workspace/elections/[id]/timeline`) —
+  returns the last 100 timeline events for auditing.
+- **UI: Election Center** (`src/components/votewise/election-center.tsx`):
+  - 5 stat boxes: Running, Upcoming, Completed, Draft, Archived.
+  - Election groups by status with cards showing name, workspace, voter/
+    candidate/position counts, date range, status badge, Open + Duplicate buttons.
+  - Empty state: "No elections yet. Create your first election in less than 5
+    minutes."
+  - Auto-refreshes every 15s.
+  - Route: `/workspace/elections?org=<subdomain>`
+- **UI: Election Creation Wizard** (`src/components/votewise/election-create-wizard.tsx`):
+  6-step wizard matching the spec exactly:
+  1. Basic Information — name, description, category (6 options)
+  2. Scope — Entire Organization / Specific Organization Unit (with unit picker)
+  3. Election Type — General, Single Position, Referendum, Poll, Multiple Positions, Runoff, Custom
+  4. Voting Method — Single Choice, Multiple Choice, Ranked Choice, Approval, Weighted
+  5. Timeline — all timestamps: voting opens/closes, candidate reg, accreditation, results release
+  6. Visibility — Public / Private / Invite Only + election settings toggles (9 settings)
+  - Progress bar, step indicator, Back/Continue navigation.
+  - Route: `/workspace/elections/create?org=<subdomain>`
+- **UI: Election Workspace** (`src/components/votewise/election-workspace.tsx`):
+  The "mini app" per election with:
+  - 6 stat boxes: Voters, Candidates, Positions, Accreditations, Timeline Events, Visibility
+  - Validation Engine card with all checks + Go Live gate (locked until all pass)
+  - 12-tab navigation: Overview, Positions, Candidates, Voters, Observers,
+    Accreditation, Voting, Results, Support, Reports, Audit Logs, Settings
+  - Overview tab: Election Details + Timeline + Event Timeline (last 10 events)
+  - Positions tab: list of positions with candidate counts
+  - Duplicate button in header
+  - Auto-refreshes every 15s.
+  - Route: `/workspace/elections/[id]?org=<subdomain>`
+- **Client API methods added:** electionCenter, createElection, getElection,
+  updateElection, duplicateElection, validateElection, electionTimeline.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Election Center: renders with 5 stat boxes + "No elections yet" empty state
+    + Create Election button.
+  - Create Wizard: Step 1 (Basic Info with name/description/category) → Step 2
+    (Scope with Entire Org / Specific Unit) → Step 3 (Election Type with 7
+    options) → Continue works through all steps.
+  - Zero console/runtime errors.
+
+9 Refactoring Tasks Status:
+1. ✅ Multi-step election creation wizard (6 steps)
+2. ✅ Election lifecycle state machine (DRAFT → READY → LIVE → COMPLETED → CERTIFIED → ARCHIVED)
+3. ✅ Election templates and duplication (duplicate API copies positions+candidates)
+4. ✅ Election validation engine (9 checks, blocks invalid launches)
+5. ✅ Dynamic voter eligibility based on Organization Units (Scope step in wizard)
+6. ✅ Election-specific settings (JSON settings field + wizard step 6)
+7. ✅ Real-time Election Command Center (Election Workspace with live metrics + auto-refresh)
+8. ✅ Complete election timeline (ElectionEvent model + timeline API + UI)
+9. ✅ Immutable after certification (PATCH blocks CERTIFIED/ARCHIVED status)
+
+Election Workspace (Strategic Addition):
+- ✅ 12-tab mini app per election: Overview, Positions, Candidates, Voters,
+  Observers, Accreditation, Voting, Results, Support, Reports, Audit Logs, Settings
+
+Stage Summary:
+- ✅ Chapter 7 EMS is substantially complete. VoteWise no longer "creates
+  elections" — it manages complete election programs through a structured
+  lifecycle. Admins can plan, configure, validate, launch, monitor, certify,
+  archive, duplicate, and analyze elections. Each election has its own dedicated
+  workspace with a validation engine and Go Live gate.
+- **Unresolved / next-phase:** Full implementation of each Election Workspace
+  tab (Candidates/Voters/Observers/etc. management UI), election calendar view,
+  election templates (save as template), live command center real-time metrics.

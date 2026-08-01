@@ -74,6 +74,15 @@ export const api = {
   workspaceAssignObserver: (unitId: string, data: any, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
   workspaceRevokeObserver: (unitId: string, memberEmail: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ memberEmail }) }),
 
+  // Chapter 7: Election Management System
+  electionCenter: (subdomain?: string) => req(`/api/workspace/elections${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  createElection: (data: any, subdomain?: string) => req(`/api/workspace/elections${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  getElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  updateElection: (id: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  duplicateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/duplicate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+  validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+
   // Platform (super-admin)
   platformGetOrganizations: () => req('/api/platform/organizations'),
   platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),
