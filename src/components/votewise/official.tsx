@@ -21,12 +21,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useApp } from '@/lib/store'
 import { api } from '@/lib/api'
+import { useTerminology } from '@/lib/terminology'
 import { toast } from 'sonner'
 import { StatusBadge } from '@/components/votewise/shared'
 import { cn } from '@/lib/utils'
 
+// Legacy role labels (Chapter 1 — these map the deprecated ElectionOfficial
+// roles to friendly names. Chapter 2+ will use the six OrganizationMember
+// roles: PLATFORM_SUPER_ADMIN, ORG_OWNER, ORG_ADMIN, OBSERVER, VOTER, GUEST).
 const ROLE_LABELS: Record<string, string> = {
-  SUPER_ADMIN: 'Super Admin',
+  SUPER_ADMIN: 'Organization Owner',
   ELECTORAL_COMMITTEE: 'Electoral Committee',
   FACULTY_OFFICER: 'Committee Officer',
   DEPARTMENT_OFFICER: 'Committee Officer',
@@ -60,8 +64,8 @@ export function OfficialLoginView() {
       <Card className="votewise-card-glow w-full">
         <CardHeader className="text-center">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground"><Lock className="h-7 w-7" /></div>
-          <CardTitle className="mt-3 font-display">Official Portal</CardTitle>
-          <p className="text-sm text-muted-foreground">Electoral committee, officers & observers.</p>
+          <CardTitle className="mt-3 font-display">Organization Portal</CardTitle>
+          <p className="text-sm text-muted-foreground">Sign in to manage your organization&apos;s elections.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2"><Label htmlFor="aemail">Email</Label><Input id="aemail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
@@ -80,10 +84,10 @@ export function OfficialLoginView() {
           <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">Demo credentials</p>
             <div className="mt-1 space-y-0.5 font-mono">
-              <div>admin@votewise.ng / admin123 (Super Admin)</div>
-              <div>elcom@votewise.ng / elcom123 (ELCOM)</div>
-              <div>eng.faculty@votewise.ng / faculty123 (Faculty)</div>
-              <div>csc.dept@votewise.ng / dept123 (Department)</div>
+              <div>admin@votewise.ng / admin123 (Org Owner)</div>
+              <div>elcom@votewise.ng / elcom123 (Committee)</div>
+              <div>eng.faculty@votewise.ng / faculty123 (Officer)</div>
+              <div>csc.dept@votewise.ng / dept123 (Officer)</div>
               <div>observer@votewise.ng / observer123 (Observer)</div>
             </div>
           </div>
@@ -95,6 +99,7 @@ export function OfficialLoginView() {
 
 export function OfficialDashboard() {
   const { official, setOfficial, setView, election, setElection } = useApp()
+  const t = useTerminology()
   const [tab, setTab] = useState('overview')
 
   useEffect(() => { api.getElection().then(setElection).catch(() => {}) }, [setElection])
@@ -116,8 +121,11 @@ export function OfficialDashboard() {
     <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
       <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h1 className="font-display text-2xl font-bold">{ROLE_LABELS[role] || 'Official'} Dashboard</h1>
-          <p className="text-sm text-muted-foreground">{official?.name} · {official?.email} · <Badge variant="secondary">{ROLE_LABELS[role]}</Badge></p>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold">Organization Portal</h1>
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-muted-foreground">{ROLE_LABELS[role] || 'Official'}</Badge>
+          </div>
+          <p className="mt-0.5 text-sm text-muted-foreground">{official?.name} · {official?.email}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setView('home')} className="gap-1.5"><Building2 className="h-4 w-4" /> Public View</Button>
@@ -312,6 +320,7 @@ function SystemHealthWidget() {
 // Voter activity monitoring tab — real-time feed of login/verify/accredit/vote events
 // Student data collation — dept collects → faculty reviews → committee uploads
 function CollationTab({ role }: { role: string }) {
+  const term = useTerminology()
   const [collations, setCollations] = useState<any[]>([])
   const [faculties, setFaculties] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -381,7 +390,7 @@ function CollationTab({ role }: { role: string }) {
         <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left">
-              <th className="p-3 font-medium">Source</th><th className="p-3 font-medium">Students</th>
+              <th className="p-3 font-medium">Source</th><th className="p-3 font-medium">Voters</th>
               <th className="p-3 font-medium">Submitted By</th><th className="p-3 font-medium">Status</th>
               <th className="p-3 font-medium">Date</th><th className="p-3 text-right font-medium">Actions</th>
             </tr></thead>
@@ -399,7 +408,7 @@ function CollationTab({ role }: { role: string }) {
                   <td className="p-3">{statusBadge(c.status)}{c.importedCount > 0 && <div className="text-[10px] text-emerald-600">{c.importedCount} imported</div>}</td>
                   <td className="p-3 text-xs text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</td>
                   <td className="p-3 text-right">
-                    {c.status === 'PENDING' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'APPROVE_FACULTY')} className="text-xs text-blue-600">Faculty Approve</Button>}
+                    {c.status === 'PENDING' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'APPROVE_FACULTY')} className="text-xs text-blue-600">{term.workspaceLabel} Approve</Button>}
                     {c.status === 'FACULTY_APPROVED' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'APPROVE_COMMITTEE')} className="text-xs text-emerald-600">Committee Approve</Button>}
                     {c.status === 'COMMITTEE_APPROVED' && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'UPLOAD')} className="text-xs text-primary">Upload as Voters</Button>}
                     {(c.status === 'PENDING' || c.status === 'FACULTY_APPROVED') && <Button size="sm" variant="ghost" onClick={() => updateCollation(c.id, 'REJECT')} className="text-xs text-destructive">Reject</Button>}
@@ -416,16 +425,16 @@ function CollationTab({ role }: { role: string }) {
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" /> Submit Voter Data</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Paste voter data (one per line, comma-separated). This follows the Nigerian election practice of departments collating voter data before submission to the electoral committee.</p>
+            <p className="text-sm text-muted-foreground">Paste voter data (one per line, comma-separated). Voter groups collate voter data before submission to the electoral committee.</p>
             <pre className="rounded bg-muted p-3 text-xs">voterId,fullName,email,phone,facultyCode,departmentCode,level</pre>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Faculty (optional)</Label>
+              <div className="space-y-1.5"><Label>{term.workspaceLabel} (optional)</Label>
                 <Select value={selectedFaculty} onValueChange={(v) => { setSelectedFaculty(v); setSelectedDept('') }}>
                   <SelectTrigger><SelectValue placeholder="Auto-detect from data" /></SelectTrigger>
                   <SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5"><Label>Department (optional)</Label>
+              <div className="space-y-1.5"><Label>{term.voterGroupLabel} (optional)</Label>
                 <Select value={selectedDept} onValueChange={setSelectedDept}>
                   <SelectTrigger><SelectValue placeholder="Auto-detect from data" /></SelectTrigger>
                   <SelectContent>{faculties.find((f: any) => f.id === selectedFaculty)?.departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>) || []}</SelectContent>
@@ -569,6 +578,7 @@ function ActivityTab() {
 }
 
 function TurnoutByFacultyChart() {
+  const term = useTerminology()
   const [data, setData] = useState<any>(null)
   useEffect(() => {
     api.observerAnalytics().then((d) => setData(d)).catch(() => {})
@@ -579,7 +589,7 @@ function TurnoutByFacultyChart() {
   const max = Math.max(1, ...data.byFaculty.map((f: any) => f.total))
   return (
     <Card>
-      <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Turnout by Faculty</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Turnout by {term.workspaceLabel}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {data.byFaculty.map((f: any) => (
           <div key={f.id} className="space-y-1">
@@ -599,6 +609,7 @@ function TurnoutByFacultyChart() {
 }
 
 function BroadcastDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const term = useTerminology()
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [type, setType] = useState('INFO')
@@ -639,8 +650,8 @@ function BroadcastDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
               </div>
               <div className="space-y-1.5"><Label>Audience</Label>
                 <Select value={facultyId || 'all'} onValueChange={(v) => setFacultyId(v === 'all' ? '' : v)}>
-                  <SelectTrigger><SelectValue placeholder="All faculties" /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">All faculties</SelectItem>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger><SelectValue placeholder={`All ${term.workspaceLabel.toLowerCase()}s`} /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">All {term.workspaceLabel.toLowerCase()}s</SelectItem>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
@@ -898,6 +909,7 @@ function CandidateDialog({ open, onOpenChange, candidate, positions, faculties, 
 }
 
 function PositionsTab() {
+  const term = useTerminology()
   const [positions, setPositions] = useState<any[]>([])
   const [faculties, setFaculties] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -925,7 +937,7 @@ function PositionsTab() {
         {positions.map((p) => (
           <Card key={p.id}><CardContent className="p-4">
             <div className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{p.order}</span><h4 className="font-display font-semibold">{p.title}</h4></div>
-            <div className="mt-1.5 flex items-center gap-2"><Badge variant="outline" className="text-[10px]">{scopeLabel(p.scope)}</Badge>{p.faculty && <span className="text-xs text-muted-foreground">{p.faculty.name}</span>}{p.department && <span className="text-xs text-muted-foreground">{p.department.name}</span>}</div>
+            <div className="mt-1.5 flex items-center gap-2"><Badge variant="outline" className="text-[10px]">{scopeLabel(p.scope, term)}</Badge>{p.faculty && <span className="text-xs text-muted-foreground">{p.faculty.name}</span>}{p.department && <span className="text-xs text-muted-foreground">{p.department.name}</span>}</div>
             <p className="mt-1 text-xs text-muted-foreground">{p._count?.candidates || 0} candidates</p>
           </CardContent></Card>
         ))}
@@ -939,23 +951,23 @@ function PositionsTab() {
               <div className="space-y-1.5"><Label>Scope</Label>
                 <Select value={form.scope} onValueChange={(v) => setForm((f: any) => ({ ...f, scope: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="UNIVERSITY">University-wide</SelectItem><SelectItem value="FACULTY">Faculty</SelectItem><SelectItem value="DEPARTMENT">Department</SelectItem></SelectContent>
+                  <SelectContent><SelectItem value="UNIVERSITY">{term.organizationLabel}-wide</SelectItem><SelectItem value="FACULTY">{term.workspaceLabel}</SelectItem><SelectItem value="DEPARTMENT">{term.voterGroupLabel}</SelectItem></SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5"><Label>Order</Label><Input type="number" value={form.order || ''} onChange={(e) => setForm((f: any) => ({ ...f, order: parseInt(e.target.value) || 0 }))} /></div>
             </div>
             {form.scope === 'FACULTY' && (
-              <div className="space-y-1.5"><Label>Faculty</Label>
+              <div className="space-y-1.5"><Label>{term.workspaceLabel}</Label>
                 <Select value={form.facultyId} onValueChange={(v) => setForm((f: any) => ({ ...f, facultyId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={`Select ${term.workspaceLabel.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             )}
             {form.scope === 'DEPARTMENT' && (
-              <div className="space-y-1.5"><Label>Faculty (for department)</Label>
+              <div className="space-y-1.5"><Label>{term.workspaceLabel} (for {term.voterGroupLabel.toLowerCase()})</Label>
                 <Select value={form.facultyId} onValueChange={(v) => setForm((f: any) => ({ ...f, facultyId: v, departmentId: undefined }))}>
-                  <SelectTrigger><SelectValue placeholder="Select faculty" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={`Select ${term.workspaceLabel.toLowerCase()}`} /></SelectTrigger>
                   <SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -970,6 +982,7 @@ function PositionsTab() {
 }
 
 function VotersTab({ role, official }: { role: string; official: any }) {
+  const term = useTerminology()
   const [voters, setVoters] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -1033,7 +1046,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-xs"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search voterId, name, email…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" /></div>
+          <div className="relative flex-1 max-w-xs"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder={`Search ${term.voterIdLabel.toLowerCase()}, name, email…`} value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} className="pl-8" /></div>
           <Select value={status || 'all'} onValueChange={(v) => { setStatus(v === 'all' ? '' : v); setPage(1) }}>
             <SelectTrigger className="w-32"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="voted">Voted</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
@@ -1044,11 +1057,11 @@ function VotersTab({ role, official }: { role: string; official: any }) {
           <Button onClick={() => setOpen(true)} className="gap-1.5"><Plus className="h-4 w-4" /> Add Voter</Button>
         </div>
       </div>
-      {scoped && <Alert><AlertDescription>You are viewing voters within your {role === 'FACULTY_OFFICER' ? 'faculty' : 'department'} scope only.</AlertDescription></Alert>}
+      {scoped && <Alert><AlertDescription>You are viewing voters within your {role === 'FACULTY_OFFICER' ? term.workspaceLabel.toLowerCase() : term.voterGroupLabel.toLowerCase()} scope only.</AlertDescription></Alert>}
       <Card><CardContent className="p-0">
         <div className="votewise-scroll max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Voter</th><th className="hidden p-3 font-medium md:table-cell">Faculty / Dept</th><th className="hidden p-3 font-medium sm:table-cell">Level</th><th className="p-3 font-medium">Status</th><th className="p-3 text-right font-medium">Actions</th></tr></thead>
+            <thead className="sticky top-0 bg-muted/80 backdrop-blur"><tr className="text-left"><th className="p-3 font-medium">Voter</th><th className="hidden p-3 font-medium md:table-cell">{term.workspaceLabel} / {term.voterGroupLabel}</th><th className="hidden p-3 font-medium sm:table-cell">Level</th><th className="p-3 font-medium">Status</th><th className="p-3 text-right font-medium">Actions</th></tr></thead>
             <tbody>
               {loading && <tr><td colSpan={5} className="p-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>}
               {!loading && voters.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No voters found.</td></tr>}
@@ -1096,10 +1109,10 @@ function VotersTab({ role, official }: { role: string; official: any }) {
           <DialogHeader><DialogTitle>Add Voter</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Voter ID</Label><Input value={form.voterId || ''} onChange={(e) => setForm((f: any) => ({ ...f, voterId: e.target.value.toUpperCase() }))} /></div><div className="space-y-1.5"><Label>Full Name</Label><Input value={form.fullName || ''} onChange={(e) => setForm((f: any) => ({ ...f, fullName: e.target.value }))} /></div></div>
-            <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Institutional Email</Label><Input value={form.institutionEmail || ''} onChange={(e) => setForm((f: any) => ({ ...f, institutionEmail: e.target.value }))} /></div><div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone || ''} onChange={(e) => setForm((f: any) => ({ ...f, phone: e.target.value }))} /></div></div>
+            <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label>Email</Label><Input value={form.institutionEmail || ''} onChange={(e) => setForm((f: any) => ({ ...f, institutionEmail: e.target.value }))} /></div><div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone || ''} onChange={(e) => setForm((f: any) => ({ ...f, phone: e.target.value }))} /></div></div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Faculty</Label><Select value={form.facultyId} onValueChange={(v) => setForm((f: any) => ({ ...f, facultyId: v, departmentId: undefined }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-1.5"><Label>Department</Label><Select value={form.departmentId} onValueChange={(v) => setForm((f: any) => ({ ...f, departmentId: v }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{faculties.find((f: any) => f.id === form.facultyId)?.departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>) || []}</SelectContent></Select></div>
+              <div className="space-y-1.5"><Label>{term.workspaceLabel}</Label><Select value={form.facultyId} onValueChange={(v) => setForm((f: any) => ({ ...f, facultyId: v, departmentId: undefined }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{faculties.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-1.5"><Label>{term.voterGroupLabel}</Label><Select value={form.departmentId} onValueChange={(v) => setForm((f: any) => ({ ...f, departmentId: v }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{faculties.find((f: any) => f.id === form.facultyId)?.departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>) || []}</SelectContent></Select></div>
             </div>
             <div className="space-y-1.5"><Label>Level</Label><Input value={form.level || ''} onChange={(e) => setForm((f: any) => ({ ...f, level: e.target.value }))} /></div>
           </div>
@@ -1167,6 +1180,7 @@ function VotersTab({ role, official }: { role: string; official: any }) {
 }
 
 function VoterDetailDrawer({ voter, open, onOpenChange }: { voter: any; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const term = useTerminology()
   const [detail, setDetail] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   useEffect(() => {
@@ -1209,10 +1223,10 @@ function VoterDetailDrawer({ voter, open, onOpenChange }: { voter: any; open: bo
             <div className="space-y-4">
               {/* Contact info */}
               <div className="grid grid-cols-2 gap-3">
-                <InfoCard label="Institutional Email" value={v.institutionEmail || '—'} />
+                <InfoCard label="Email" value={v.institutionEmail || '—'} />
                 <InfoCard label="Personal Email" value={v.personalEmail || '—'} />
                 <InfoCard label="Phone" value={v.phone || '—'} />
-                <InfoCard label="Department" value={v.department?.name || v.department || '—'} />
+                <InfoCard label={term.voterGroupLabel} value={v.department?.name || v.department || '—'} />
               </div>
               {/* Vote info */}
               {v.hasVoted && (
@@ -1645,4 +1659,9 @@ function sevClass(s: string) {
   return 'bg-muted text-muted-foreground'
 }
 function toLocalInput(d: Date | string) { if (!d) return ''; const date = new Date(d); const off = date.getTimezoneOffset(); const local = new Date(date.getTime() - off * 60000); return local.toISOString().slice(0, 16) }
-function scopeLabel(s: string) { if (s === 'UNIVERSITY') return 'University-wide'; if (s === 'FACULTY') return 'Faculty'; if (s === 'DEPARTMENT') return 'Department'; return s }
+function scopeLabel(s: string, t?: any) {
+  if (s === 'UNIVERSITY') return t ? `${t.organizationLabel}-wide` : 'Organization-wide'
+  if (s === 'FACULTY') return t ? t.workspaceLabel : 'Workspace'
+  if (s === 'DEPARTMENT') return t ? t.voterGroupLabel : 'Voter Group'
+  return s
+}

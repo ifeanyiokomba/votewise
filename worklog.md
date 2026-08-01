@@ -1644,3 +1644,79 @@ Stage Summary:
 - **Current state:** Chapter 1 is now thoroughly complete. The public website,
   voter flow, and admin dashboard all use generic terminology. The platform is
   positioned as a universal election management platform for ANY organization.
+
+---
+Task ID: CHAPTER-1-PORTAL
+Agent: Lead Developer (main)
+Task: Deepen Chapter 1 — de-universify the Organization Portal (official.tsx),
+the last major UI surface with hardcoded university terminology. Apply the
+terminology module to all display labels while keeping the underlying legacy
+data model intact (documented for Chapter 2+ migration).
+
+Work Log:
+- **Organization Portal header:** "Super Admin Dashboard" → "Organization
+  Portal" with a role badge (Org Owner / Committee / Officer / Observer).
+  Subtitle now "{name} · {email}" (was "{name} · {email} · {role badge}").
+- **Login view:** "Official Portal / Electoral committee, officers & observers"
+  → "Organization Portal / Sign in to manage your organization's elections."
+  Demo credential role labels: "(Super Admin)" → "(Org Owner)", "(ELCOM)" →
+  "(Committee)", "(Faculty)"/"(Department)" → "(Officer)".
+- **ROLE_LABELS:** SUPER_ADMIN → "Organization Owner" (was "Super Admin").
+  Added a comment noting Chapter 2+ will use the six OrganizationMember roles.
+- **TurnoutByFacultyChart:** "Turnout by Faculty" → "Turnout by {workspaceLabel}".
+- **PositionsTab scope dropdown:** "University-wide / Faculty / Department" →
+  "{organizationLabel}-wide / {workspaceLabel} / {voterGroupLabel}". Position
+  list scope badge now uses `scopeLabel(p.scope, term)`.
+- **PositionsTab form labels:** "Faculty" → "{workspaceLabel}", "Faculty (for
+  department)" → "{workspaceLabel} (for {voterGroupLabel})", "Select faculty"
+  placeholders → "Select {workspaceLabel}".
+- **VotersTab:** "Faculty / Dept" column header → "{workspaceLabel} /
+  {voterGroupLabel}". Scope alert: "your faculty/department scope" → "your
+  {workspaceLabel}/{voterGroupLabel} scope". Search placeholder: "Search
+  voterId, name, email…" → "Search {voterIdLabel}, name, email…". Add Voter
+  dialog: "Faculty"/"Department" labels → "{workspaceLabel}"/"{voterGroupLabel}".
+  "Institutional Email" → "Email".
+- **VoterDetailDrawer:** "Institutional Email" → "Email", "Department" InfoCard
+  → "{voterGroupLabel}".
+- **CollationTab:** "Faculty (optional)"/"Department (optional)" →
+  "{workspaceLabel} (optional)"/"{voterGroupLabel} (optional)". "Students"
+  column → "Voters". "Faculty Approve" button → "{workspaceLabel} Approve".
+  Collation help text: removed "Nigerian election practice of departments" →
+  "Voter groups collate voter data before submission".
+- **BroadcastDialog:** "All faculties" audience → "All {workspaceLabel}s".
+- **scopeLabel function:** Now accepts optional terminology param; returns
+  generic "Organization-wide"/"Workspace"/"Voter Group" when no term passed.
+- **Verification:** `bun run lint` → 0 errors. agent-browser QA:
+  - Login view shows "Organization Portal" / "Sign in to manage your
+    organization's elections." with generic role labels.
+  - Dashboard header: "Organization Portal" (was "Super Admin Dashboard").
+  - Positions → Add Position → Scope dropdown: "Organization-wide / Workspace
+    / Voter Group" (was "University-wide / Faculty / Department").
+  - Voters tab: column header "Workspace / Voter Group" (was "Faculty / Dept").
+  Zero console/runtime errors.
+
+Stage Summary:
+- ✅ Organization Portal (official.tsx) fully de-universified — all display
+  labels now flow through the terminology module.
+- ✅ "Super Admin Dashboard" → "Organization Portal".
+- ✅ "University-wide / Faculty / Department" → "Organization-wide / Workspace
+  / Voter Group" in all scope dropdowns, badges, and table headers.
+- ✅ "Institutional Email" → "Email", "Students" → "Voters", "Faculty Approve"
+  → "{workspaceLabel} Approve".
+- ✅ Login view + demo credential labels use the six-role terminology.
+- **Chapter 1 is now thoroughly complete across all three products:**
+  1. Public Website (home.tsx) — platform marketing site ✅
+  2. Organization Portal (official.tsx) — generic terminology ✅
+  3. Platform Dashboard (/admin) — super-admin control room ✅
+- **Remaining university-specific code (documented, Chapter 2+ migration):**
+  - Legacy Prisma models: Tenant, Faculty, Department, Programme, Level,
+    StudentCollation (deprecated in schema comments).
+  - Legacy auth: ElectionOfficial (bridging to OrganizationMember pending).
+  - Voter/Candidate data fields: `matric`, `facultyId`, `departmentId`,
+    `programmeId`, `level` (to migrate to VoterGroup).
+  - API route paths: `/api/voter/verify-matric`, `/api/faculties` (cosmetic;
+    will rename in Chapter 2+).
+  - Activity log action enum: `VERIFY_MATRIC` (internal; label already generic).
+- **Current state:** VoteWise is now positioned as a universal election
+  management platform. All three products use generic, configurable
+  terminology. No university-specific assumptions remain in any user-facing UI.
