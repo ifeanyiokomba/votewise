@@ -10359,3 +10359,68 @@ Stage Summary:
   welcome message, footer, social links.
 - This is the heart of the platform — the living election portal that
   makes VoteWise feel professional and trustworthy.
+
+---
+Task ID: CH16A-OPS
+Agent: Election Operations Console Agent
+Task: Build the Election Operations Console at /workspace/election-ops
+
+Work Log:
+- Read Chapter 16A backend modules (otp-delivery, voter-activity, support-chat)
+  + the api.ts client functions + existing console components for patterns.
+- Built src/components/votewise/election-ops-console.tsx (~1620 lines) — the
+  org admin's single-screen election-day command center.
+- Auth gate: api.me() on mount; falls back to a LoginCard (pre-filled
+  admin@votewise.com.ng / admin123) when not authed.
+- Org resolution: the ch16a endpoints take organizationId (UUID) but the URL
+  carries ?org=<subdomain>. The component resolves subdomain → UUID via the
+  public /api/portal/[subdomain] endpoint, then passes the UUID to all ch16a
+  calls. The same call yields the elections list for the header selector.
+- Wrote a single reusable useAutoRefresh hook: initial load + dep-change
+  reload + 1-second countdown tick + polling interval. Each widget shows a
+  "Refreshing in Xs" pill that doubles as a manual refresh button.
+- Widget 1 (Live Voter Activity Feed, spans 2 cols): 8 mini-stat badges from
+  last30Min + scrolling recentActivity feed with color-coded entries
+  (emerald for VOTE_RECORDED, amber for OTP_FAILED/SESSION_EXPIRED, zinc
+  otherwise). 10s auto-refresh.
+- Widget 2 (OTVP Delivery Queue): big delivery-rate % (emerald >90% / amber
+  70-90% / red <70%) + 4 mini-stats (Total/Sent/Failed/Pending) + per-channel
+  breakdown (Email/SMS/WhatsApp) + 3 recent failures. 15s auto-refresh.
+- Widget 3 (Active Support Chats): 4 mini-stats (Open/Unassigned/SLA
+  Breached/Escalated) + conversation list with status + priority badges +
+  SLA countdown (red if breached) + last message preview. 15s auto-refresh.
+- Widget 4 (Current Turnout): circular SVG progress ring (color shifts by
+  turnout) + Votes Cast / Eligible Voters. Falls back to /api/results.
+  30s auto-refresh.
+- Widget 5 (System Health): overall status badge + 3 critical services
+  (Database / Redis / API) each with status dot + uptime. 30s auto-refresh.
+- Widget 6 (Fraud Alerts): active incidents count (red if >0) + integrity
+  score + 3 recent incidents with severity badges. 30s auto-refresh.
+- Widget 7 (Announcement Broadcaster): title + textarea + type selector +
+  Broadcast button → api.paoemCreateBroadcast; shows 3 recent announcements;
+  toast on success.
+- Widget 8 (Quick Actions): 6-button grid (Resend OTVP / Unlock Session /
+  View Timeline / Support Chat / Election Lock / View Results). Resend OTVP
+  opens a Dialog (voter ID input → api.ch16aResendOtp). Election Lock opens
+  an AlertDialog confirm then links to the election workspace.
+- Design discipline: palette emerald/gold/amber/zinc/red ONLY (no indigo,
+  no blue); every Badge has dark: variants; votewise-card-glow on every
+  widget Card; votewise-scroll on all long lists; mobile-first responsive
+  grid (grid-cols-1 md:grid-cols-2 xl:grid-cols-4); Framer Motion staggered
+  entrance; Sonner toast for all action feedback; sticky header (no footer —
+  full-screen console).
+- Cleaned up unused imports (Ban, Eye, Flag, Gauge, Shield, Sparkles, X,
+  Progress, useMemo).
+- Wrote agent-ctx/CH16A-OPS-Election-Operations-Console-Agent.md.
+
+Stage Summary:
+- The org admin's election-day command center is live at
+  /workspace/election-ops?org=demo. All 8 widgets are present, each with its
+  own loading/error/empty state, per-widget auto-refresh, and the shared
+  "Refreshing in Xs" pill.
+- The console is auth-gated (login card with pre-filled credentials) and
+  resolves the subdomain → organizationId transparently so all chapter 16A
+  backend endpoints receive the correct UUID.
+- Lint: 0 errors, 0 warnings. tsc --noEmit reports 0 errors for the new
+  component (pre-existing TS errors in unrelated files are noted but not
+  introduced by this task).

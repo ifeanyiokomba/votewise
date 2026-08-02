@@ -2924,3 +2924,93 @@ model DocValidation {
   @@index([verified])
   @@index([docType])
 }
+
+// ===========================================================================
+// CHAPTER 16A — Communication, OTVP Delivery, Live Monitoring & Support Ops
+// ===========================================================================
+
+/// A per-channel OTVP delivery attempt. Tracks every email/SMS/WhatsApp
+/// attempt for a single OTVP, with status, retry count, and error details.
+/// Drives the OTVP Delivery Dashboard.
+model OtpDeliveryAttempt {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  voterId         String?
+  voterName       String?
+  credentialId    String?  // link to VotingCredential
+  channel         String   // EMAIL | SMS | WHATSAPP
+  destination     String   // masked (j***@gmail.com / +234***1234)
+  status          String   @default("PENDING") // PENDING | SENT | DELIVERED | FAILED | RETRYING
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(3)
+  provider        String?  // resend | termii | twilio
+  providerMessageId String?
+  error           String?
+  cooldownUntil   DateTime?
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  createdBy        String?  // admin/observer who triggered a resend (null = auto)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([voterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// A support chat conversation (thread-level). Distinct from SupportTicket
+/// (which is form-based). This is real-time chat with assignment, SLA,
+/// reassignment, and escalation.
+model SupportConversation {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  voterId         String?
+  voterName       String?
+  voterIdentifier String?  // matric number or email
+  subject         String?
+  status          String   @default("NEW") // NEW | ASSIGNED | WAITING_VOTER | WAITING_STAFF | ESCALATED | RESOLVED | CLOSED
+  priority        String   @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  assignedToId    String?
+  assignedToName  String?
+  assignedAt      DateTime?
+  slaDeadline     DateTime?  // response SLA deadline
+  slaBreached     Boolean  @default(false)
+  escalationLevel Int      @default(0) // 0=org admin, 1=observer, 2=votewise support, 3=platform admin
+  category        String?  // OTP | ELIGIBILITY | TECHNICAL | OTHER
+  botHandled      Boolean  @default(false) // did the chatbot handle it before human?
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolution      String?  // how it was resolved
+  lastMessageAt   DateTime?
+  lastMessagePreview String?
+  unreadCount     Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([escalationLevel])
+  @@index([createdAt])
+}
+
+/// An internal staff note on a support conversation. Visible only to staff,
+/// never shown to the voter. Spec: "Admins and observers can leave internal
+/// notes. Visible only to staff. Never shown to the voter."
+model StaffNote {
+  id              String   @id @default(cuid())
+  conversationId  String
+  authorId        String
+  authorName      String
+  authorRole      String   // ADMIN | OBSERVER | SUPPORT | PLATFORM
+  content         String
+  pinned          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt])
+}

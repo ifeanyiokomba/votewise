@@ -265,6 +265,19 @@ export const api = {
   tqasgrCreateDocValidation: (version: string) => req('/api/tqasgr/docs', { method: 'POST', body: JSON.stringify({ version }) }),
   tqasgrDocValidation: (version: string) => req(`/api/tqasgr/docs/${encodeURIComponent(version)}`),
   tqasgrVerifyDoc: (version: string, itemId: string, docUrl?: string, notes?: string) => req(`/api/tqasgr/docs/${encodeURIComponent(version)}/${itemId}`, { method: 'PATCH', body: JSON.stringify({ docUrl, notes }) }),
+  // Chapter 16A: OTVP Delivery, Live Monitoring, Support Chat
+  ch16aOtpStats: (org: string, election?: string) => req(`/api/ch16a/otp-delivery/stats?org=${encodeURIComponent(org)}${election ? `&election=${encodeURIComponent(election)}` : ''}`),
+  ch16aResendOtp: (data: any) => req('/api/ch16a/otp-delivery/resend', { method: 'POST', body: JSON.stringify(data) }),
+  ch16aVoterTimeline: (voterId: string) => req(`/api/ch16a/activity-timeline/${voterId}`),
+  ch16aElectionMonitor: (org: string, election?: string) => req(`/api/ch16a/election-monitor?org=${encodeURIComponent(org)}${election ? `&election=${encodeURIComponent(election)}` : ''}`),
+  ch16aSupportChat: (org: string, status?: string) => req(`/api/ch16a/support-chat?org=${encodeURIComponent(org)}${status ? `&status=${status}` : ''}`),
+  ch16aCreateSupportChat: (data: any) => req('/api/ch16a/support-chat', { method: 'POST', body: JSON.stringify(data) }),
+  ch16aSupportChatMessages: (id: string) => req(`/api/ch16a/support-chat/${id}`),
+  ch16aSendSupportMessage: (id: string, data: any) => req(`/api/ch16a/support-chat/${id}`, { method: 'POST', body: JSON.stringify(data) }),
+  ch16aTakeConversation: (id: string) => req(`/api/ch16a/support-chat/${id}/take`, { method: 'POST' }),
+  ch16aReleaseConversation: (id: string) => req(`/api/ch16a/support-chat/${id}/release`, { method: 'POST' }),
+  ch16aEscalateConversation: (id: string) => req(`/api/ch16a/support-chat/${id}/escalate`, { method: 'POST' }),
+  ch16aResolveConversation: (id: string) => req(`/api/ch16a/support-chat/${id}/resolve`, { method: 'POST' }),
 
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
