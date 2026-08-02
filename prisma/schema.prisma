@@ -2472,3 +2472,96 @@ model UptimeRecord {
   @@unique([service, date])
   @@index([service])
 }
+
+// ---------------------------------------------------------------------------
+// CHAPTER 17 — Centralized Logging, Alerting, Cost Monitoring (PIHD ext.)
+// ---------------------------------------------------------------------------
+
+/// A structured log entry from ANY service (app, worker, scheduler, fraud
+/// engine, analytics engine). Categories match the spec: Application,
+/// Audit, Security, Infrastructure, API, Deployment.
+model LogEntry {
+  id            String   @id @default(cuid())
+  category      String   // application | audit | security | infrastructure | api | deployment
+  level         String   // debug | info | warn | error | fatal
+  service       String   // app | worker | scheduler | notification | fraud-engine | analytics-engine | results-service
+  message       String
+  metadata      String?  // JSON blob (requestId, userId, electionId, etc.)
+  requestId     String?
+  organizationId String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  @@index([category])
+  @@index([level])
+  @@index([service])
+  @@index([createdAt])
+  @@index([organizationId])
+}
+
+/// An alert rule — evaluated continuously against metrics/logs. When the
+/// condition is met, an AlertEvent is raised and dispatched to channels.
+model AlertRule {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  metric        String   // cpu | memory | errorRate | latency | queueDepth | dbReplicaLag | rps | uptime
+  condition     String   // gt | lt | gte | lte | eq
+  threshold     Float
+  windowMinutes Int      @default(5)
+  severity      String   // info | warning | critical
+  channels      String   // JSON array: ["email","sms","whatsapp","slack","teams"]
+  enabled       Boolean  @default(true)
+  cooldownMin   Int      @default(30)  // min time between repeats
+  lastFiredAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([metric])
+}
+
+/// A fired alert event — the audit trail of every alert that triggered.
+model AlertEvent {
+  id          String   @id @default(cuid())
+  ruleId      String?
+  ruleName    String
+  metric      String
+  severity    String   // info | warning | critical
+  message     String
+  value       Float
+  threshold   Float
+  channels    String   // JSON array of channels attempted
+  delivered   String   // JSON array of { channel, status, at }
+  acknowledged Boolean @default(false)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([severity])
+  @@index([metric])
+  @@index([createdAt])
+  @@index([acknowledged])
+}
+
+/// A cost record — one row per cost line item (infra, SMS, email, compute,
+/// DB, storage). Aggregated hourly/daily for the cost monitoring dashboard.
+model CostRecord {
+  id            String   @id @default(cuid())
+  category      String   // infrastructure | compute | database | storage | sms | email | whatsapp | cdn | other
+  service       String?  // aws-rds | aws-ecs | termii | resend | cloudflare | ...
+  amountUsd     Float
+  amountNgn     Float?
+  units         Int?     // number of SMS, emails, hours, GB, etc.
+  unitLabel     String?  // "SMS" | "email" | "GB-hours" | "hours"
+  periodStart   DateTime
+  periodEnd     DateTime
+  organizationId String?  // null = platform-level cost
+  createdAt     DateTime @default(now())
+
+  @@index([category])
+  @@index([service])
+  @@index([periodStart])
+  @@index([organizationId])
+}

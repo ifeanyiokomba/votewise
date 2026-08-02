@@ -1,0 +1,32 @@
+# VoteWise — Scheduler (cron-style job dispatcher: hourly backups, reminders, aggregations)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: votewise-scheduler
+  namespace: votewise
+  labels:
+    app: votewise-scheduler
+    tier: scheduler
+spec:
+  replicas: 1   # single replica — leader election prevents duplicate cron triggers
+  selector:
+    matchLabels:
+      app: votewise-scheduler
+  template:
+    metadata:
+      labels:
+        app: votewise-scheduler
+        tier: scheduler
+    spec:
+      containers:
+        - name: scheduler
+          image: ghcr.io/ifeanyiokomba/votewise-scheduler:latest
+          command: ["node", "scheduler.js"]
+          envFrom:
+            - configMapRef:
+                name: votewise-config
+            - secretRef:
+                name: votewise-secrets
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "250m", memory: "256Mi" }

@@ -1,0 +1,56 @@
+# VoteWise — Results Service (Socket.io real-time)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: votewise-results
+  namespace: votewise
+  labels:
+    app: votewise-results
+    tier: realtime
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: votewise-results
+  template:
+    metadata:
+      labels:
+        app: votewise-results
+        tier: realtime
+    spec:
+      containers:
+        - name: results
+          image: ghcr.io/ifeanyiokomba/votewise-results:latest
+          ports:
+            - containerPort: 3030
+          envFrom:
+            - configMapRef:
+                name: votewise-config
+            - secretRef:
+                name: votewise-secrets
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+          readinessProbe:
+            httpGet: { path: /health, port: 3030 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: votewise-results
+  namespace: votewise
+spec:
+  type: ClusterIP
+  selector:
+    app: votewise-results
+  ports:
+    - port: 80
+      targetPort: 3030

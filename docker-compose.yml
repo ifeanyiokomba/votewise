@@ -1,10 +1,15 @@
 # VoteWise — Production Docker Compose
-# Full production stack: App + Results Service + PostgreSQL + Redis
+# Full production stack: App + Results Service + Worker + Scheduler +
+# Notification + Fraud Engine + Analytics + PostgreSQL + Redis + Caddy.
+#
+# Each service runs in its own container with its own image, per the
+# Chapter 17 spec. Architecture supports migration to Kubernetes without
+# code changes (same images, same env vars).
 
 version: '3.8'
 
 services:
-  # ---- Main Application (Next.js) ----
+  # ---- 1. Main Application (Next.js) ----
   app:
     build:
       context: .
@@ -24,31 +29,27 @@ services:
       - FLUTTERWAVE_SECRET_KEY=${FLUTTERWAVE_SECRET_KEY:-}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - TERMII_API_KEY=${TERMII_API_KEY:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-}
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
     restart: always
     deploy:
       replicas: 2
       resources:
-        limits:
-          memory: 1G
-          cpus: '2'
-        reservations:
-          memory: 512M
-          cpus: '1'
+        limits: { memory: 1G, cpus: '2' }
+        reservations: { memory: 512M, cpus: '1' }
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/pihed/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - votewise-net
+    networks: [votewise-net]
 
-  # ---- Results Service (WebSocket) ----
+  # ---- 2. Results Service (WebSocket real-time) ----
   results-service:
     build:
       context: ./mini-services/results-service
@@ -59,19 +60,123 @@ services:
       - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
       - VOTE_ENC_KEY=${VOTE_ENC_KEY}
     depends_on:
-      db:
-        condition: service_healthy
+      db: { condition: service_healthy }
     restart: always
     deploy:
       replicas: 1
       resources:
-        limits:
-          memory: 512M
-          cpus: '1'
-    networks:
-      - votewise-net
+        limits: { memory: 512M, cpus: '1' }
+    networks: [votewise-net]
 
-  # ---- PostgreSQL Database ----
+  # ---- 3. Background Worker (queue consumers) ----
+  worker:
+    build:
+      context: .
+      dockerfile: mini-services/worker/Dockerfile
+    command: ["node", "worker.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
+      - REDIS_URL=redis://redis:6379
+      - VOTE_ENC_KEY=${VOTE_ENC_KEY}
+      - VOTER_HASH_PEPPER=${VOTER_HASH_PEPPER}
+      - HMAC_SECRET=${HMAC_SECRET}
+      - SVE_BALLOT_PEPPER=${SVE_BALLOT_PEPPER}
+      - SVE_VOTER_PEPPER=${SVE_VOTER_PEPPER}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - TERMII_API_KEY=${TERMII_API_KEY:-}
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits: { memory: 512M, cpus: '1' }
+    networks: [votewise-net]
+
+  # ---- 4. Scheduler (cron-style dispatcher) ----
+  scheduler:
+    build:
+      context: .
+      dockerfile: mini-services/scheduler/Dockerfile
+    command: ["node", "scheduler.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db: { condition: service_healthy }
+    restart: always
+    deploy:
+      replicas: 1   # single replica — leader-elected
+      resources:
+        limits: { memory: 256M, cpus: '0.5' }
+    networks: [votewise-net]
+
+  # ---- 5. Notification Service (email/SMS/WhatsApp delivery) ----
+  notification-service:
+    build:
+      context: .
+      dockerfile: mini-services/notification-service/Dockerfile
+    command: ["node", "notification.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
+      - REDIS_URL=redis://redis:6379
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - TERMII_API_KEY=${TERMII_API_KEY:-}
+      - TERMII_SENDER_ID=VoteWise
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: always
+    deploy:
+      replicas: 2
+      resources:
+        limits: { memory: 512M, cpus: '1' }
+    networks: [votewise-net]
+
+  # ---- 6. Fraud Engine (EIFDIRS detectors + incident manager) ----
+  fraud-engine:
+    build:
+      context: .
+      dockerfile: mini-services/fraud-engine/Dockerfile
+    command: ["node", "fraud-engine.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db: { condition: service_healthy }
+    restart: always
+    deploy:
+      replicas: 1
+      resources:
+        limits: { memory: 1G, cpus: '1' }
+    networks: [votewise-net]
+
+  # ---- 7. Analytics Engine (RAEI reports + AI insights) ----
+  analytics-engine:
+    build:
+      context: .
+      dockerfile: mini-services/analytics-engine/Dockerfile
+    command: ["node", "analytics-engine.js"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
+      - REDIS_URL=redis://redis:6379
+      - S3_BUCKET=${S3_BUCKET:-}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: always
+    deploy:
+      replicas: 1
+      resources:
+        limits: { memory: 2G, cpus: '2' }
+    networks: [votewise-net]
+
+  # ---- PostgreSQL Database (primary) ----
   db:
     image: postgres:16-alpine
     environment:
@@ -91,11 +196,28 @@ services:
     restart: always
     deploy:
       resources:
-        limits:
-          memory: 2G
-          cpus: '2'
-    networks:
-      - votewise-net
+        limits: { memory: 2G, cpus: '2' }
+    networks: [votewise-net]
+
+  # ---- PostgreSQL Read Replica (for reporting / analytics) ----
+  # Spec: "Reporting should never slow down voting." All analytics queries
+  # hit the replica, leaving the primary free for vote recording.
+  db-replica:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=votewise
+      - POSTGRES_USER=votewise
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - PRIMARY_HOST=db
+      - PRIMARY_REPL_USER=repl
+      - PRIMARY_REPL_PASSWORD=${DB_PASSWORD}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: always
+    deploy:
+      resources:
+        limits: { memory: 2G, cpus: '2' }
+    networks: [votewise-net]
 
   # ---- Redis Cache ----
   redis:
@@ -113,12 +235,10 @@ services:
     restart: always
     deploy:
       resources:
-        limits:
-          memory: 512M
-    networks:
-      - votewise-net
+        limits: { memory: 512M }
+    networks: [votewise-net]
 
-  # ---- Caddy Reverse Proxy / Load Balancer ----
+  # ---- Caddy Reverse Proxy / Load Balancer / WAF / TLS ----
   caddy:
     image: caddy:2-alpine
     ports:
@@ -132,37 +252,7 @@ services:
       - app
       - results-service
     restart: always
-    networks:
-      - votewise-net
-
-  # ---- Background Worker (for jobs, notifications, imports) ----
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["node", "-e", "require('./src/lib/jobs').startWorker()"]
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://votewise:${DB_PASSWORD}@db:5432/votewise
-      - REDIS_URL=redis://redis:6379
-      - VOTE_ENC_KEY=${VOTE_ENC_KEY}
-      - VOTER_HASH_PEPPER=${VOTER_HASH_PEPPER}
-      - HMAC_SECRET=${HMAC_SECRET}
-      - SVE_BALLOT_PEPPER=${SVE_BALLOT_PEPPER}
-      - SVE_VOTER_PEPPER=${SVE_VOTER_PEPPER}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: always
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          memory: 512M
-    networks:
-      - votewise-net
+    networks: [votewise-net]
 
 volumes:
   pgdata:

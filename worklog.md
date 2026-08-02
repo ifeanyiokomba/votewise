@@ -9736,3 +9736,111 @@ Stage Summary:
 - ✅ All 6 Prisma models + 11 API routes + 2 UI surfaces committed and pushed.
 - Dev server must be launched with the double-fork pattern `( setsid bash -c 'cd /home/z/my-project && exec node node_modules/.bin/next dev -p 3000 > dev.log 2>&1' < /dev/null > /dev/null 2>&1 & )` — the sandbox kills processes between Bash commands otherwise.
 - Next phase: the 15-min webDevReview cron will continue refining, fixing bugs, and adding features autonomously.
+
+---
+Task ID: U1
+Agent: Infra Console 4 New Tabs Agent
+Task: Add Logs, Alerts, Costs, Load Testing + DR Runbook tabs to admin infra console
+
+Work Log:
+- Reviewed `worklog.md` (PIHD context, palette discipline: emerald/gold/amber/zinc/red ONLY — NO indigo, NO blue, NO sky, NO teal), the existing 6-tab Infrastructure Console (`src/components/votewise/infrastructure-console.tsx`), the 4 backend modules (`logger.ts`, `alerting.ts`, `cost-tracker.ts`, `load-test.ts`), the 4 new API routes (`/api/pihed/logs`, `/api/pihed/alerts[/*]`, `/api/pihed/costs`, `/api/pihed/load-test[/*]`), the `api.ts` client (lines 220-227), and `docs/DISASTER_RECOVERY.md`.
+- Added 4 new tabs (Logs / Alerts / Costs / Load Test) to the existing Infrastructure Console WITHOUT touching the 6 existing tabs (Pre-Flight, Live Services, Metrics, Backups, Deployments, Domains). All 4 new tabs wired to the already-live backend via `api.pihedLogs / pihedAlerts / pihedAckAlert / pihedToggleAlertRule / pihedCosts / pihedLoadTests / pihedRunLoadTest`.
+- New imports added to the file: Recharts (`ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip`), shadcn `Switch`, `Accordion` (4 parts), `Tooltip` (3 parts). New Lucide icons: `ScrollText, BellRing, DollarSign, Terminal, Play, Search, Filter, Eraser, MessageSquare, Smartphone, Megaphone, Timer, MemoryStick, Boxes, Calculator, Inbox, FileText, Power`. Also added `useMemo` to the React import.
+- Added 9 new palette/type maps (all with explicit `dark:` variants — NO indigo/blue/sky/teal): `LOG_LEVEL_BADGE`, `LOG_LEVEL_DOT`, `LOG_CATEGORY_BADGE`, `LOG_SERVICE_BADGE`, `ALERT_SEVERITY_BADGE`, `ALERT_SEVERITY_DOT`, `ALERT_SEVERITY_RING`, `ALERT_CHANNEL_META` (channel → icon/label/badge), `COST_CATEGORY_COLOR` (hex chart colors), `COST_CATEGORY_BADGE`, `LOAD_TEST_VERDICT_BADGE`, `LOAD_TEST_PRESET_BADGE`.
+- Added 8 new TypeScript interfaces mirroring the backend Prisma models: `LogEntry`, `LogStats`, `AlertEvent`, `AlertRule`, `AlertStats`, `CostSummary`, `CostTrendPoint`, `LoadTestConfig`, `LoadTestPreset`, `LoadTestResult`, `LoadTestHistoryItem`.
+
+**Tab 7 — Logs (Centralized Logging) — ~410 lines:**
+- Header card with `votewise-card-glow` describing the 6 log categories. Auto-refresh toggle (15s) + manual Refresh + "X shown" badge.
+- Filters card (5 inputs in a 3-col grid): Category select (with "__all" fallback for shadcn Select empty-value compatibility), Level select, Service select, Search input (with leading Search icon, Enter-to-apply), Since datetime-local. Apply Filters + Clear buttons. Filters are staged in local state and only applied on Apply (debounced effect).
+- 4 stat cards: Total (24h, zinc), Errors (24h, red if >0), Warnings (24h, amber if >0), "By Category" chip breakdown card with `votewise-card-glow`.
+- Two-column layout (lg): left = log table in `max-h-[600px] overflow-y-auto votewise-scroll` (Time/Level/Category/Service/Message/Request ID — Responsive horizontal scroll on mobile); right = details panel. Each log row is clickable; selected row highlights; details panel shows level/category/service badges, message, timestamp/IP/requestID/org grid, and the metadata JSON pretty-printed in a `<pre>` block. AnimatePresence for smooth transition between selected logs.
+- Level badge colour-coded (debug=zinc, info=emerald, warn=amber, error=red, fatal=red+bold). Category badge colour-coded. Service rendered as mono. Empty state if no logs match.
+
+**Tab 8 — Alerts (Alerting) — ~370 lines:**
+- Header card with `votewise-card-glow` describing the 5 channels (Email/SMS/WhatsApp/Slack/Teams). Auto-refresh (30s, silent).
+- 4 stat cards: Total (24h, zinc), Critical (24h, red if >0), Unacknowledged (red ping animation if >0, `votewise-card-glow` ring when active), "By Severity" chip breakdown.
+- Active Alert Events list (`max-h-[600px] overflow-y-auto votewise-scroll`, max 50): each event is a card with severity badge (info=zinc, warning=amber, critical=red+animated ping dot), rule name, metric, message, value vs threshold, time ago, "Acked by X" badge if acknowledged, "Acknowledge" button (calls `api.pihedAckAlert(id)`, shows spinner, then silent refresh). Channel delivery row at bottom with per-channel pills (icon + label + sent/failed checkmark) wrapped in Tooltip showing delivery status + timestamp.
+- Alert Rules table (horizontal-scroll on mobile): rule name + description, metric (mono), condition+threshold (mono) + window, severity badge, channel pills (icon + label per channel), enabled Switch (calls `api.pihedToggleAlertRule(id, enabled)` with inline spinner + sonner toast), last fired (timeAgo). All 7 default rules render.
+- Helper functions: `safeParseArray`, `safeParseDelivered` for parsing the JSON-stringified channels/delivered columns.
+
+**Tab 9 — Costs (Cost Monitoring) — ~340 lines:**
+- Header card with `votewise-card-glow`. Inline 4-button period selector (7d/30d/90d/365d) + Refresh. Auto-refresh (60s, silent). `days` state drives a `useCallback` load that re-fetches when changed.
+- 4 stat cards: Total Cost (USD + NGN, gold accent, `votewise-card-glow`), Daily Average (emerald), Projected Monthly (extrapolated = dailyAvg × 30, amber, `votewise-card-glow`), Cost per Voter (zinc).
+- Cost by Category: horizontal CSS bar chart (no Recharts needed) — for each category with spend >0, shows a label, amount + pct, and a motion.div bar (`animate width: x%`, colored by `COST_CATEGORY_COLOR`). Bars are sorted by amount desc.
+- Cost Trend: Recharts `AreaChart` with emerald gradient fill (`linearGradient #costTrendFill`), `XAxis` (date, formatted MM-DD), `YAxis` ($ formatter), `CartesianGrid` (subtle), custom `RechartsTooltip` with dark-theme styling. `dot={false}`, `activeDot` on hover.
+- Daily Breakdown by Category: Recharts stacked `BarChart` — one bar per day, stacked by category (only categories with non-zero values are rendered). Legend below the chart.
+- Cost by Service/Provider: table with provider (mono), amount (USD), share %, and a visual bar (32-cell-wide Progress). Horizontal scroll on mobile.
+
+**Tab 10 — Load Testing + DR Runbook — ~540 lines (two stacked sections):**
+
+*Section A — Load Testing:*
+- Header card with `votewise-card-glow` describing the 5 preset tiers (10K/50K/100K/500K/1M).
+- 5 preset cards (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5`): each shows preset badge (colour-coded), concurrent voters (display font, large), duration (Timer icon) + ramp-up (TrendingUp icon). "Run Test" button calls `api.pihedRunLoadTest(preset.key)` (~1s simulated). While running, button shows spinner + "Running…". On completion, the result renders INLINE in the card (AnimatePresence height animation): verdict badge (PASS=emerald, DEGRADED=amber, FAIL=red), 8-cell result grid (Total reqs / Errors / p50 / p95 / p99 / RPS / Peak mem / Avg CPU), and the notes paragraph. Button label changes to "Re-run Test".
+- History table (`votewise-scroll overflow-x-auto`): Date / Preset / Verdict / Error Rate / p95 / RPS. Each row is clickable; selected row highlights and expands a detail card below.
+- Run Detail card (`votewise-card-glow`, AnimatePresence): 4×3 grid of `StatCell` (Total/Successful/Failed/Error Rate/Avg Latency/p50/p95/p99/Max Latency/RPS/Peak Memory/Avg CPU), plus a 4-cell config grid (Voters/Duration/Ramp-up/Endpoint), Notes box, and Started/Completed timestamps.
+
+*Section B — Disaster Recovery Runbook:*
+- Header card with `votewise-card-glow`.
+- 3 RTO/RPO/Vote-Loss stat cards (RTO <30min emerald, RPO <5min amber, Vote Loss =0 red), each with `votewise-card-glow` and matching coloured border.
+- Runbooks accordion (`Accordion type="single" collapsible`): 3 runbooks (Database corruption detected, Region failure, Vote loss suspected). Each accordion trigger shows severity badge + title; content shows the numbered steps from `docs/DISASTER_RECOVERY.md` with motion-staggered entrance. First runbook open by default.
+- Backup Schedule table (Hourly/Daily/Weekly/Monthly): Type badge (zinc/emerald/gold-accent/amber) + Frequency + Retention + Storage location. Footer note about AES-256 + cross-region replication to eu-central-1.
+- DR & Deployment Scripts card: 4 scripts (`scripts/dr-test.sh`, `scripts/dr-failover.sh`, `scripts/blue-green-deploy.sh`, `scripts/rollback.sh`) each with a description + CopyButton. Recovery Test Schedule callout (Monthly/Quarterly/Annually) at the bottom.
+
+**Design rules followed (MANDATORY):**
+- Palette: emerald / gold[accent] / amber / zinc / red ONLY. NO indigo, NO blue, NO sky, NO teal. Every new badge has explicit `dark:` variants. Verified by grep — zero occurrences of `indigo|sky-[0-9]|blue-[0-9]|teal-[0-9]` in the new code.
+- `votewise-card-glow` applied to: all 4 tab header cards, the Logs "By Category" stat card, the Alerts "Unacknowledged" stat card (when >0), the Costs "Total Cost" + "Projected Monthly" stat cards, the Load Test preset result cards (conditional), the Load Test Run Detail card, the 3 DR RTO/RPO/Vote-Loss stat cards, the DR header card.
+- Mobile-first responsive: stat-card grids collapse `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`; preset grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5`; all tables wrapped in `votewise-scroll overflow-x-auto`; log/alert lists use `max-h-[600px] overflow-y-auto votewise-scroll`.
+- Framer Motion: tab header entrance (opacity/y −8), stat-card stagger, log row stagger, alert event list `AnimatePresence` (initial/animate/exit), preset card stagger, run-detail `AnimatePresence` height animation, runbook step stagger, category bar width animation.
+- Loading states: `LoadingRow` (Loader2 + label) on initial fetch. Error states: `ErrorState` (AlertCircle + retry) shown only on first-load failure (silent refresh errors don't disrupt UI). Empty states: `EmptyState` (icon + title + hint) for logs/alert-events/rules/cost-by-service/load-test-history.
+- Sonner `toast` for: Apply Filters / Clear Filters (info), Alert Acknowledge (success), Alert Rule Toggle (success), Load Test Run (success with description), Copy (existing CopyButton helper).
+- Recharts: used for the Cost Trend `AreaChart` (emerald gradient fill) + Daily Breakdown stacked `BarChart` (per-category colour from `COST_CATEGORY_COLOR`). Custom dark-theme tooltip styling via `contentStyle`. `ResponsiveContainer` for fluid sizing.
+- Existing 6 tabs are UNCHANGED — only added 4 new `TabsTrigger` + 4 new `TabsContent` + 4 new tab component functions + new imports + new palette/type maps. No edits to any of the 6 existing tab components (`ReadinessTab`, `LiveServicesTab`, `SystemMetricsTab`, `BackupsTab`, `DeploymentsTab`, `DomainsTab`).
+- Switch component (`@/components/ui/switch`) used for: Logs auto-refresh toggle, Alert Rule enabled toggle.
+- Accordion component (`@/components/ui/accordion`) used for: DR Runbook list (3 collapsible runbooks).
+- Tooltip component (`@/components/ui/tooltip`) used for: Alert channel delivery pills (hover → "Email: sent at 2026-08-02 14:30").
+
+Lint workflow:
+- First pass: 1 warning — `Unused eslint-disable directive` on the LogsTab initial-load `useEffect`. Fixed by replacing `// eslint-disable-next-line react-hooks/exhaustive-deps` + `[applied]` deps with proper `[load]` deps (load is a stable useCallback that re-creates when `applied` changes).
+- Second pass: cleaned up 5 unused imports (`Skeleton`, `Pause`, `ChevronDown`, `ChevronRight`, `Cell` from recharts) — removed to keep the codebase professional even though the project's ESLint config has `@typescript-eslint/no-unused-vars: off`.
+- Final pass: **0 errors, 0 warnings**.
+
+End-to-end verification (admin cookie):
+- `GET /api/pihed/logs` → 200, returned 5+ log entries (infrastructure/info/app, etc.) + stats with byCategory/byService.
+- `GET /api/pihed/alerts` → 200, returned alert event "High Memory Usage" with email+slack channels delivered + all 7 default rules + stats (total24h, critical24h, unacknowledged, bySeverity).
+- `POST /api/pihed/alerts/{id}/acknowledge` → 200, event marked acknowledged.
+- `PATCH /api/pihed/alerts/rules/{id}/toggle` → 200, rule enabled/disabled; restored to enabled after test.
+- `GET /api/pihed/costs?days=30` → 200, summary $3,576.11 / ₦5,364,165 across 7 categories (compute/database/sms/infrastructure/cdn/email/storage) + 7 providers (aws-ecs/aws-rds/termii/aws-alb/cloudflare/resend/aws-s3) + 30-day trend.
+- `GET /api/pihed/load-test` → 200, returned 5 presets (10k/50k/100k/500k/1m) + history.
+- `POST /api/pihed/load-test/run` (preset=10k) → 200, result: 6000 reqs / 0.05% errors / p95 240ms / verdict PASS.
+- `GET /admin/infrastructure` → 200 (compiled in 8.2s on first visit due to new Recharts dep, 553ms on subsequent visits).
+- `dev.log` shows no compile or runtime errors after the new tabs were loaded.
+
+### Files Modified
+| File | Change |
+|---|---|
+| `src/components/votewise/infrastructure-console.tsx` | EXTENDED — from 2446 lines to ~3700 lines (+~1250 lines). Added: new imports (Recharts + Switch/Accordion/Tooltip + 17 new Lucide icons + useMemo), 12 new palette/type maps, 11 new TypeScript interfaces, 4 new TabsTrigger + 4 new TabsContent entries, 4 new tab component functions (`LogsTab`, `AlertsTab`, `CostsTab`, `LoadTestingTab`), 3 new helper functions (`formatMetadata`, `safeParseArray`, `safeParseDelivered`), 1 new section component (`DisasterRecoverySection`), 1 new sub-component (`LoadTestingSection`, `ResultStat`). Existing 6 tabs UNTOUCHED. |
+
+### Design Decisions
+- **Filter staging:** LogsTab keeps `filters` (what's in the form) separate from `applied` (what's been queried). This matches statuspage-grade UX — users can experiment with filters without spamming the API. Pressing Apply (or Enter in the search input) copies `filters` → `applied`, which triggers a re-fetch via the `[load]` useEffect.
+- **Silent auto-refresh:** All 4 tabs use the existing `firstLoadRef` + `silent` pattern from `LiveServicesTab`/`SystemMetricsTab` — auto-refresh ticks call `load(true)` which skips the spinner and doesn't surface errors via the ErrorState card. Only the manual Refresh button triggers a non-silent refresh.
+- **shadcn Select empty-value workaround:** shadcn's Select component doesn't allow empty-string values. I used `"__all"` as a sentinel value in the LogsTab filter selects and convert it back to `''` (no filter) in the `onValueChange` handler.
+- **Recharts theming:** Used hardcoded hex colours from the palette (emerald `#10b981`, gold `#d4a02a`, amber `#f59e0b`, zinc `#a1a1aa`) for the chart fills/strokes instead of CSS variables, because Recharts SVG elements don't inherit Tailwind's `currentColor`. The trend area chart uses an emerald gradient stop for fill, the stacked bar chart uses per-category colours from `COST_CATEGORY_COLOR`. The tooltip uses an explicit dark background to match the dark-default theme.
+- **Cost projections:** "Projected Monthly" = `dailyAverage × 30` (extrapolated from the selected period). "Cost per Voter" = `totalUsd / 50,000` (50K is the platform's nominal voter baseline — would come from a real voter-count source in production). Both clearly labelled with their derivation.
+- **DR Runbooks source:** The 3 runbooks, RTO/RPO/Vote-Loss targets, backup schedule, and DR script paths are hardcoded in the component (matching `docs/DISASTER_RECOVERY.md` exactly) rather than parsed from the markdown file at runtime. This keeps the DR section static, fast, and immune to filesystem changes — the markdown is the source of truth for operators, the component is the source of truth for the dashboard.
+- **Load Test result rendering:** When a preset runs, the result is stored in a `Record<presetKey, LoadTestResult>` state map and rendered INLINE inside the preset card (AnimatePresence height animation). This lets admins run multiple presets in sequence and compare results side-by-side without losing previous runs. Re-running a preset overwrites its stored result.
+- **History table interactions:** Each history row is clickable; clicking expands a detail card below the table (`votewise-card-glow`) with 12 stat cells + 4 config cells + notes + timestamps. Clicking the same row again collapses it. Clicking a different row swaps the detail card content (AnimatePresence).
+
+### Stage Summary
+- ✅ All 4 new tabs built per spec: Logs (centralized logging with filters + stats + expandable rows), Alerts (events + rules with ack/toggle), Costs (period selector + 4 stats + bar chart + area chart + stacked bar chart + provider table), Load Testing (5 preset cards with inline results + history + detail panel) + DR Runbook (RTO/RPO/Vote-Loss + 3 accordion runbooks + backup schedule + DR scripts).
+- ✅ Existing 6 tabs UNCHANGED — only added 4 new TabsTrigger + 4 new TabsContent + 4 new component functions + new imports + new palette/type maps.
+- ✅ Palette discipline: emerald / gold[accent] / amber / zinc / red ONLY — NO indigo, NO blue, NO sky, NO teal. Every new badge has explicit `dark:` variants.
+- ✅ `votewise-card-glow` on all 4 tab header cards + the prominent stat cards (Logs By-Category, Alerts Unacknowledged, Costs Total/Projected, Load Test Run Detail, 3 DR stat cards, DR header).
+- ✅ Mobile-first responsive: stat-card grids collapse `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4`; preset grid `1→2→3→5`; all tables scroll horizontally on mobile; long lists `max-h-[600px] overflow-y-auto votewise-scroll`.
+- ✅ Framer Motion throughout: tab header entrance, stat-card stagger, log row stagger, alert event AnimatePresence, preset card stagger, run-detail AnimatePresence, runbook step stagger, category bar width animation.
+- ✅ Loading (`LoadingRow`) / Error (`ErrorState` with retry) / Empty (`EmptyState`) states for all 4 tabs. Silent auto-refresh (no UI flash on tick).
+- ✅ Sonner `toast` for filter apply/clear, alert ack, rule toggle, load test run, copy.
+- ✅ Recharts AreaChart (cost trend) + stacked BarChart (daily breakdown) with palette-disciplined colours and dark-theme tooltip styling.
+- ✅ Switch component for Logs auto-refresh + Alert Rule enabled. Accordion for DR runbooks. Tooltip for alert channel delivery status.
+- ✅ Lint: **0 errors, 0 warnings** (after fixing 1 unused-eslint-disable warning + cleaning up 5 unused imports).
+- ✅ End-to-end verified: all 4 endpoints return 200 with real data; ack + toggle rule + run load test all return 200; `/admin/infrastructure` renders 200 with no runtime errors in `dev.log`.
+- **Files modified:** `src/components/votewise/infrastructure-console.tsx` (extended, not rewritten — 6 existing tabs preserved verbatim). No other files touched.

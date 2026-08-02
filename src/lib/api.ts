@@ -217,6 +217,14 @@ export const api = {
   pihedAddDomain: (data: any) => req('/api/pihed/domains', { method: 'POST', body: JSON.stringify(data) }),
   pihedVerifyDomain: (id: string) => req(`/api/pihed/domains/${id}/verify`, { method: 'POST' }),
   pihedRemoveDomain: (id: string) => req(`/api/pihed/domains/${id}`, { method: 'DELETE' }),
+  // Chapter 17 ext: Centralized Logging, Alerting, Cost Monitoring, Load Testing
+  pihedLogs: (params?: string) => req(`/api/pihed/logs${params ? '?' + params : ''}`),
+  pihedAlerts: (unack?: boolean) => req(`/api/pihed/alerts${unack ? '?unacknowledged=true' : ''}`),
+  pihedAckAlert: (id: string) => req(`/api/pihed/alerts/${id}/acknowledge`, { method: 'POST' }),
+  pihedToggleAlertRule: (id: string, enabled: boolean) => req(`/api/pihed/alerts/rules/${id}/toggle`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  pihedCosts: (days?: number, org?: string) => req(`/api/pihed/costs${days ? `?days=${days}${org ? `&org=${encodeURIComponent(org)}` : ''}` : ''}`),
+  pihedLoadTests: () => req('/api/pihed/load-test'),
+  pihedRunLoadTest: (preset: string) => req('/api/pihed/load-test/run', { method: 'POST', body: JSON.stringify({ preset }) }),
 
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: votewise-config
+  namespace: votewise
+data:
+  NODE_ENV: "production"
+  NEXT_PUBLIC_APP_URL: "https://votewise.com.ng"
+  NEXT_PUBLIC_API_URL: "https://votewise.com.ng/api"
+  DATABASE_URL: "postgresql://votewise.db.internal:5432/votewise"
+  REDIS_URL: "redis://votewise-redis.internal:6379"
+  S3_REGION: "eu-west-1"
+  S3_BUCKET: "votewise-production-storage"
+  LOG_LEVEL: "info"
+  PROCESS_REPLICAS: "6"
+  # Non-secret config. Secrets live in secret.yaml.

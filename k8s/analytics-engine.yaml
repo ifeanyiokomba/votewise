@@ -1,0 +1,32 @@
+# VoteWise — Analytics Engine (RAEI report generation, aggregation, AI insights)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: votewise-analytics
+  namespace: votewise
+  labels:
+    app: votewise-analytics
+    tier: analytics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: votewise-analytics
+  template:
+    metadata:
+      labels:
+        app: votewise-analytics
+        tier: analytics
+    spec:
+      containers:
+        - name: analytics
+          image: ghcr.io/ifeanyiokomba/votewise-analytics:latest
+          command: ["node", "analytics-engine.js"]
+          envFrom:
+            - configMapRef:
+                name: votewise-config
+            - secretRef:
+                name: votewise-secrets
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits:   { cpu: "2000m", memory: "2Gi" }

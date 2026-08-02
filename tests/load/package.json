@@ -1,0 +1,17 @@
+{
+  "name": "votewise-load-tests",
+  "version": "1.0.0",
+  "description": "k6 load tests for VoteWise — validates the platform sustains 10k to 1M concurrent voters.",
+  "scripts": {
+    "test:10k":     "k6 run --vus 10000   --duration 5m  tests/load/vote-cast.js",
+    "test:50k":     "k6 run --vus 50000   --duration 10m tests/load/vote-cast.js",
+    "test:100k":    "k6 run --vus 100000  --duration 10m tests/load/vote-cast.js",
+    "test:500k":    "k6 run --vus 500000  --duration 15m tests/load/vote-cast.js",
+    "test:1m":      "k6 run --vus 1000000 --duration 20m tests/load/vote-cast.js",
+    "test:results": "k6 run --vus 50000   --duration 10m tests/load/results-view.js",
+    "test:smoke":   "k6 run --vus 100     --duration 30s tests/load/vote-cast.js"
+  },
+  "devDependencies": {
+    "@types/k6": "^0.50.0"
+  }
+}

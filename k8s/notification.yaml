@@ -1,0 +1,32 @@
+# VoteWise — Notification Service (email/SMS/WhatsApp delivery with channel fallback)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: votewise-notification
+  namespace: votewise
+  labels:
+    app: votewise-notification
+    tier: messaging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: votewise-notification
+  template:
+    metadata:
+      labels:
+        app: votewise-notification
+        tier: messaging
+    spec:
+      containers:
+        - name: notification
+          image: ghcr.io/ifeanyiokomba/votewise-notification:latest
+          command: ["node", "notification.js"]
+          envFrom:
+            - configMapRef:
+                name: votewise-config
+            - secretRef:
+                name: votewise-secrets
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }

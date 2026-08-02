@@ -1,0 +1,102 @@
+# VoteWise — Network Policies (zero-trust segmentation)
+# Restricts which pods can talk to which. Aligns with the spec's
+# "Security Hardening" section: each tier is isolated.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: votewise
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow ingress traffic only to app + results from the ingress namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-app
+  namespace: votewise
+spec:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - port: 3000
+          protocol: TCP
+---
+# Allow app → db (egress only to port 5432)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-db
+  namespace: votewise
+spec:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes: [Egress]
+  egress:
+    - to: []
+      ports:
+        - port: 5432
+          protocol: TCP
+---
+# Allow app → redis (port 6379)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-redis
+  namespace: votewise
+spec:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes: [Egress]
+  egress:
+    - to: []
+      ports:
+        - port: 6379
+          protocol: TCP
+---
+# Allow app → results-service (port 3030, internal)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-results
+  namespace: votewise
+spec:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              tier: realtime
+      ports:
+        - port: 3030
+          protocol: TCP
+---
+# Allow app → HTTPS (egress to S3, payment gateways, SMS/email providers)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-https
+  namespace: votewise
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to: []
+      ports:
+        - port: 443
+          protocol: TCP

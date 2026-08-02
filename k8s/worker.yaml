@@ -1,0 +1,34 @@
+# VoteWise — Background Worker (queue consumers: email, SMS, reports, imports)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: votewise-worker
+  namespace: votewise
+  labels:
+    app: votewise-worker
+    tier: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: votewise-worker
+  template:
+    metadata:
+      labels:
+        app: votewise-worker
+        tier: worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/ifeanyiokomba/votewise-worker:latest
+          command: ["node", "worker.js"]
+          envFrom:
+            - configMapRef:
+                name: votewise-config
+            - secretRef:
+                name: votewise-secrets
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits:   { cpu: "1000m", memory: "1Gi" }
+          # Workers don't need probes — they poll the queue.
+      terminationGracePeriodSeconds: 120  # let long jobs finish

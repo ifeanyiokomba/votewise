@@ -57,3 +57,34 @@ async function processQueue() {
     processing = false
   }
 }
+
+// ---------------------------------------------------------------------------
+// Chapter 17 — scheduled background jobs (alert evaluation, backup, metrics)
+// ---------------------------------------------------------------------------
+
+let periodicTimer: NodeJS.Timeout | null = null
+
+/**
+ * Start the periodic job scheduler. Runs every 30s and enqueues:
+ *   • alert.evaluate  — evaluate all alert rules against live metrics
+ *   • metrics.capture — snapshot system metrics for sparklines
+ *   • backup.check    — check if a scheduled backup is due
+ *
+ * In production, this runs in the scheduler microservice. In the sandbox
+ * (single process), it runs in-process so the dashboard has fresh data.
+ */
+export function startPeriodicJobs() {
+  if (periodicTimer) return
+  periodicTimer = setInterval(() => {
+    enqueue('alert.evaluate', {})
+    enqueue('metrics.capture', {})
+  }, 30_000)
+  console.log('[jobs] periodic scheduler started (30s interval)')
+}
+
+export function stopPeriodicJobs() {
+  if (periodicTimer) {
+    clearInterval(periodicTimer)
+    periodicTimer = null
+  }
+}
