@@ -9921,3 +9921,46 @@ Stage Summary:
 - ✅ 69 files changed/added in this commit.
 - The 15-min webDevReview cron job (job_id 303569) will continue
   autonomous refinement.
+
+---
+Task ID: CONTINUE-SLO-BADGE-WEBHOOKS
+Agent: Lead Architect (main)
+Task: Continue development — fix bugs found in QA, add SLO tracking, alert webhooks, public readiness badge
+
+Work Log:
+- Did a full QA pass with agent-browser. Found a critical bug: api.ts had
+  two getElection functions (duplicate keys). The second (id-based) silently
+  overrode the first (no-arg legacy), so official.tsx / about.tsx /
+  voter-dashboard.tsx calling api.getElection() with no args produced
+  /api/workspace/elections/undefined — a 404 on every page load. Renamed
+  the legacy to getLegacyElection() and updated all 3 callers. Verified:
+  0 occurrences of elections/undefined in the dev log after the fix.
+- Added SLO (Service Level Objective) tracking — the natural next step
+  after monitoring. 2 Prisma models (SloDefinition, SloSample), 6 default
+  SLOs (API Availability 99.9%, API Latency p95 <500ms, Vote Recording
+  99.99%, DB Latency p95 <100ms, WebSocket 99.95%, OTP Delivery 98%).
+  Daily SLI sampling with error budget burn-rate computation. Fixed a
+  divide-by-zero bug (target=100 → NaN → Prisma rejection).
+- Added SLO dashboard card to the Live Services tab: 5 summary stats +
+  per-SLO rows with inline SVG sparklines, error budget bars, status
+  badges. 60s auto-refresh. Verified: 6 SLOs, 5 healthy, 1 warning.
+- Enhanced alerting: dispatchToChannel() now ACTUALLY POSTs to Slack
+  (SLACK_WEBHOOK_URL) and Teams (TEAMS_WEBHOOK_URL) with proper message
+  card formatting. Previously these were console.log stubs.
+- Added public Election Readiness Badge: GET /api/pihed/readiness/badge
+  (no auth) + embeddable ReadinessBadgeWidget component (compact pill +
+  full card variants). Added to the public /status page below the overall
+  status banner. Builds voter confidence: "Platform Readiness: ✓ Ready".
+- agent-browser verified: /status shows the readiness badge, /admin/
+  infrastructure Live Services tab shows the SLO card with all 6 SLOs.
+  Home page clean, no errors. Lint: 0 errors, 0 warnings.
+- Committed (e8b9f91) + pushed to GitHub.
+
+Stage Summary:
+- ✅ Critical bug fixed (getElection duplicate-key → elections/undefined 404s).
+- ✅ SLO tracking added (6 SLOs, error budgets, sparklines, dashboard card).
+- ✅ Alert webhooks made real (Slack + Teams POST when configured).
+- ✅ Public readiness badge widget added to /status page.
+- The platform continues to strengthen: monitoring → alerting → SLOs →
+  public confidence badges. The 15-min webDevReview cron will continue
+  autonomous refinement.
