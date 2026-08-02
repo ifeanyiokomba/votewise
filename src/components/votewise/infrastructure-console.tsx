@@ -30,7 +30,7 @@ import {
   // New icons for the 4 additional tabs (Logs / Alerts / Costs / Load Test + DR)
   ScrollText, BellRing, DollarSign, Terminal, Play, Search, Filter, Eraser,
   MessageSquare, Smartphone, Megaphone, Timer, MemoryStick, Boxes, Calculator,
-  Inbox, FileText, Power,
+  Inbox, FileText, Power, Target,
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -1589,7 +1589,210 @@ function LiveServicesTab() {
           })}
         </div>
       </div>
+
+      {/* ---- SLO Status card ---- */}
+      <SloStatusCard />
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SLO Status Card (Service Level Objectives)
+// ---------------------------------------------------------------------------
+function SloStatusCard() {
+  const [data, setData] = useState<{ statuses: any[]; summary: any } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      setRefreshing(true)
+      setError(null)
+      const res = await api.pihedSlos() as any
+      setData(res)
+    } catch (e: any) {
+      if (loading) setError(e?.message || 'Failed to load SLO data')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [loading])
+
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 60_000)
+    return () => clearInterval(id)
+  }, [load])
+
+  if (loading && !data) return <LoadingRow label="Loading SLO data…" />
+  if (error && !data) {
+    return (
+      <Card>
+        <CardContent>
+          <ErrorState message={error} onRetry={load} />
+        </CardContent>
+      </Card>
+    )
+  }
+  if (!data) return null
+
+  const s = data.summary || {}
+  const statuses = data.statuses || []
+  const allHealthy = s.allHealthy
+  const avgBudget = s.avgBudgetRemaining || 0
+
+  const SLO_STATUS_STYLE: Record<string, { color: string; bg: string; label: string }> = {
+    healthy: { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/15', label: 'Healthy' },
+    warning: { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/15', label: 'Warning' },
+    critical: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/15', label: 'Critical' },
+    breached: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/20', label: 'Breached' },
+  }
+
+  function budgetColor(pct: number) {
+    if (pct > 50) return 'bg-emerald-500'
+    if (pct > 25) return 'bg-amber-500'
+    return 'bg-red-500'
+  }
+
+  function miniSparkline(trend: any[]) {
+    if (!trend || trend.length < 2) return null
+    const vals = trend.map((t) => t.sliValue)
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const range = max - min || 1
+    const w = 60
+    const h = 20
+    const points = vals.map((v, i) => {
+      const x = (i / (vals.length - 1)) * w
+      const y = h - ((v - min) / range) * h
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    }).join(' ')
+    return (
+      <svg width={w} height={h} className="opacity-70">
+        <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-emerald-500" />
+      </svg>
+    )
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+      <Card className="votewise-card-glow">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 font-display text-base">
+              <Target className="h-4 w-4 text-primary" />
+              Service Level Objectives
+              <Badge variant="outline" className="text-[9px]">SLO</Badge>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Badge className={cn(
+                'gap-1.5 text-xs',
+                allHealthy
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                  : s.critical > 0 || s.breached > 0
+                    ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+              )}>
+                <span className={cn(
+                  'inline-block h-2 w-2 rounded-full',
+                  allHealthy ? 'bg-emerald-500 votewise-live-dot' : s.critical > 0 || s.breached > 0 ? 'bg-red-500' : 'bg-amber-500',
+                )} />
+                {allHealthy ? 'All SLOs healthy' : s.breached > 0 ? `${s.breached} breached` : s.critical > 0 ? `${s.critical} critical` : `${s.warning} warning`}
+              </Badge>
+              <Button onClick={load} variant="ghost" size="sm" disabled={refreshing} className="h-7 gap-1 text-xs">
+                {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="rounded-lg border border-border/60 p-3 text-center">
+              <div className="font-display text-xl font-bold">{s.total || 0}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total SLOs</div>
+            </div>
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+              <div className="font-display text-xl font-bold text-emerald-600 dark:text-emerald-400">{s.healthy || 0}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Healthy</div>
+            </div>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+              <div className="font-display text-xl font-bold text-amber-600 dark:text-amber-400">{s.warning || 0}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Warning</div>
+            </div>
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-center">
+              <div className="font-display text-xl font-bold text-red-600 dark:text-red-400">{(s.critical || 0) + (s.breached || 0)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Critical+</div>
+            </div>
+            <div className="rounded-lg border border-border/60 p-3 text-center">
+              <div className={cn('font-display text-xl font-bold', budgetColor(avgBudget).replace('bg-', 'text-'))}>
+                {avgBudget.toFixed(1)}%
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg Budget</div>
+            </div>
+          </div>
+
+          {/* SLO rows */}
+          <div className="space-y-2">
+            {statuses.map((slo: any, i: number) => {
+              const style = SLO_STATUS_STYLE[slo.status] || SLO_STATUS_STYLE.healthy
+              const budget = slo.budgetRemaining || 0
+              const targetLabel = slo.targetUnit === 'percent'
+                ? `${slo.target}% ${slo.metric === 'uptime' ? 'uptime' : slo.metric}`
+                : `${slo.target}${slo.targetUnit} ${slo.metric}`
+              return (
+                <motion.div
+                  key={slo.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.05 }}
+                  className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn('grid h-8 w-8 place-items-center rounded-lg', style.bg)}>
+                      <Gauge className={cn('h-4 w-4', style.color)} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{slo.name}</span>
+                        <Badge variant="outline" className="text-[9px]">{slo.service}</Badge>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">Target: {targetLabel} · {slo.window}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {miniSparkline(slo.trend)}
+                    <div className="text-right">
+                      <div className={cn('font-mono text-sm font-bold', style.color)}>
+                        {slo.targetUnit === 'percent' ? `${slo.currentSli.toFixed(2)}%` : `${slo.currentSli.toFixed(0)}${slo.targetUnit}`}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">current SLI</div>
+                    </div>
+                    <div className="w-24">
+                      <div className="mb-1 flex items-center justify-between text-[9px] text-muted-foreground">
+                        <span>Error budget</span>
+                        <span className={cn('font-mono font-semibold', budget > 50 ? 'text-emerald-600 dark:text-emerald-400' : budget > 25 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400')}>
+                          {budget.toFixed(0)}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className={cn('h-full transition-all', budgetColor(budget))} style={{ width: `${Math.max(0, Math.min(100, budget))}%` }} />
+                      </div>
+                    </div>
+                    <Badge className={cn('text-[9px]', style.bg, style.color)}>
+                      {slo.status === 'healthy' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                      {slo.status === 'breached' && <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-500 votewise-live-dot" />}
+                      {style.label}
+                    </Badge>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }
 

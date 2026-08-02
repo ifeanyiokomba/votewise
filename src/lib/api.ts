@@ -38,7 +38,7 @@ async function req<T = any>(path: string, opts: RequestInit = {}, voterToken?: s
 
 export const api = {
   // Public
-  getElection: () => req('/api/election'),
+  getLegacyElection: () => req('/api/election'),
   // Tenant (multi-organization) — LEGACY (Chapter 1 retention)
   registerTenant: (data: any) => req('/api/tenant/register', { method: 'POST', body: JSON.stringify(data) }),
   getCurrentTenant: () => req('/api/tenant/current'),
@@ -225,6 +225,9 @@ export const api = {
   pihedCosts: (days?: number, org?: string) => req(`/api/pihed/costs${days ? `?days=${days}${org ? `&org=${encodeURIComponent(org)}` : ''}` : ''}`),
   pihedLoadTests: () => req('/api/pihed/load-test'),
   pihedRunLoadTest: (preset: string) => req('/api/pihed/load-test/run', { method: 'POST', body: JSON.stringify({ preset }) }),
+  pihedSlos: () => req('/api/pihed/slos'),
+  pihedSloSummary: () => req('/api/pihed/slos?summary=true'),
+  pihedReadinessBadge: (voters?: number) => fetch(`/api/pihed/readiness/badge${voters ? `?voters=${voters}` : ''}`).then(r => r.json()),
 
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

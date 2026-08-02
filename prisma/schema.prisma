@@ -2565,3 +2565,37 @@ model CostRecord {
   @@index([periodStart])
   @@index([organizationId])
 }
+
+/// A Service Level Objective — e.g. "API p95 latency < 500ms 99.9% of the time".
+/// Tracked over a rolling window (30 days). Drives the SLO dashboard card.
+model SloDefinition {
+  id            String   @id @default(cuid())
+  name          String   // "API Latency"
+  service       String   // API | Database | WebSocket | ...
+  metric        String   // latency | uptime | errorRate
+  target        Float    // 99.9 (percent) or 500 (ms)
+  targetUnit    String   // percent | ms | seconds
+  window        String   // 30d | 7d | 90d
+  sliType       String   // ratio | threshold
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([service])
+  @@index([enabled])
+}
+
+/// A daily SLI (Service Level Indicator) sample — one row per SLO per day.
+model SloSample {
+  id            String   @id @default(cuid())
+  sloId         String
+  date          String   // YYYY-MM-DD
+  goodEvents    Int      @default(0)
+  totalEvents   Int      @default(0)
+  sliValue      Float    @default(100) // goodEvents/totalEvents * 100
+  budgetRemaining Float  @default(100) // % of error budget remaining
+  createdAt     DateTime @default(now())
+
+  @@unique([sloId, date])
+  @@index([sloId])
+}

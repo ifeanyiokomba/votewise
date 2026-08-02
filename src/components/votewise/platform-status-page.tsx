@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ReadinessBadgeWidget } from '@/components/votewise/readiness-badge-widget'
 import { toast } from 'sonner'
 
 // ---------------------------------------------------------------------------
@@ -699,6 +700,11 @@ export function PlatformStatusPage() {
           </motion.section>
         )}
       </AnimatePresence>
+
+      {/* ============================ ELECTION READINESS BADGE ============================ */}
+      <section className="mb-8">
+        <ReadinessBadgeWidget voters={0} />
+      </section>
 
       {/* ============================ 90-DAY UPTIME BAR CHART ============================ */}
       <section className="mb-10">

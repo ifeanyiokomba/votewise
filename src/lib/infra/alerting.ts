@@ -246,14 +246,62 @@ async function dispatchToChannel(channel: AlertChannel, alert: any): Promise<str
       case 'whatsapp':
         logger.info(`[alert] WhatsApp dispatched: ${alert.message}`, { category: 'infrastructure', service: 'app' })
         return 'sent'
-      case 'slack':
-        // In production: POST to Slack webhook
-        logger.info(`[alert] Slack dispatched: ${alert.message}`, { category: 'infrastructure', service: 'app' })
-        return 'sent'
-      case 'teams':
-        // In production: POST to Teams webhook
-        logger.info(`[alert] Teams dispatched: ${alert.message}`, { category: 'infrastructure', service: 'app' })
-        return 'sent'
+      case 'slack': {
+        // POST to Slack incoming webhook if configured
+        const slackWebhook = process.env.SLACK_WEBHOOK_URL
+        if (slackWebhook) {
+          const severityColor = alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#d97706' : '#52525b'
+          const res = await fetch(slackWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              attachments: [{
+                color: severityColor,
+                title: `🚨 VoteWise Alert: ${alert.ruleName}`,
+                text: alert.message,
+                fields: [
+                  { title: 'Severity', value: alert.severity, short: true },
+                  { title: 'Metric', value: `${alert.metric} = ${alert.value.toFixed(2)} (threshold ${alert.threshold})`, short: true },
+                ],
+                footer: 'VoteWise PIHD Alerting',
+                ts: Math.floor(Date.now() / 1000),
+              }],
+            }),
+          }).catch(() => null)
+          return res && res.ok ? 'sent' : 'failed'
+        }
+        logger.info(`[alert] Slack dispatched (no webhook configured): ${alert.message}`, { category: 'infrastructure', service: 'app' })
+        return 'sent-no-webhook'
+      }
+      case 'teams': {
+        // POST to Microsoft Teams incoming webhook if configured
+        const teamsWebhook = process.env.TEAMS_WEBHOOK_URL
+        if (teamsWebhook) {
+          const themeColor = alert.severity === 'critical' ? 'FF0000' : alert.severity === 'warning' ? 'FFA500' : '808080'
+          const res = await fetch(teamsWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              '@type': 'MessageCard',
+              '@context': 'http://schema.org/extensions',
+              themeColor,
+              summary: `VoteWise Alert: ${alert.ruleName}`,
+              sections: [{
+                activityTitle: `🚨 VoteWise Alert: ${alert.ruleName}`,
+                text: alert.message,
+                facts: [
+                  { name: 'Severity', value: alert.severity },
+                  { name: 'Metric', value: `${alert.metric} = ${alert.value.toFixed(2)}` },
+                  { name: 'Threshold', value: String(alert.threshold) },
+                ],
+              }],
+            }),
+          }).catch(() => null)
+          return res && res.ok ? 'sent' : 'failed'
+        }
+        logger.info(`[alert] Teams dispatched (no webhook configured): ${alert.message}`, { category: 'infrastructure', service: 'app' })
+        return 'sent-no-webhook'
+      }
       default:
         return 'unknown_channel'
     }

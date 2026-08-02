@@ -25,7 +25,7 @@ export function AboutView() {
 
   useEffect(() => {
     Promise.all([
-      api.getElection(),
+      api.getLegacyElection(),
       api.adminGetOfficials().catch(() => ({ officials: [] })),
       api.getPositions(),
     ]).then(([e, o, p]) => {

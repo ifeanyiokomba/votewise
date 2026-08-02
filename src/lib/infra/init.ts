@@ -16,6 +16,7 @@ import { triggerBackup } from '@/lib/pihed'
 import { ensureAlertRulesSeeded } from '@/lib/infra/alerting'
 import { ensureCostsSeeded } from '@/lib/infra/cost-tracker'
 import { ensureInfraSeeded } from '@/lib/pihed'
+import { recordAllSliSamples, ensureSlosSeeded } from '@/lib/infra/slo-tracker'
 
 let initialized = false
 
@@ -33,6 +34,9 @@ export async function initInfra() {
   registerHandler('backup.scheduled', async (payload: any) => {
     await triggerBackup(payload?.type || 'hourly', 'scheduler').catch(() => {})
   })
+  registerHandler('slo.sample', async () => {
+    await recordAllSliSamples().catch(() => {})
+  })
 
   // Start the periodic scheduler (30s interval)
   startPeriodicJobs()
@@ -41,4 +45,5 @@ export async function initInfra() {
   await ensureAlertRulesSeeded().catch(() => {})
   await ensureCostsSeeded().catch(() => {})
   await ensureInfraSeeded().catch(() => {})
+  await ensureSlosSeeded().catch(() => {})
 }

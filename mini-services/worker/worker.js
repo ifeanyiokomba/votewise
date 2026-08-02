@@ -145,6 +145,11 @@ registerHandler('uptime.sample', async () => {
   console.log('[worker] uptime.sample — recording uptime data point for each service')
 })
 
+// --- SLO sampling (daily SLI recording) ------------------------------------
+registerHandler('slo.sample', async () => {
+  console.log('[worker] slo.sample — recording daily SLI samples for all SLOs')
+})
+
 console.log('')
 console.log('═══════════════════════════════════════════════════════════════')
 console.log('  VoteWise Background Worker — ready')

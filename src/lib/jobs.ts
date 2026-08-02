@@ -75,11 +75,18 @@ let periodicTimer: NodeJS.Timeout | null = null
  */
 export function startPeriodicJobs() {
   if (periodicTimer) return
+  let tick = 0
   periodicTimer = setInterval(() => {
+    tick++
+    // Every 30s: alert evaluation + metrics capture
     enqueue('alert.evaluate', {})
     enqueue('metrics.capture', {})
+    // Every 5 minutes (10th tick): SLO sampling
+    if (tick % 10 === 0) {
+      enqueue('slo.sample', {})
+    }
   }, 30_000)
-  console.log('[jobs] periodic scheduler started (30s interval)')
+  console.log('[jobs] periodic scheduler started (30s interval, SLO sampling every 5min)')
 }
 
 export function stopPeriodicJobs() {

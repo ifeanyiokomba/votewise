@@ -113,7 +113,7 @@ export function OfficialDashboard() {
     }).catch(() => setAuthChecked(true))
   }, [])
 
-  useEffect(() => { if (official) api.getElection().then(setElection).catch(() => {}) }, [setElection, official])
+  useEffect(() => { if (official) api.getLegacyElection().then(setElection).catch(() => {}) }, [setElection, official])
 
   // Show login screen if not authenticated
   if (authChecked && !official) {
@@ -198,13 +198,13 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
     setBusy(action)
     try {
       await api.adminElectionAction(action)
-      const e = await api.getElection(); setElection(e)
+      const e = await api.getLegacyElection(); setElection(e)
       toast.success(`${label} — election is now ${e.status}`)
     } catch (e: any) { toast.error(e.message) } finally { setBusy(null) }
   }
 
   async function updateTimes(start: string, end: string) {
-    try { await api.adminUpdateElection({ startTime: start, endTime: end }); const e = await api.getElection(); setElection(e); toast.success('Voting window updated') } catch (e: any) { toast.error(e.message) }
+    try { await api.adminUpdateElection({ startTime: start, endTime: end }); const e = await api.getLegacyElection(); setElection(e); toast.success('Voting window updated') } catch (e: any) { toast.error(e.message) }
   }
 
   return (

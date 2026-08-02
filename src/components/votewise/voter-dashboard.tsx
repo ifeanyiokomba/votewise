@@ -25,7 +25,7 @@ export function VoterDashboard() {
   const [notifications, setNotifications] = useState<any[]>([])
 
   useEffect(() => {
-    api.getElection().then(setElection).catch(() => {})
+    api.getLegacyElection().then(setElection).catch(() => {})
     if (voterToken) {
       api.getBallot().then((d) => { setBallot(d); setLoading(false) }).catch(() => setLoading(false))
       api.getNotifications().then((d) => setNotifications(d.notifications || [])).catch(() => {})
