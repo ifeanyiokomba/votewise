@@ -390,7 +390,7 @@ export function IntelligenceDashboard({ subdomain }: { subdomain?: string }) {
                 </Button>
               </div>
               {subdomain && (
-                <Badge variant="secondary" className="font-mono text-[10px]">{subdomain}.votewise.ng</Badge>
+                <Badge variant="secondary" className="font-mono text-[10px]">{subdomain}.votewise.com.ng</Badge>
               )}
               {lastUpdated && (
                 <span className="text-[10px] text-muted-foreground">

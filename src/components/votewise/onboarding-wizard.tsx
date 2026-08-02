@@ -101,7 +101,7 @@ export function OnboardingWizard({ subdomain, onDone }: { subdomain?: string; on
                 {org.logoUrl ? <img src={org.logoUrl} alt="Logo" className="h-14 w-14 rounded-xl object-contain" /> : <div className="grid h-14 w-14 place-items-center rounded-xl text-white" style={{ backgroundColor: org.primaryColour }}><Building2 className="h-7 w-7" /></div>}
                 <div className="flex-1">
                   <div className="font-display text-lg font-bold">{org.name}</div>
-                  <div className="text-xs text-muted-foreground">{org.subdomain}.votewise.ng · {org.category?.replace(/_/g, ' ') || 'Organization'}</div>
+                  <div className="text-xs text-muted-foreground">{org.subdomain}.votewise.com.ng · {org.category?.replace(/_/g, ' ') || 'Organization'}</div>
                 </div>
                 <Badge variant="secondary">{org.plan}</Badge>
               </div>

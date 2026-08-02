@@ -310,7 +310,7 @@ function Header({ subdomain, lastUpdated }: { subdomain?: string; lastUpdated: D
                   </Badge>
                   {subdomain && (
                     <Badge variant="outline" className="font-mono text-[10px]">
-                      {subdomain}.votewise.ng
+                      {subdomain}.votewise.com.ng
                     </Badge>
                   )}
                   {lastUpdated && (

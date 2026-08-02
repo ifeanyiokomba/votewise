@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const existing = await db.organization.findUnique({ where: { subdomain: sub } })
   if (!existing) {
-    return json({ available: true, subdomain: sub, url: `${sub}.votewise.ng` })
+    return json({ available: true, subdomain: sub, url: `${sub}.votewise.com.ng` })
   }
 
   // Generate suggestions.
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   return json({
     available: false,
     subdomain: sub,
-    message: `${sub}.votewise.ng is already taken`,
-    suggestions: availableSuggestions.map((s) => ({ subdomain: s, url: `${s}.votewise.ng` })),
+    message: `${sub}.votewise.com.ng is already taken`,
+    suggestions: availableSuggestions.map((s) => ({ subdomain: s, url: `${s}.votewise.com.ng` })),
   })
 }

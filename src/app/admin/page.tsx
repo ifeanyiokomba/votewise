@@ -22,7 +22,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [official, setOfficial] = useState<any>(null)
-  const [loginForm, setLoginForm] = useState({ email: 'admin@votewise.ng', password: 'admin123' })
+  const [loginForm, setLoginForm] = useState({ email: 'admin@votewise.com.ng', password: 'admin123' })
   const [loginError, setLoginError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -62,11 +62,11 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">Centralized control room for all organizations</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={loginForm.email} onChange={(e) => setLoginForm((f) => ({ ...f, email: e.target.value }))} placeholder="admin@votewise.ng" /></div>
+            <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={loginForm.email} onChange={(e) => setLoginForm((f) => ({ ...f, email: e.target.value }))} placeholder="admin@votewise.com.ng" /></div>
             <div className="space-y-1.5"><Label>Password</Label><Input type="password" value={loginForm.password} onChange={(e) => setLoginForm((f) => ({ ...f, password: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && login()} /></div>
             {loginError && <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{loginError}</div>}
             <Button onClick={login} className="w-full gap-2"><Lock className="h-4 w-4" /> Sign In</Button>
-            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground"><p className="font-semibold text-foreground">Demo credentials</p><p className="mt-1 font-mono">admin@votewise.ng / admin123</p></div>
+            <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground"><p className="font-semibold text-foreground">Demo credentials</p><p className="mt-1 font-mono">admin@votewise.com.ng / admin123</p></div>
             <div className="text-center">
               <Button variant="ghost" size="sm" onClick={() => { window.location.href = '/' }} className="text-xs">← Back to VoteWise</Button>
             </div>
@@ -180,7 +180,7 @@ function OverviewTab() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{o.name}</div>
-                <div className="text-xs text-muted-foreground">{o.category?.replace(/_/g, ' ')} · {o.counts?.members || 0} members · {o.subdomain}.votewise.ng</div>
+                <div className="text-xs text-muted-foreground">{o.category?.replace(/_/g, ' ')} · {o.counts?.members || 0} members · {o.subdomain}.votewise.com.ng</div>
               </div>
               <Badge className={cn(o.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : o.status === 'TRIAL' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>{o.status}</Badge>
             </div>
@@ -262,7 +262,7 @@ function OrganizationsTab() {
                 </div>
                 <div>
                   <h3 className="font-display text-lg font-bold">{detail.name}</h3>
-                  <p className="text-xs text-muted-foreground">{detail.subdomain}.votewise.ng</p>
+                  <p className="text-xs text-muted-foreground">{detail.subdomain}.votewise.com.ng</p>
                 </div>
               </div>
               <Button size="sm" variant="ghost" onClick={() => setDetail(null)}>✕</Button>
@@ -391,7 +391,7 @@ function AuditTab() {
 function SettingsTab() {
   return <Card className="max-w-2xl"><CardHeader><CardTitle className="font-display text-base">Platform Settings</CardTitle></CardHeader><CardContent className="space-y-3">
     <div className="rounded-lg bg-muted/50 p-3"><div className="font-medium">Platform Name</div><div className="text-sm text-muted-foreground">VoteWise</div></div>
-    <div className="rounded-lg bg-muted/50 p-3"><div className="font-medium">Default Domain</div><div className="text-sm text-muted-foreground font-mono">votewise.ng</div></div>
+    <div className="rounded-lg bg-muted/50 p-3"><div className="font-medium">Default Domain</div><div className="text-sm text-muted-foreground font-mono">votewise.com.ng</div></div>
     <div className="rounded-lg bg-muted/50 p-3"><div className="font-medium">Custom Domain Policy</div><div className="text-sm text-muted-foreground">48 hours per connection, auto-reverts to subdomain</div></div>
     <div className="rounded-lg bg-muted/50 p-3"><div className="font-medium">Pricing</div><div className="text-sm text-muted-foreground">₦500 / voter (Pay-As-You-Go). Enterprise: custom.</div></div>
     <div className="rounded-lg bg-muted/50 p-3"><div className="font-medium">Six User Roles</div><div className="text-sm text-muted-foreground">Platform Super Admin · Org Owner · Org Admin · Observer · Voter · Guest</div></div>

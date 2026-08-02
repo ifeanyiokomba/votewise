@@ -39,7 +39,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function OfficialLoginView() {
   const { setView, setOfficial } = useApp()
-  const [email, setEmail] = useState('admin@votewise.ng')
+  const [email, setEmail] = useState('admin@votewise.com.ng')
   const [password, setPassword] = useState('admin123')
   const [totp, setTotp] = useState('')
   const [needs2fa, setNeeds2fa] = useState(false)
@@ -84,11 +84,11 @@ export function OfficialLoginView() {
           <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">Demo credentials</p>
             <div className="mt-1 space-y-0.5 font-mono">
-              <div>admin@votewise.ng / admin123 (Org Owner)</div>
-              <div>elcom@votewise.ng / elcom123 (Committee)</div>
-              <div>eng.faculty@votewise.ng / faculty123 (Officer)</div>
-              <div>csc.dept@votewise.ng / dept123 (Officer)</div>
-              <div>observer@votewise.ng / observer123 (Observer)</div>
+              <div>admin@votewise.com.ng / admin123 (Org Owner)</div>
+              <div>elcom@votewise.com.ng / elcom123 (Committee)</div>
+              <div>eng.faculty@votewise.com.ng / faculty123 (Officer)</div>
+              <div>csc.dept@votewise.com.ng / dept123 (Officer)</div>
+              <div>observer@votewise.com.ng / observer123 (Observer)</div>
             </div>
           </div>
         </CardContent>
@@ -441,7 +441,7 @@ function CollationTab({ role }: { role: string }) {
                 </Select>
               </div>
             </div>
-            <Textarea rows={8} value={collationText} onChange={(e) => setCollationText(e.target.value)} placeholder="CSC/2022/001,Demo One,demo1@votewise.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
+            <Textarea rows={8} value={collationText} onChange={(e) => setCollationText(e.target.value)} placeholder="CSC/2022/001,Demo One,demo1@votewise.com.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setSubmitOpen(false)}>Cancel</Button><Button onClick={submitCollation} disabled={busy || !collationText.trim()} className="gap-1.5">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Submit</Button></DialogFooter>
         </DialogContent>
@@ -1400,7 +1400,7 @@ function VoterImportDialog({ open, onOpenChange, onDone }: any) {
             </div>
             <p className="text-sm text-muted-foreground">Format: one voter per line, comma-separated:</p>
             <pre className="rounded bg-muted p-3 text-xs">voterId,fullName,email,phone,facultyCode,departmentCode,level</pre>
-            <Textarea rows={6} value={text} onChange={(e) => { setText(e.target.value); setPreview(null) }} placeholder="CSC/2022/001,Demo One,demo1@votewise.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
+            <Textarea rows={6} value={text} onChange={(e) => { setText(e.target.value); setPreview(null) }} placeholder="CSC/2022/001,Demo One,demo1@votewise.com.ng,08030000001,SCI,CSC,300" className="font-mono text-xs" />
             {preview && preview.length > 0 && (
               <div className="rounded-lg border border-border p-3">
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground">

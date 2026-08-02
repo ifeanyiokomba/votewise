@@ -343,7 +343,7 @@ export function SignupView() {
               <Label>Subdomain</Label>
               <div className="flex items-center gap-2">
                 <Input value={subdomain} onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} placeholder="marketunion" className="font-mono" />
-                <span className="shrink-0 font-mono text-sm text-muted-foreground">.votewise.ng</span>
+                <span className="shrink-0 font-mono text-sm text-muted-foreground">.votewise.com.ng</span>
               </div>
               {subdomain && (
                 <div className="mt-2">
@@ -352,10 +352,10 @@ export function SignupView() {
                   ) : subCheck?.error ? (
                     <div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="h-4 w-4" /> {subCheck.error}</div>
                   ) : subCheck?.available ? (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> <strong>{subdomain}.votewise.ng</strong> is available!</div>
+                    <div className="flex items-center gap-2 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" /> <strong>{subdomain}.votewise.com.ng</strong> is available!</div>
                   ) : subCheck && !subCheck.available ? (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="h-4 w-4" /> <strong>{subdomain}.votewise.ng</strong> is already taken.</div>
+                      <div className="flex items-center gap-2 text-sm text-destructive"><AlertCircle className="h-4 w-4" /> <strong>{subdomain}.votewise.com.ng</strong> is already taken.</div>
                       {subCheck.suggestions?.length > 0 && (
                         <div>
                           <p className="text-xs text-muted-foreground">Try one of these:</p>
@@ -394,11 +394,11 @@ export function SignupView() {
             <h2 className="mt-4 font-display text-2xl font-bold">Workspace Created!</h2>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               <strong className="text-foreground">{created.organization.name}</strong> is ready. Your workspace URL is{' '}
-              <span className="font-mono text-primary">{created.organization.subdomain}.votewise.ng</span>
+              <span className="font-mono text-primary">{created.organization.subdomain}.votewise.com.ng</span>
             </p>
             <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 text-left">
               <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Organization</div><div className="text-sm font-medium">{created.organization.name}</div></div>
-              <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Subdomain</div><div className="font-mono text-sm font-medium">{created.organization.subdomain}.votewise.ng</div></div>
+              <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Subdomain</div><div className="font-mono text-sm font-medium">{created.organization.subdomain}.votewise.com.ng</div></div>
               <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Your Role</div><div className="text-sm font-medium">Organization Owner</div></div>
               <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Plan</div><div className="text-sm font-medium">{created.organization.plan} (Trial)</div></div>
             </div>

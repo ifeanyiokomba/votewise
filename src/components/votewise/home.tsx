@@ -68,7 +68,7 @@ const PRODUCTS = [
     icon: Building2,
     name: 'Organization Portal',
     tagline: 'Each organization\'s digital headquarters.',
-    desc: 'Every organization receives their own subdomain (org.votewise.com). Everything belonging to that organization lives here — elections, voters, admins, observers, candidates.',
+    desc: 'Every organization receives their own subdomain (org.votewise.com.ng). Everything belonging to that organization lives here — elections, voters, admins, observers, candidates.',
     color: 'bg-accent/15 text-accent-foreground',
   },
   {
@@ -958,7 +958,7 @@ export function HomeView() {
                       <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {o._count?.workspaces || 0} workspaces</span>
                       <span className="flex items-center gap-1"><Network className="h-3 w-3" /> {o._count?.voterGroups || 0} groups</span>
                     </div>
-                    <div className="mt-2 font-mono text-[10px] text-muted-foreground">{o.subdomain}.votewise.ng</div>
+                    <div className="mt-2 font-mono text-[10px] text-muted-foreground">{o.subdomain}.votewise.com.ng</div>
                   </CardContent>
                 </Card>
               </Reveal>
@@ -1145,7 +1145,7 @@ export function HomeView() {
                 {demoBusy ? t('home.contactSending') : t('home.contactSend')}
               </Button>
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.ng</span>
+                <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.com.ng</span>
                 <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> +234 800 VOTEWISE</span>
               </div>
             </CardContent>

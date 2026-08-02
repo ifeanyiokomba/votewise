@@ -81,7 +81,7 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
             )}
             <div>
               <h1 className="font-display text-lg font-bold leading-tight">{org.name}</h1>
-              <p className="text-[10px] text-muted-foreground">{org.subdomain}.votewise.ng · {org.category?.replace(/_/g, ' ') || 'Organization'}</p>
+              <p className="text-[10px] text-muted-foreground">{org.subdomain}.votewise.com.ng · {org.category?.replace(/_/g, ' ') || 'Organization'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -271,7 +271,7 @@ export function WorkspaceView({ subdomain }: { subdomain?: string }) {
               <CardContent className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Subdomain</span>
-                  <span className="font-mono text-xs">{org.subdomain}.votewise.ng</span>
+                  <span className="font-mono text-xs">{org.subdomain}.votewise.com.ng</span>
                 </div>
                 {data.domains.length > 0 && data.domains.map((d) => (
                   <div key={d.id} className="flex items-center justify-between text-sm">

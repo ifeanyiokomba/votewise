@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   const auth = verifyAccessToken(req)
-  const email = auth?.email || 'billing@votewise.ng'
+  const email = auth?.email || 'billing@votewise.com.ng'
   const name = auth?.email || orgResult.name
 
   try {

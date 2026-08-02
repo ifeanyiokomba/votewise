@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   return json({
     ok: true,
     domain: rec,
-    dnsInstructions: `Create a CNAME record pointing ${domain} → cname.votewise.ng (or an A record pointing to the VoteWise load balancer IP).`,
+    dnsInstructions: `Create a CNAME record pointing ${domain} → cname.votewise.com.ng (or an A record pointing to the VoteWise load balancer IP).`,
   })
 }
 

@@ -340,7 +340,7 @@ function PlatformHeader({ official, onLogout }: { official: any; onLogout: () =>
 // ---------------------------------------------------------------------------
 
 function PlatformLogin({ onSuccess }: { onSuccess: (o: any) => void }) {
-  const [form, setForm] = useState({ email: 'admin@votewise.ng', password: 'admin123' })
+  const [form, setForm] = useState({ email: 'admin@votewise.com.ng', password: 'admin123' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -381,7 +381,7 @@ function PlatformLogin({ onSuccess }: { onSuccess: (o: any) => void }) {
               type="email"
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="admin@votewise.ng"
+              placeholder="admin@votewise.com.ng"
             />
           </div>
           <div className="space-y-1.5">
@@ -403,7 +403,7 @@ function PlatformLogin({ onSuccess }: { onSuccess: (o: any) => void }) {
           </Button>
           <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
             <p className="font-semibold text-foreground">Demo credentials</p>
-            <p className="mt-1 font-mono">admin@votewise.ng / admin123</p>
+            <p className="mt-1 font-mono">admin@votewise.com.ng / admin123</p>
           </div>
           <div className="text-center">
             <Button asChild variant="ghost" size="sm" className="text-xs">
@@ -943,7 +943,7 @@ function OrganizationsTab() {
                       </div>
                     </td>
                     <td className="hidden p-3 sm:table-cell">
-                      <span className="font-mono text-xs text-muted-foreground">{o.subdomain}.votewise.ng</span>
+                      <span className="font-mono text-xs text-muted-foreground">{o.subdomain}.votewise.com.ng</span>
                     </td>
                     <td className="p-3">
                       <Badge className={cn('text-[10px]', STATUS_STYLE[o.status] || STATUS_STYLE.INACTIVE)}>{o.status}</Badge>
@@ -1009,7 +1009,7 @@ function OrganizationsTab() {
                   </Badge>
                 </DialogTitle>
                 <DialogDescription>
-                  {detail.org.subdomain}.votewise.ng · {detail.org.ownerEmail}
+                  {detail.org.subdomain}.votewise.com.ng · {detail.org.ownerEmail}
                 </DialogDescription>
               </DialogHeader>
 

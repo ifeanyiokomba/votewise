@@ -268,7 +268,7 @@ function DomainTab({ org, subdomain }: any) {
       <CardContent className="space-y-4">
         <div className="rounded-lg bg-muted/50 p-3">
           <div className="text-xs text-muted-foreground">Current Subdomain</div>
-          <div className="font-mono text-sm font-medium">{org.subdomain}.votewise.ng</div>
+          <div className="font-mono text-sm font-medium">{org.subdomain}.votewise.com.ng</div>
         </div>
         <div className="space-y-1.5">
           <Label>Connect a Custom Domain</Label>

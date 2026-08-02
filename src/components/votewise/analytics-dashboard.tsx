@@ -596,7 +596,7 @@ export function AnalyticsDashboard({ subdomain }: { subdomain?: string }) {
       <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
         <Building2 className="h-3 w-3" />
         Generated for {org.name}
-        {org.subdomain && <span className="font-mono">· {org.subdomain}.votewise.ng</span>}
+        {org.subdomain && <span className="font-mono">· {org.subdomain}.votewise.com.ng</span>}
         {data.generatedAt && <span>· {new Date(data.generatedAt).toLocaleString()}</span>}
       </p>
       </>

@@ -79,7 +79,7 @@ export function OrganizationsView() {
                   <span className="flex items-center gap-1"><Network className="h-3 w-3" /> {o._count?.voterGroups || 0} groups</span>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
-                  <Globe className="h-3 w-3" /> {o.subdomain}.votewise.ng
+                  <Globe className="h-3 w-3" /> {o.subdomain}.votewise.com.ng
                 </div>
                 <Button
                   size="sm"

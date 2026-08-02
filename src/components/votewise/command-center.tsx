@@ -44,7 +44,7 @@ export function CommandCenter({ subdomain }: { subdomain?: string }) {
             )}
             <div>
               <h1 className="font-display text-lg font-bold leading-tight">{org.name}</h1>
-              <p className="text-[10px] text-muted-foreground">Election Command Center · {org.subdomain}.votewise.ng</p>
+              <p className="text-[10px] text-muted-foreground">Election Command Center · {org.subdomain}.votewise.com.ng</p>
             </div>
           </div>
           <Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-4 w-4" /> New Unit</Button>

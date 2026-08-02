@@ -10,7 +10,7 @@ import { Cache, CACHE_KEYS } from '@/lib/cache'
 //
 // Resolution order:
 //   1. Custom domain (vote.myorg.org → OrganizationDomain.domain)
-//   2. Subdomain (myorg.votewise.ng → Organization.subdomain)
+//   2. Subdomain (myorg.votewise.com.ng → Organization.subdomain)
 //   3. Explicit header `x-organization-id` (for platform-admin impersonation,
 //      validated against the caller's role)
 //   4. Fallback: null (public website context — no org)
@@ -55,25 +55,25 @@ function getHost(req: NextRequest | Request): string {
   ).toLowerCase()
 }
 
-// Determine whether a host is the public website (votewise.com / apex) or an
-// org workspace (subdomain.votewise.com / custom domain).
+// Determine whether a host is the public website (votewise.com.ng / apex) or an
+// org workspace (subdomain.votewise.com.ng / custom domain).
 // In the sandbox, all requests come through the gateway on localhost:3000, so
 // we ALSO support resolving via the `x-vw-org` query param / header for dev.
 export function isPublicWebsiteHost(req: NextRequest | Request): boolean {
   const host = getHost(req)
-  // Public website: apex domain (votewise.com, votewise.ng) or localhost.
+  // Public website: apex domain (votewise.com.ng) or localhost.
   if (!host || host.startsWith('localhost') || host.startsWith('127.0.0.1')) return true
-  if (host === 'votewise.com' || host === 'votewise.ng' || host === 'www.votewise.com') return true
-  if (host === 'dashboard.votewise.com' || host === 'dashboard.votewise.ng') return true
+  if (host === 'votewise.com.ng' || host === 'www.votewise.com.ng') return true
+  if (host === 'dashboard.votewise.com.ng') return true
   return false
 }
 
 // Extract a candidate subdomain from the host.
-// e.g. "unizik.votewise.ng" → "unizik"
+// e.g. "unizik.votewise.com.ng" → "unizik"
 function extractSubdomain(host: string): string | null {
   if (!host) return null
   const parts = host.split('.')
-  // Expect at least 3 parts for a subdomain (unizik.votewise.ng)
+  // Expect at least 3 parts for a subdomain (unizik.votewise.com.ng)
   if (parts.length < 3) return null
   // Skip known non-org prefixes
   if (parts[0] === 'www' || parts[0] === 'dashboard' || parts[0] === 'api') return null
@@ -106,9 +106,9 @@ export async function resolveOrganization(req: NextRequest | Request): Promise<R
   // Public website → no org context.
   if (isPublicWebsiteHost(host)) {
     // Could still be a custom domain — check the host against OrganizationDomain.
-    // (localhost / votewise.com apex are truly public.)
+    // (localhost / votewise.com.ng apex are truly public.)
     if (!host || host.startsWith('localhost') || host.startsWith('127.0.0.1') ||
-        host === 'votewise.com' || host === 'votewise.ng' || host === 'www.votewise.com') {
+        host === 'votewise.com.ng' || host === 'www.votewise.com.ng') {
       return NULL_ORG
     }
     // Otherwise, treat the host itself as a potential custom domain.
@@ -121,7 +121,7 @@ export async function resolveOrganization(req: NextRequest | Request): Promise<R
   const byDomain = await lookupByDomain(host)
   if (byDomain) return byDomain
 
-  // Then try subdomain (e.g. myorg.votewise.ng)
+  // Then try subdomain (e.g. myorg.votewise.com.ng)
   const sub = extractSubdomain(host)
   if (sub) {
     const bySub = await lookupBySubdomain(sub)
