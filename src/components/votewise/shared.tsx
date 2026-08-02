@@ -29,9 +29,25 @@ export function Logo({ className }: { className?: string }) {
 }
 
 export function NavBar() {
-  const { view, setView, official, voterProfile } = useApp()
+  const { view, setView, official, setOfficial, voterProfile } = useApp()
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+
+  // Check auth on mount — runs on every page that uses NavBar
+  useEffect(() => {
+    if (!official) {
+      api.me().then((d) => { if (d.valid) setOfficial(d.official) }).catch(() => {})
+    }
+  }, [])
+
+  // Helper: navigate to a view (works on both SPA and standalone pages)
+  function goToView(v: string) {
+    if (window.location.pathname === '/') {
+      setView(v as any)
+    } else {
+      window.location.href = `/?view=${v}`
+    }
+  }
 
   // Localized nav items — recomputed per render so they pick up the
   // current language from the store (e.g. when the user switches to French).
@@ -77,17 +93,17 @@ export function NavBar() {
             </Button>
           )}
           {!official && (
-            <Button variant="outline" size="sm" onClick={() => setView('official-login')} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => goToView('official-login')} className="gap-1.5">
               <Lock className="h-4 w-4" /> {t('auth.orgLogin')}
             </Button>
           )}
           {!official && (
-            <Button size="sm" onClick={() => setView('signup')} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button size="sm" onClick={() => goToView('signup')} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
               <Sparkles className="h-4 w-4" /> {t('auth.registerOrg')}
             </Button>
           )}
           {official && (
-            <Button variant="outline" size="sm" onClick={() => setView('official')} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => goToView('official')} className="gap-1.5">
               <BarChart3 className="h-4 w-4" /> {t('auth.dashboard')}
             </Button>
           )}
@@ -115,17 +131,17 @@ export function NavBar() {
               </Button>
             )}
             {!official && (
-              <Button variant="outline" size="sm" onClick={() => { setView('official-login'); setOpen(false) }} className="gap-1.5">
+              <Button variant="outline" size="sm" onClick={() => { goToView('official-login'); setOpen(false) }} className="gap-1.5">
                 <Lock className="h-4 w-4" /> {t('auth.organizationPortal')}
               </Button>
             )}
             {!official && (
-              <Button size="sm" onClick={() => { setView('signup'); setOpen(false) }} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button size="sm" onClick={() => { goToView('signup'); setOpen(false) }} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
                 <Sparkles className="h-4 w-4" /> {t('home.registerYourOrg')}
               </Button>
             )}
             {official && (
-              <Button variant="outline" size="sm" onClick={() => { setView('official'); setOpen(false) }} className="gap-1.5">
+              <Button variant="outline" size="sm" onClick={() => { goToView('official'); setOpen(false) }} className="gap-1.5">
                 <BarChart3 className="h-4 w-4" /> {t('auth.organizationPortal')}
               </Button>
             )}
@@ -183,8 +199,8 @@ export function Footer() {
           <h4 className="font-display text-sm font-semibold">{t('home.productsBadge')}</h4>
           <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
             <li><button onClick={() => setView('home')} className="hover:text-foreground">{t('home.heroBadge')}</button></li>
-            <li><button onClick={() => setView('official-login')} className="hover:text-foreground">{t('auth.organizationPortal')}</button></li>
-            <li><button onClick={() => setView('signup')} className="hover:text-foreground">{t('home.registerYourOrg')}</button></li>
+            <li><button onClick={() => goToView('official-login')} className="hover:text-foreground">{t('auth.organizationPortal')}</button></li>
+            <li><button onClick={() => goToView('signup')} className="hover:text-foreground">{t('home.registerYourOrg')}</button></li>
           </ul>
         </div>
         <div>

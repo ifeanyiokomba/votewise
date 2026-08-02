@@ -128,9 +128,19 @@ export const useApp = create<AppState>((set) => ({
   },
 
   hydrate: () => {
+    // Check URL for ?view= param (for redirects from workspace pages)
+    let initialView: View | undefined
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const viewParam = params.get('view')
+      if (viewParam) {
+        initialView = resolveView(viewParam as View)
+      }
+    }
     set({
       voterToken: getVoterToken(),
       language: readStoredLanguage(),
+      ...(initialView ? { view: initialView } : {}),
     })
   },
 }))
