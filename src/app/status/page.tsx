@@ -1,6 +1,6 @@
 'use client'
 import { Suspense } from 'react'
-import { VoterStatusPortal } from '@/components/votewise/voter-status-portal'
+import { PlatformStatusPage } from '@/components/votewise/platform-status-page'
 import { NavBar, Footer } from '@/components/votewise/shared'
 import { Loader2 } from 'lucide-react'
 
@@ -10,7 +10,7 @@ export default function Page() {
       <div className="flex min-h-screen flex-col">
         <NavBar />
         <main className="flex-1">
-          <VoterStatusPortal />
+          <PlatformStatusPage />
         </main>
         <Footer />
       </div>

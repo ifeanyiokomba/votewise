@@ -199,6 +199,11 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 17: PIHED — Production Infrastructure (health, readiness, status)
+  pihedHealth: () => fetch('/api/pihed/health').then(r => r.json()),
+  pihedReadiness: (subdomain?: string) => req(`/api/pihed/readiness${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  pihedStatus: () => fetch('/api/pihed/status').then(r => r.json()),
+
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   aidpCreateApiKey: (data: any, subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
