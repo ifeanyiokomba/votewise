@@ -191,11 +191,11 @@ async function main() {
 
   // Officials
   const officials = [
-    { email: 'admin@votewise.ng', name: 'Electoral Committee Chairperson', role: 'SUPER_ADMIN', password: 'admin123' },
-    { email: 'elcom@votewise.ng', name: 'ELCOM Member', role: 'ELECTORAL_COMMITTEE', password: 'elcom123' },
-    { email: 'eng.faculty@votewise.ng', name: 'Engineering Faculty Officer', role: 'FACULTY_OFFICER', password: 'faculty123', scopeFacultyId: engFac.id },
-    { email: 'csc.dept@votewise.ng', name: 'Computer Science Dept Officer', role: 'DEPARTMENT_OFFICER', password: 'dept123', scopeDepartmentId: cscDep.id },
-    { email: 'observer@votewise.ng', name: 'Independent Observer', role: 'OBSERVER', password: 'observer123', organization: 'National Association of Nigerian Students' },
+    { email: 'admin@votewise.com.ng', name: 'Electoral Committee Chairperson', role: 'SUPER_ADMIN', password: 'admin123' },
+    { email: 'elcom@votewise.com.ng', name: 'ELCOM Member', role: 'ELECTORAL_COMMITTEE', password: 'elcom123' },
+    { email: 'eng.faculty@votewise.com.ng', name: 'Engineering Faculty Officer', role: 'FACULTY_OFFICER', password: 'faculty123', scopeFacultyId: engFac.id },
+    { email: 'csc.dept@votewise.com.ng', name: 'Computer Science Dept Officer', role: 'DEPARTMENT_OFFICER', password: 'dept123', scopeDepartmentId: cscDep.id },
+    { email: 'observer@votewise.com.ng', name: 'Independent Observer', role: 'OBSERVER', password: 'observer123', organization: 'National Association of Nigerian Students' },
   ]
   for (const o of officials) {
     await db.electionOfficial.upsert({
@@ -216,18 +216,18 @@ async function main() {
 
   // Demo voters
   const voterDefs = [
-    { matric: 'CSC/2022/001', fullName: 'Demo Voter One', faculty: 'SCI', dept: 'CSC', level: '300', email: 'demo1@votewise.ng', phone: '08030000001' },
-    { matric: 'CSC/2021/010', fullName: 'Demo Voter Two', faculty: 'SCI', dept: 'CSC', level: '400', email: 'demo2@votewise.ng', phone: '08030000002' },
-    { matric: 'ENG/2022/015', fullName: 'Demo Voter Three', faculty: 'ENG', dept: 'ELE', level: '300', email: 'demo3@votewise.ng', phone: '08030000003' },
-    { matric: 'ACC/2022/022', fullName: 'Demo Voter Four', faculty: 'MGT', dept: 'ACC', level: '300', email: 'demo4@votewise.ng', phone: '08030000004' },
-    { matric: 'POL/2023/005', fullName: 'Demo Voter Five', faculty: 'SOC', dept: 'POL', level: '200', email: 'demo5@votewise.ng', phone: '08030000005' },
-    { matric: 'CHM/2020/009', fullName: 'Demo Voter Six', faculty: 'SCI', dept: 'CHM', level: '500', email: 'demo6@votewise.ng', phone: '08030000006' },
-    { matric: 'MCE/2022/011', fullName: 'Demo Voter Seven', faculty: 'ENG', dept: 'MCE', level: '300', email: 'demo7@votewise.ng', phone: '08030000007' },
-    { matric: 'LIT/2023/002', fullName: 'Demo Voter Eight', faculty: 'ART', dept: 'ENG-LIT', level: '200', email: 'demo8@votewise.ng', phone: '08030000008' },
-    { matric: 'ECO/2021/014', fullName: 'Demo Voter Nine', faculty: 'SOC', dept: 'ECO', level: '400', email: 'demo9@votewise.ng', phone: '08030000009' },
-    { matric: 'BIZ/2022/019', fullName: 'Demo Voter Ten', faculty: 'MGT', dept: 'BIZ', level: '300', email: 'demo10@votewise.ng', phone: '08030000010' },
-    { matric: 'CVE/2020/007', fullName: 'Demo Voter Eleven', faculty: 'ENG', dept: 'CVE', level: '500', email: 'demo11@votewise.ng', phone: '08030000011' },
-    { matric: 'PHY/2023/003', fullName: 'Demo Voter Twelve', faculty: 'SCI', dept: 'PHY', level: '200', email: 'demo12@votewise.ng', phone: '08030000012' },
+    { matric: 'CSC/2022/001', fullName: 'Demo Voter One', faculty: 'SCI', dept: 'CSC', level: '300', email: 'demo1@votewise.com.ng', phone: '08030000001' },
+    { matric: 'CSC/2021/010', fullName: 'Demo Voter Two', faculty: 'SCI', dept: 'CSC', level: '400', email: 'demo2@votewise.com.ng', phone: '08030000002' },
+    { matric: 'ENG/2022/015', fullName: 'Demo Voter Three', faculty: 'ENG', dept: 'ELE', level: '300', email: 'demo3@votewise.com.ng', phone: '08030000003' },
+    { matric: 'ACC/2022/022', fullName: 'Demo Voter Four', faculty: 'MGT', dept: 'ACC', level: '300', email: 'demo4@votewise.com.ng', phone: '08030000004' },
+    { matric: 'POL/2023/005', fullName: 'Demo Voter Five', faculty: 'SOC', dept: 'POL', level: '200', email: 'demo5@votewise.com.ng', phone: '08030000005' },
+    { matric: 'CHM/2020/009', fullName: 'Demo Voter Six', faculty: 'SCI', dept: 'CHM', level: '500', email: 'demo6@votewise.com.ng', phone: '08030000006' },
+    { matric: 'MCE/2022/011', fullName: 'Demo Voter Seven', faculty: 'ENG', dept: 'MCE', level: '300', email: 'demo7@votewise.com.ng', phone: '08030000007' },
+    { matric: 'LIT/2023/002', fullName: 'Demo Voter Eight', faculty: 'ART', dept: 'ENG-LIT', level: '200', email: 'demo8@votewise.com.ng', phone: '08030000008' },
+    { matric: 'ECO/2021/014', fullName: 'Demo Voter Nine', faculty: 'SOC', dept: 'ECO', level: '400', email: 'demo9@votewise.com.ng', phone: '08030000009' },
+    { matric: 'BIZ/2022/019', fullName: 'Demo Voter Ten', faculty: 'MGT', dept: 'BIZ', level: '300', email: 'demo10@votewise.com.ng', phone: '08030000010' },
+    { matric: 'CVE/2020/007', fullName: 'Demo Voter Eleven', faculty: 'ENG', dept: 'CVE', level: '500', email: 'demo11@votewise.com.ng', phone: '08030000011' },
+    { matric: 'PHY/2023/003', fullName: 'Demo Voter Twelve', faculty: 'SCI', dept: 'PHY', level: '200', email: 'demo12@votewise.com.ng', phone: '08030000012' },
   ]
   for (const v of voterDefs) {
     const fac = facultyMap.get(v.faculty)!
@@ -321,9 +321,9 @@ async function main() {
 
   // --- Platform Super Admin (platform-wide, no org) ---
   await db.organizationMember.upsert({
-    where: { email: 'admin@votewise.ng' },
+    where: { email: 'admin@votewise.com.ng' },
     create: {
-      email: 'admin@votewise.ng',
+      email: 'admin@votewise.com.ng',
       name: 'Platform Super Admin',
       role: 'PLATFORM_SUPER_ADMIN',
       passwordHash: hashPassword('admin123'),
@@ -341,7 +341,7 @@ async function main() {
       subdomain: 'demo',
       primaryColour: '#15803d',
       accentColour: '#b45309',
-      ownerEmail: 'admin@votewise.ng',
+      ownerEmail: 'admin@votewise.com.ng',
       ownerName: 'Platform Super Admin',
       status: 'ACTIVE',
       plan: 'PAYG',
@@ -397,9 +397,9 @@ async function main() {
   }
   // Org owner + admin + observer for the university
   for (const m of [
-    { email: 'owner.uni@votewise.ng', name: 'Vice Chancellor', role: 'ORG_OWNER' },
-    { email: 'admin.uni@votewise.ng', name: 'Registrar', role: 'ORG_ADMIN' },
-    { email: 'observer.uni@votewise.ng', name: 'External Observer', role: 'OBSERVER' },
+    { email: 'owner.uni@votewise.com.ng', name: 'Vice Chancellor', role: 'ORG_OWNER' },
+    { email: 'admin.uni@votewise.com.ng', name: 'Registrar', role: 'ORG_ADMIN' },
+    { email: 'observer.uni@votewise.com.ng', name: 'External Observer', role: 'OBSERVER' },
   ]) {
     await db.organizationMember.upsert({
       where: { email: m.email },
@@ -420,7 +420,7 @@ async function main() {
       subdomain: 'nma',
       primaryColour: '#0f766e',
       accentColour: '#b45309',
-      ownerEmail: 'owner.nma@votewise.ng',
+      ownerEmail: 'owner.nma@votewise.com.ng',
       ownerName: 'NMA Secretary General',
       status: 'TRIAL',
       plan: 'PAYG',
@@ -472,8 +472,8 @@ async function main() {
   }
   // Org owner + observer for NMA
   for (const m of [
-    { email: 'owner.nma@votewise.ng', name: 'NMA President', role: 'ORG_OWNER' },
-    { email: 'observer.nma@votewise.ng', name: 'NMA Observer', role: 'OBSERVER' },
+    { email: 'owner.nma@votewise.com.ng', name: 'NMA President', role: 'ORG_OWNER' },
+    { email: 'observer.nma@votewise.com.ng', name: 'NMA Observer', role: 'OBSERVER' },
   ]) {
     await db.organizationMember.upsert({
       where: { email: m.email },
@@ -494,7 +494,7 @@ async function main() {
       subdomain: 'coop',
       primaryColour: '#7c3aed',
       accentColour: '#b45309',
-      ownerEmail: 'owner.coop@votewise.ng',
+      ownerEmail: 'owner.coop@votewise.com.ng',
       ownerName: 'Cooperative Chairman',
       status: 'TRIAL',
       plan: 'PAYG',
@@ -534,17 +534,17 @@ async function main() {
   console.log('[seed][chapter1] 6 roles established: PLATFORM_SUPER_ADMIN, ORG_OWNER, ORG_ADMIN, OBSERVER, VOTER, GUEST')
 
   console.log('[seed] done ✅')
-  console.log('  Super Admin:           admin@votewise.ng / admin123')
-  console.log('  Electoral Committee:   elcom@votewise.ng / elcom123')
-  console.log('  Faculty Officer (ENG): eng.faculty@votewise.ng / faculty123')
-  console.log('  Dept Officer (CSC):    csc.dept@votewise.ng / dept123')
-  console.log('  Observer:              observer@votewise.ng / observer123')
+  console.log('  Super Admin:           admin@votewise.com.ng / admin123')
+  console.log('  Electoral Committee:   elcom@votewise.com.ng / elcom123')
+  console.log('  Faculty Officer (ENG): eng.faculty@votewise.com.ng / faculty123')
+  console.log('  Dept Officer (CSC):    csc.dept@votewise.com.ng / dept123')
+  console.log('  Observer:              observer@votewise.com.ng / observer123')
   console.log('  Fresh voter:           ECO/2021/014 (OTP shown in UI in dev)')
   console.log('  --- Chapter 1 generic orgs ---')
-  console.log('  Org Owner (Uni):       owner.uni@votewise.ng / org123')
-  console.log('  Org Admin (Uni):       admin.uni@votewise.ng / org123')
-  console.log('  Org Owner (NMA):       owner.nma@votewise.ng / org123')
-  console.log('  Org Owner (Coop):      owner.coop@votewise.ng / org123')
+  console.log('  Org Owner (Uni):       owner.uni@votewise.com.ng / org123')
+  console.log('  Org Admin (Uni):       admin.uni@votewise.com.ng / org123')
+  console.log('  Org Owner (NMA):       owner.nma@votewise.com.ng / org123')
+  console.log('  Org Owner (Coop):      owner.coop@votewise.com.ng / org123')
 }
 
 main().catch((e) => { console.error(e); process.exit(1) }).finally(() => db.$disconnect())

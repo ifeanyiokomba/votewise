@@ -174,7 +174,7 @@ async function main() {
   for (let i = 0; i < VOTER_NAMES.length; i++) {
     const name = VOTER_NAMES[i]
     const matric = `VOT/SVE/${String(i + 1).padStart(3, '0')}`
-    const email = `voter${i + 1}@demo.votewise.ng`
+    const email = `voter${i + 1}@demo.votewise.com.ng`
     await db.voter.upsert({
       where: { matric },
       create: {

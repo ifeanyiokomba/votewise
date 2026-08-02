@@ -34,7 +34,7 @@ model Organization {
   id              String   @id @default(cuid())
   name            String   // "University of Lagos" / "MTN Nigeria" / "Red Cross Nigeria"
   slug            String   @unique
-  subdomain       String?  @unique // e.g. "unilag" → unilag.votewise.ng
+  subdomain       String?  @unique // e.g. "unilag" → unilag.votewise.com.ng
   customDomain    String?  @unique // e.g. "vote.unilag.edu.ng" (Chapter 3 spec field)
   organizationType String? // Chapter 3 spec field (alias for category)
   // Branding
@@ -525,7 +525,7 @@ model Tenant {
   universityLogoUrl String?
   primaryColour   String   @default("#15803d")
   accentColour    String   @default("#b45309")
-  // Subdomain (auto-assigned on signup: e.g. unilag.votewise.ng)
+  // Subdomain (auto-assigned on signup: e.g. unilag.votewise.com.ng)
   subdomain       String?  @unique
   // Admin who created this tenant
   adminEmail      String
