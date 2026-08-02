@@ -8913,3 +8913,190 @@ Stage Summary:
 - **Files modified:**
   - src/components/votewise/workspace.tsx (added Brain import +
     Intelligence nav item between Communication and Audit Logs).
+
+---
+Task ID: BSPCM-UI
+Agent: BSPCM Billing Center UI Agent (sub-agent)
+Task: Build the BSPCM Billing Center UI and public Cost Estimator — Chapter 14
+(Billing, Subscriptions, Payments & Commercial Management) frontend.
+
+Work Log:
+1. Read `/home/z/my-project/worklog.md` to absorb project context —
+   VoteWise Next.js 16 + Prisma/SQLite + Turbopack, emerald/gold/amber palette
+   (NO indigo/blue), BSPCM backend library at `src/lib/bspcm/` with
+   `generateEstimate` / `getQuotes` / `getInvoices` / `initiatePayment` /
+   `verifyPayment` / `getPaymentHistory` / `getAvailableGateways` /
+   `generateQuote`, and the api.ts BSPCM client methods
+   `bspmGetPricing` / `bspmEstimate` / `bspmGetQuotes` / `bspmGenerateQuote` /
+   `bspmGetInvoices` / `bspmGetPayments` / `bspmInitiatePayment` /
+   `bspmVerifyPayment` / `bspmGetNegotiations` / `bspmRequestNegotiation` /
+   `bspmUpdateNegotiation` / `bspmGetRevenue` / `bspmGoLive`.
+2. Studied existing patterns:
+   - `src/app/workspace/analytics/page.tsx` (Suspense + useSearchParams pattern).
+   - `src/components/votewise/intelligence-dashboard.tsx` (~1150 lines, 4-tab
+     shadcn/ui Tabs, votewise-card-glow header, KPI grid, Recharts, Framer Motion).
+   - `src/components/votewise/workspace.tsx` (WorkspaceNav items array, sidebar).
+   - `src/components/votewise/shared.tsx` (NavBar / Footer / StatusBadge).
+   - `src/components/votewise/home.tsx` (1623-line homepage; pricing section).
+   - `src/lib/bspcm/types.ts` + `pricing-engine.ts` + `quote-generator.ts` +
+     `payment-provider.ts` (PricingEstimate shape, default plans/rules,
+     Paystack/Flutterwave/Stripe providers).
+   - `src/app/api/bspcm/*` route handlers (estimate, pricing, quotes, invoices,
+     payments, payments/initiate, payments/verify, negotiations,
+     negotiations/[id], golive).
+3. **Created `src/components/votewise/cost-estimator.tsx`** — public pricing
+   calculator section embedded on the homepage. Highlights:
+   - Section header with BSPCM Pricing Engine badge + "Estimate Your Election
+     Cost" title + educational-discount callout.
+   - Two-column layout (lg:grid-cols-5 → 3 inputs / 2 results).
+   - **Inputs card** (votewise-card-glow): voter count Slider (10–100,000) +
+     numeric Input, elections Input (default 1), org-type Select
+     (University/Company/Association/Church/NGO/Government), 5 feature add-on
+     cards (WhatsApp Notifications, SMS Credits, Custom Domain, AI Analytics,
+     Premium Support) as labelled checkboxes with price hints, "Calculate Cost"
+     button + Reset option.
+   - **Results card** (votewise-card-glow, sticky top-24): plan badge + currency,
+     scrollable line-items table (description/qty/unit/total) with sticky header,
+     totals panel (subtotal + educational discount line + grand total in ₦ +
+     VAT disclaimer), included-features badges, amber-tinted disclaimer Alert
+     ("This is an estimate. Final pricing may vary…"), two CTA buttons
+     ("Register to Get Started" + "Request Custom Pricing") that route to
+     `setView('signup')`.
+   - Calls `api.bspmEstimate({ estimatedVoters, estimatedElections,
+     requestedFeatures, orgType })` — public, no auth.
+   - All amounts formatted as ₦X,XXX,XXX (Nigerian Naira) via `formatNaira`
+     helper.
+   - Framer Motion entrance on header + inputs (x:-16) + results (x:16).
+   - Empty / loading / error / result states via AnimatePresence.
+4. **Wired Cost Estimator into `src/components/votewise/home.tsx`** — imported
+   the `CostEstimator` component and rendered it immediately after the Pricing
+   section (before Testimonials).
+5. **Created `src/app/workspace/billing/page.tsx`** — page wrapper following the
+   analytics/security/intelligence page pattern exactly: 'use client',
+   Suspense boundary, `useSearchParams` for `?org=`, NavBar + Footer, ghost
+   "Back to Dashboard" button (links to `/workspace?org=...`), and
+   `<BillingCenter subdomain={org} />`.
+6. **Created `src/components/votewise/billing-center.tsx`** (~1900 lines) — the
+   main 4-tab Billing Center. Highlights:
+   - **Header**: votewise-card-glow card with CreditCard icon, title "Billing
+     Center", BSPCM Engine badge, subdomain badge, last-updated timestamp,
+     Refresh button + live indicator (votewise-live-dot). Framer Motion entrance.
+   - **Tabs** (shadcn/ui): Overview, Invoices, Quotes, Negotiations.
+     Horizontally scrollable on mobile (votewise-scroll). Each tab shows count
+     badges.
+   - **Overview tab**:
+     - Current Plan card (spans 2/3): plan name (PROFESSIONAL/PAYG/etc.) +
+       status badge, description, 3 PlanStat tiles (Period / Voter Quota /
+       Elections), voter quota Progress bar, included-features badges,
+       "Upgrade Plan" button (switches to Quotes tab) + "View Invoices" button.
+     - Payment Methods card: lists available gateways (Paystack/Flutterwave/
+       Stripe) with active badge + PCI-compliance note.
+     - 4 stat cards: Total Paid (emerald), Outstanding (red if >0 else zinc),
+       Active Subscription, Expiring Soon.
+     - Recent Payments table (last 10): reference, date, gateway, amount,
+       status badge. Scrollable max-h-96 with custom scrollbar.
+   - **Invoices tab**:
+     - votewise-card-glow header with filter buttons (All/Sent/Paid/Overdue/
+       Outstanding).
+     - Invoice list table: invoice number, date, due date, amount, status badge
+       (PAID=emerald, SENT=amber, OVERDUE=red, PARTIALLY_PAID=amber,
+       CANCELLED/REFUNDED=zinc, DRAFT=zinc), Pay Now / View action.
+     - Click invoice → detail Dialog with line items, totals breakdown
+       (subtotal/discount/VAT/grand total/balance due), Pay button.
+     - Pay Dialog: gateway selector (3 cards), Initiate Payment → opens gateway
+       URL → Verify Payment flow. Calls `api.bspmInitiatePayment` then
+       `api.bspmVerifyPayment`.
+   - **Quotes tab**:
+     - votewise-card-glow header with "Generate New Quote" button.
+     - Quote list table: quote number, date, valid until, total, status badge
+       (DRAFT=zinc, SENT=amber, ACCEPTED/CONVERTED=emerald, REJECTED=red,
+       EXPIRED=zinc), View action.
+     - Click quote → detail Dialog with line items + totals + "quote accepted"
+       banner if applicable.
+     - Generate Quote Dialog: plan selector (from `bspmGetPricing`), voter slider,
+       elections input, 5 feature add-ons, notes textarea. Calls
+       `api.bspmGenerateQuote`.
+   - **Negotiations tab**:
+     - votewise-card-glow header with "Request Custom Pricing" button.
+     - Negotiation list table: type, date, proposed amount, agreed amount,
+       status badge (REQUESTED=amber, UNDER_REVIEW=amber, COUNTER_OFFERED=amber,
+       ACCEPTED=emerald, REJECTED=red, EXPIRED=zinc), View action.
+     - Request Negotiation Dialog: request type select (CUSTOM_PRICING/
+       VOLUME_DISCOUNT/ENTERPRISE/GOVERNMENT/WHITE_LABEL), voter count, org type,
+       proposed amount (₦), message textarea. Calls
+       `api.bspmRequestNegotiation`.
+     - Negotiation Detail Dialog: status badges (voter count, org type,
+       proposed/agreed amount, assigned admin), original-request panel,
+       scrollable thread (ADMIN messages in emerald-tinted bubbles, ORG messages
+       in plain cards), "Add a message" textarea + Send button (Cmd/Ctrl+Enter
+       shortcut), resolution banner for accepted/rejected negotiations. Calls
+       `api.bspmUpdateNegotiation` with `action: 'add_message'`.
+   - **Palette discipline**: emerald / gold / amber / zinc / red ONLY — NO
+     indigo, NO blue. Consistent p-4/p-6 padding, gap-4/gap-6 spacing.
+     Mobile-first responsive grids. votewise-card-glow on header + Current Plan
+     + Payment Methods + each tab's main card. All amounts formatted as
+     ₦X,XXX,XXX (Nigerian Naira) via `formatNaira` helper. Framer Motion
+     entrance animations throughout. Status badges use a typed
+     INVOICE_STATUS / QUOTE_STATUS / PAYMENT_STATUS / NEGOTIATION_STATUS map
+     with palette-correct colour classes.
+7. **Added "Billing" link to the workspace sidebar** in
+   `src/components/votewise/workspace.tsx`: inserted
+   `{ label: 'Billing', icon: CreditCard, href: '/workspace/billing?org=...' }`
+   between "Intelligence" and "Audit Logs" (satisfying the spec's "after
+   Intelligence, before Settings" requirement). The `CreditCard` icon was
+   already imported.
+8. Ran `cd /home/z/my-project && bun run lint` → **0 errors, 0 warnings**
+   (exit 0). Also ran `npx tsc --noEmit` — initial run flagged one missing
+   `resolvedByName` property on the Negotiation interface; fixed by adding
+   `resolvedByName?: string | null` to the interface. After the fix, no TS
+   errors in any of my new/modified files.
+9. **Runtime verification** via curl:
+   - GET `/` → HTTP 200 (homepage renders; Cost Estimator section present —
+     `grep -c "Estimate Your"` returns 1, `grep -c "cost-estimator"` returns 2).
+   - GET `/workspace/billing?org=demo` → HTTP 200 (page compiles + renders;
+     returns 51 KB of HTML with the Suspense fallback — the BillingCenter
+     component hydrates client-side after fetching data, exactly like the
+     analytics/security/intelligence pages).
+   - POST `/api/bspcm/estimate` with `{ estimatedVoters: 5000,
+     estimatedElections: 1, requestedFeatures: ['whatsapp_notifications',
+     'sms_credits'], orgType: 'UNIVERSITY' }` → HTTP 200 with a complete
+     estimate: PAYG plan, 4 line items (base ₦50,000 + voter registration
+     ₦450,000 + WhatsApp ₦25,000 + SMS ₦15,000 = ₦540,000 subtotal),
+     15% educational discount (₦81,000), grand total ₦459,000. Confirms the
+     backend pricing engine + tiered voter pricing + educational discount +
+     feature add-on rules all flow through correctly.
+   - No errors or warnings in `dev.log` after the test requests.
+
+Stage Summary:
+- ✅ Public Cost Estimator section on the homepage — interactive BSPCM pricing
+  calculator with voter slider, elections input, org-type selector, 5 feature
+  add-ons, itemised results table in ₦, educational-discount line, disclaimer,
+  and Register / Request Custom Pricing CTAs.
+- ✅ Billing Center page at `/workspace/billing` — Suspense + NavBar + Footer +
+  back button, follows the analytics/security/intelligence page pattern exactly.
+- ✅ BillingCenter component with 4 fully-functional tabs:
+  Overview (current plan + payment methods + 4 stat cards + recent payments
+  table), Invoices (filter buttons + invoice list + detail dialog + Pay Now
+  gateway selector + initiate/verify payment flow), Quotes (generate dialog
+  with plan selector/voter slider/features/notes + quote list + detail dialog),
+  Negotiations (request dialog with type/voters/org-type/proposed-amount/message
+  + negotiation list + detail dialog with thread + add-message + resolution
+  banner).
+- ✅ Workspace sidebar updated with Billing link (CreditCard icon, between
+  Intelligence and Audit Logs).
+- ✅ Palette discipline: emerald / gold / amber / zinc / red only — NO indigo,
+  NO blue. votewise-card-glow on header cards + tab headers. Mobile-first
+  responsive. Framer Motion animations throughout. All amounts formatted as
+  ₦X,XXX,XXX (Nigerian Naira).
+- ✅ Lint: 0 errors, 0 warnings. TypeScript: no errors in my new/modified files.
+- ✅ Runtime verified: homepage + billing page return 200; estimate API returns
+  correct ₦-formatted breakdown with educational discount applied.
+- **Files created:**
+  - `src/components/votewise/cost-estimator.tsx`
+  - `src/components/votewise/billing-center.tsx`
+  - `src/app/workspace/billing/page.tsx`
+- **Files modified:**
+  - `src/components/votewise/home.tsx` (imported CostEstimator, rendered it
+    after the Pricing section).
+  - `src/components/votewise/workspace.tsx` (added Billing nav item between
+    Intelligence and Audit Logs in the WorkspaceNav items array).

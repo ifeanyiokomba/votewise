@@ -24,6 +24,7 @@ import { useApp } from '@/lib/store'
 import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { Reveal } from '@/components/votewise/faq'
+import { CostEstimator } from '@/components/votewise/cost-estimator'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -877,6 +878,9 @@ export function HomeView() {
           </div>
         </div>
       </section>
+
+      {/* COST ESTIMATOR — interactive BSPCM pricing calculator */}
+      <CostEstimator />
 
       {/* TESTIMONIALS */}
       <section id="testimonials" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">

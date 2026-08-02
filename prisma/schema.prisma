@@ -1890,3 +1890,276 @@ model DataRetentionPolicy {
 
   @@index([organizationId])
 }
+
+// ===========================================================================
+// CHAPTER 14 — BILLING, SUBSCRIPTIONS, PAYMENTS & COMMERCIAL MANAGEMENT (BSPCM)
+// ===========================================================================
+
+/// PricingPlan — configurable pricing plans. Not hardcoded — the Pricing Engine
+/// reads from this table to generate quotes.
+model PricingPlan {
+  id              String   @id @default(cuid())
+  name            String   // FREE | PAYG | PROFESSIONAL | ENTERPRISE | GOVERNMENT | WHITE_LABEL
+  displayName     String
+  description     String?
+  // Pricing model
+  model           String   // PER_ELECTION | PER_VOTER | ANNUAL | CUSTOM
+  basePrice       Float    @default(0) // base price in smallest currency unit
+  perVoterPrice   Float    @default(0) // price per eligible voter
+  perElectionPrice Float   @default(0) // price per election
+  currency        String   @default("NGN")
+  // Feature inclusions
+  features        String?  // JSON array of included features
+  // Limits
+  maxVoters       Int      @default(0) // 0 = unlimited
+  maxElections    Int      @default(0) // 0 = unlimited
+  maxObservers    Int      @default(0) // 0 = unlimited
+  // Status
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([model])
+}
+
+/// PricingRule — dynamic pricing rules (tiered, volume discounts, etc.)
+/// Example: first 500 voters free, 501-5000 at ₦100/voter, 5001+ at ₦80/voter
+model PricingRule {
+  id              String   @id @default(cuid())
+  planId          String?
+  name            String
+  type            String   // TIERED | VOLUME_DISCOUNT | FEATURE_ADDON | SEASONAL | EDUCATIONAL
+  // Tier boundaries
+  minQuantity     Int      @default(0) // e.g. 0, 501, 5001
+  maxQuantity     Int      @default(0) // 0 = unlimited
+  // Pricing
+  pricePerUnit    Float    @default(0)
+  discountPercent Float    @default(0)
+  fixedDiscount   Float    @default(0)
+  // Feature addon
+  featureName     String?  // e.g. "whatsapp_notifications", "custom_domain"
+  featurePrice    Float    @default(0)
+  // Conditions
+  condition       String?  // JSON: { orgType, region, etc. }
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([planId])
+  @@index([type])
+}
+
+/// Quote — generated quotations for organizations.
+model Quote {
+  id              String   @id @default(cuid())
+  quoteNumber     String   @unique // QUO-000001
+  organizationId  String?
+  organizationName String?
+  // Line items (JSON array of { description, quantity, unitPrice, total })
+  items           String
+  // Pricing breakdown
+  subtotal        Float
+  taxRate         Float    @default(0)
+  taxAmount       Float    @default(0)
+  discountPercent Float    @default(0)
+  discountAmount  Float    @default(0)
+  grandTotal      Float
+  currency        String   @default("NGN")
+  // Validity
+  validUntil      DateTime
+  status          String   @default("DRAFT") // DRAFT | SENT | ACCEPTED | REJECTED | EXPIRED | CONVERTED
+  // Metadata
+  estimatedVoters Int?
+  estimatedElections Int?
+  requestedFeatures String? // JSON array
+  notes           String?
+  createdById     String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+/// Invoice — generated invoices (from accepted quotes or direct purchases).
+model Invoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique // INV-000001
+  organizationId  String
+  organizationName String?
+  quoteId         String?  // linked quote if generated from one
+  // Line items
+  items           String   // JSON array
+  // Amounts
+  subtotal        Float
+  taxRate         Float    @default(0)
+  taxAmount       Float    @default(0)
+  discountAmount  Float    @default(0)
+  grandTotal      Float
+  amountPaid      Float    @default(0)
+  currency        String   @default("NGN")
+  // Status
+  status          String   @default("DRAFT") // DRAFT | SENT | PAID | PARTIALLY_PAID | OVERDUE | CANCELLED | REFUNDED
+  dueDate         DateTime
+  paidAt          DateTime?
+  sentAt          DateTime?
+  // Payment info
+  paymentMethod   String?  // PAYSTACK | FLUTTERWAVE | STRIPE | BANK_TRANSFER
+  paymentReference String? // gateway transaction reference
+  // Metadata
+  notes           String?
+  createdById     String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+/// Payment — individual payment transactions.
+model Payment {
+  id              String   @id @default(cuid())
+  paymentReference String  @unique // gateway reference
+  organizationId  String
+  invoiceId       String?
+  // Amount
+  amount          Float
+  currency        String   @default("NGN")
+  // Gateway
+  gateway         String   // PAYSTACK | FLUTTERWAVE | STRIPE
+  gatewayResponse String?  // JSON: full gateway response
+  // Status
+  status          String   @default("INITIATED") // INITIATED | PROCESSING | VERIFIED | FAILED | REFUNDED
+  initiatedAt     DateTime @default(now())
+  verifiedAt      DateTime?
+  failedAt        DateTime?
+  // Failure info
+  failureReason   String?
+  // Metadata
+  customerEmail   String?
+  customerName    String?
+  ipAddress       String?
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([gateway])
+}
+
+/// Coupon — discount coupons.
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique // WELCOME10, STUDENT2027
+  description     String?
+  type            String   // PERCENTAGE | FIXED_AMOUNT
+  value           Float    // percentage (10 = 10%) or fixed amount
+  currency        String   @default("NGN")
+  // Limits
+  maxUses         Int      @default(0) // 0 = unlimited
+  usesCount       Int      @default(0)
+  // Validity
+  validFrom       DateTime @default(now())
+  validUntil      DateTime?
+  isActive        Boolean  @default(true)
+  // Conditions
+  minAmount       Float    @default(0) // minimum order amount
+  applicablePlans String?  // JSON array of plan IDs (null = all)
+  createdAt       DateTime @default(now())
+
+  @@index([code])
+  @@index([isActive])
+}
+
+/// Negotiation — custom pricing requests between orgs and platform admins.
+model Negotiation {
+  id              String   @id @default(cuid())
+  organizationId  String
+  organizationName String?
+  // Request
+  requestType     String   // CUSTOM_PRICING | VOLUME_DISCOUNT | ENTERPRISE | GOVERNMENT | WHITE_LABEL
+  message         String   // org's request message
+  proposedAmount  Float?   // org's proposed amount
+  currency        String   @default("NGN")
+  // Context
+  voterCount      Int?
+  electionCount   Int?
+  orgType         String?  // UNIVERSITY | COMPANY | ASSOCIATION | CHURCH | NGO | GOVERNMENT
+  // Status
+  status          String   @default("REQUESTED") // REQUESTED | UNDER_REVIEW | COUNTER_OFFERED | ACCEPTED | REJECTED | EXPIRED
+  // Negotiation thread
+  thread          String?  // JSON array of { author, message, timestamp, role }
+  // Resolution
+  agreedAmount    Float?
+  quoteId         String?  // generated quote if accepted
+  // Admin
+  assignedToId    String?
+  assignedToName  String?
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedByName  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([requestType])
+}
+
+/// Refund — refund requests and processing.
+model Refund {
+  id              String   @id @default(cuid())
+  refundNumber    String   @unique // REF-000001
+  organizationId  String
+  paymentId       String
+  invoiceId       String?
+  // Amount
+  amount          Float
+  currency        String   @default("NGN")
+  reason          String
+  // Status
+  status          String   @default("REQUESTED") // REQUESTED | REVIEWED | APPROVED | PROCESSED | COMPLETED | REJECTED
+  // Workflow
+  requestedById   String?
+  requestedByName String?
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  processedAt     DateTime?
+  completedAt     DateTime?
+  // Gateway
+  gatewayRefundRef String? // gateway refund reference
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([paymentId])
+  @@index([status])
+}
+
+/// AddOnPurchase — purchases of extra features/credits.
+model AddOnPurchase {
+  id              String   @id @default(cuid())
+  organizationId  String
+  feature         String   // EXTRA_SMS | EXTRA_WHATSAPP | PREMIUM_SUPPORT | CUSTOM_DOMAIN | AI_INSIGHTS | ADVANCED_REPORTS | ADDITIONAL_STORAGE
+  description     String
+  quantity        Int      @default(1)
+  unitPrice       Float
+  totalAmount     Float
+  currency        String   @default("NGN")
+  invoiceId       String?  // linked invoice
+  status          String   @default("PENDING") // PENDING | ACTIVE | EXPIRED | CANCELLED
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([feature])
+  @@index([status])
+}

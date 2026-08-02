@@ -303,6 +303,7 @@ function WorkspaceNav({ subdomain }: { subdomain?: string }) {
     { label: 'Security', icon: Shield, href: subdomain ? `/workspace/security?org=${encodeURIComponent(subdomain)}` : '/workspace/security' },
     { label: 'Communication', icon: Mail, href: subdomain ? `/workspace/communication?org=${encodeURIComponent(subdomain)}` : '/workspace/communication' },
     { label: 'Intelligence', icon: Brain, href: subdomain ? `/workspace/intelligence?org=${encodeURIComponent(subdomain)}` : '/workspace/intelligence' },
+    { label: 'Billing', icon: CreditCard, href: subdomain ? `/workspace/billing?org=${encodeURIComponent(subdomain)}` : '/workspace/billing' },
     { label: 'Audit Logs', icon: ScrollText, href: '#' },
     { label: 'Settings', icon: SettingsIcon, href: subdomain ? `/workspace/settings?org=${encodeURIComponent(subdomain)}` : '/workspace/settings' },
   ]

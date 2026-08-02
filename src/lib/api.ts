@@ -199,6 +199,21 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 14: BSPCM — Billing, Subscriptions, Payments & Commercial Management
+  bspmGetPricing: () => req('/api/bspcm/pricing'),
+  bspmEstimate: (data: any) => req('/api/bspcm/estimate', { method: 'POST', body: JSON.stringify(data) }),
+  bspmGetQuotes: (subdomain?: string) => req(`/api/bspcm/quotes${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  bspmGenerateQuote: (data: any, subdomain?: string) => req(`/api/bspcm/quotes${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bspmGetInvoices: (params: string, subdomain?: string) => req(`/api/bspcm/invoices${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  bspmGetPayments: (subdomain?: string) => req(`/api/bspcm/payments${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  bspmInitiatePayment: (data: any, subdomain?: string) => req(`/api/bspcm/payments/initiate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bspmVerifyPayment: (data: any) => req('/api/bspcm/payments/verify', { method: 'POST', body: JSON.stringify(data) }),
+  bspmGetNegotiations: (subdomain?: string) => req(`/api/bspcm/negotiations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  bspmRequestNegotiation: (data: any, subdomain?: string) => req(`/api/bspcm/negotiations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bspmUpdateNegotiation: (negotiationId: string, data: any, subdomain?: string) => req(`/api/bspcm/negotiations/${negotiationId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  bspmGetRevenue: () => req('/api/bspcm/revenue'),
+  bspmGoLive: (data: any, subdomain?: string) => req(`/api/bspcm/golive${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Chapter 13: RAEI — Reporting, Analytics & Election Intelligence
   raeiGetPlatform: () => req('/api/raei/platform'),
   raeiGetOrg: (subdomain?: string) => req(`/api/raei/org${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
