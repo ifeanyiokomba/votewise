@@ -2229,3 +2229,136 @@ model PlatformBroadcast {
   @@index([isPublished])
   @@index([type])
 }
+
+// ===========================================================================
+// CHAPTER 16 — API, INTEGRATIONS & DEVELOPER PLATFORM (AIDP)
+// ===========================================================================
+
+/// ApiKey — organization-scoped API keys for external integrations.
+/// Each key has scopes (permissions), expiration, and usage tracking.
+model ApiKey {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // "Production", "Development", "Student Portal Sync"
+  keyPrefix       String   // first 8 chars for display (e.g. "vw_live_")
+  keyHash         String   @unique // sha256 of the full key
+  scopes          String   // JSON array: ["read:voters", "write:elections", ...]
+  environment     String   @default("production") // production | sandbox
+  expiresAt       DateTime?
+  lastUsedAt      DateTime?
+  lastUsedIp      String?
+  createdAt       DateTime @default(now())
+  revokedAt       DateTime?
+  createdById     String?
+  createdByName   String?
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@index([environment])
+}
+
+/// OAuthClient — OAuth 2.0 applications registered by organizations.
+model OAuthClient {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // "University Portal Integration"
+  clientId        String   @unique
+  clientSecretHash String
+  redirectUris    String   // JSON array of allowed redirect URIs
+  scopes          String   // JSON array of requested scopes
+  grantType       String   @default("authorization_code") // authorization_code | client_credentials
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([clientId])
+}
+
+/// Webhook — organization-configured webhook endpoints that receive signed
+/// event notifications instead of requiring polling.
+model Webhook {
+  id              String   @id @default(cuid())
+  organizationId  String
+  url             String
+  name            String   // "Student Portal Notifier"
+  secret          String   // HMAC signing secret
+  events          String   // JSON array: ["election.started", "vote.completed", ...]
+  isActive        Boolean  @default(true)
+  // Delivery stats
+  totalSent       Int      @default(0)
+  totalDelivered  Int      @default(0)
+  totalFailed     Int      @default(0)
+  lastSentAt      DateTime?
+  lastStatus      Int?     // HTTP status code of last delivery
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([isActive])
+}
+
+/// WebhookDelivery — individual webhook delivery attempts with retry tracking.
+model WebhookDelivery {
+  id              String   @id @default(cuid())
+  webhookId       String
+  eventId         String   // unique event ID (prevents replay)
+  eventType       String   // e.g. "election.started"
+  payload         String   // JSON payload sent
+  signature       String   // HMAC-SHA256 signature
+  status          String   @default("PENDING") // PENDING | DELIVERED | FAILED | RETRYING
+  attempts        Int      @default(0)
+  maxAttempts     Int      @default(3)
+  responseCode    Int?
+  responseBody    String?
+  nextRetryAt     DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([webhookId])
+  @@index([status])
+  @@index([eventType])
+}
+
+/// Integration — connected external systems (SIS, HR, identity providers, etc.)
+model Integration {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // "Google Workspace", "University Portal", "SAP HR"
+  type            String   // SIS | HR | IDENTITY | MEMBERSHIP | LMS | ERP | CUSTOM
+  provider        String?  // google_workspace | microsoft_entra | okta | keycloak | moodle | canvas | sap | custom
+  status          String   @default("DISCONNECTED") // CONNECTED | DISCONNECTED | ERROR | SYNCING
+  config          String?  // JSON: provider-specific configuration
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?  // SUCCESS | PARTIAL | FAILED
+  lastError       String?
+  syncCount       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([status])
+}
+
+/// ApiLog — every API request is logged for monitoring, analytics, and audit.
+model ApiLog {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  apiKeyId        String?
+  method          String   // GET | POST | PATCH | DELETE
+  endpoint        String   // /api/v1/elections
+  statusCode      Int
+  latencyMs       Int
+  ipAddress       String?
+  userAgent       String?
+  requestId       String?  // unique request ID for tracing
+  error           String?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([apiKeyId])
+  @@index([endpoint])
+  @@index([statusCode])
+  @@index([createdAt])
+}

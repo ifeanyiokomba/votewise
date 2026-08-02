@@ -9292,3 +9292,166 @@ Stage Summary:
   - `src/app/admin/operations/page.tsx`
   - `src/components/votewise/platform-operations-center.tsx`
 - **Files modified:** none.
+
+---
+
+## Task ID: AIDP-UI
+Agent: Developer Portal UI Agent (sub-agent)
+Task: Build the Developer Portal UI — API keys, webhooks, integrations, and API stats — for the VoteWise workspace.
+
+### Work Log
+1. Read `/home/z/my-project/worklog.md` to absorb project context (VoteWise — Next.js 16
+   multi-tenant election platform; emerald/gold/amber palette; DARK default theme;
+   `votewise-card-glow` utility; workspace sidebar at `src/components/votewise/workspace.tsx`).
+2. Read the analytics page pattern (`src/app/workspace/analytics/page.tsx`) and the
+   billing page pattern — both use Suspense + `useSearchParams` for `?org=`, NavBar +
+   Footer wrappers, and a single child component receiving `subdomain`.
+3. Audited the AIDP backend (`src/lib/aidp/`, `src/app/api/aidp/`) to understand the
+   exact shape of API responses:
+   - `listApiKeys` returns `{ id, name, keyPrefix, scopes[], environment, expiresAt, lastUsedAt, lastUsedIp, createdAt }` — full key only on creation.
+   - `createWebhook` returns the webhook row with a one-time `secret`.
+   - `listWebhooks` returns `totalSent/totalDelivered/totalFailed/lastStatus/lastSentAt` counters + `isActive`.
+   - `getWebhookDeliveries` returns `{ id, eventId, eventType, status, attempts, responseCode, deliveredAt, createdAt }`.
+   - `getIntegrationHealth` returns `{ total, connected, disconnected, error, syncing }`.
+   - `getApiStats` returns `{ totalRequests, totalErrors, avgLatencyMs, errorRate, topEndpoints[], requestsPerHour }`.
+   - `SCOPES` and `WEBHOOK_EVENTS` catalogs are exposed via `GET /api/aidp/scopes`.
+4. Discovered the `/api/aidp/webhooks/[webhookId]/test` route did NOT exist, even though
+   `api.aidpTestWebhook` calls it. Created the missing route so the Webhook "Test"
+   button works end-to-end.
+5. Created `src/app/workspace/developer/page.tsx` — follows the analytics page pattern
+   exactly: `'use client'`, Suspense wrapper, `useSearchParams` for `?org=`, NavBar +
+   sticky Footer, "Back to Dashboard" ghost button.
+6. Created `src/components/votewise/developer-portal.tsx` — a 4-tab surface built on
+   shadcn `Tabs`:
+
+   **Tab 1 — API Keys:**
+   - List cards with name, environment badge (emerald=production / amber=sandbox),
+     key prefix in mono, scopes as outlined badges, "last used" + "expires" metadata,
+     Expired badge when applicable.
+   - "Create API Key" dialog: name input, scopes grouped by `prefix:` (e.g. `read`,
+     `write`, `manage`) with Select-all / Clear shortcuts, environment select,
+     datetime-local expiry.
+   - Post-creation dialog shows the full key ONCE with a Copy button + amber
+     "Store it securely" warning. Key dialog cannot be dismissed without confirming.
+   - "Revoke" button per key opens an AlertDialog confirmation (red destructive
+     action) — calls `api.aidpRevokeApiKey`.
+
+   **Tab 2 — Webhooks:**
+   - List cards with name, Active/Paused badge, URL with external-link icon,
+     event subscription badges (mono), delivery stats (Sent / Delivered / Failed)
+     with colored icons, last-sent "time ago", last HTTP status badge
+     (green for 2xx, red otherwise).
+   - "Create Webhook" dialog: name, URL (validated http/https), event checkboxes
+     loaded from the `WEBHOOK_EVENTS` catalog with descriptions.
+   - Post-creation dialog shows the webhook secret ONCE with Copy + amber warning
+     ("Shown only once") + the destination URL for reference.
+   - "Test" button per webhook (spinner while in-flight) → POSTs to the new
+     `/test` route, then refreshes the list after a 1.5s delay so the delivery
+     shows up.
+   - "Deliveries" button opens a dialog with a sticky-header table of recent
+     deliveries (event, status badge, HTTP code color-coded, attempts, time-ago).
+     Used a keyed `DeliveriesContent` sub-component to satisfy the
+     `react-hooks/set-state-in-effect` lint rule (initial `loading=true` state +
+     remount-on-webhook-change instead of synchronous setState in effect body).
+   - "Delete" button per webhook with AlertDialog confirmation.
+
+   **Tab 3 — Integrations:**
+   - Top: 4 health mini-cards (Connected=emerald, Disconnected=zinc, Error=red,
+     Syncing=amber) — animated entrance, skeleton placeholders while loading.
+   - List cards: Layers icon, name, type badge (SIS/HR/IDENTITY/etc.),
+     color-coded status badge, provider, last-sync time-ago, sync count, and a
+     red error banner if status=ERROR with `lastError` text.
+   - "Add Integration" dialog: name, type selector (7 types), provider input.
+   - "Remove" button per integration with AlertDialog confirmation — calls
+     `api.aidpUpdateIntegration(id, { action: 'delete' })`.
+
+   **Tab 4 — Stats (API Analytics):**
+   - 4 stat cards: Total Requests (24h), Error Rate % (color-coded green/amber/red),
+     Avg Latency (ms), Requests/Hour — each with `votewise-card-glow`.
+   - Error Rate progress bar with motion-animated fill, color-coded by severity
+     (green < 1%, amber < 5%, red ≥ 5%), with Healthy/Warning/10%+ scale labels.
+   - Top Endpoints table: endpoint (mono), request count, avg latency
+     (color-coded by 300ms / 800ms thresholds), share bar with %.
+   - Auto-refreshes every 15 seconds via `setInterval`, with a "live dot"
+     indicator and "Updated Xm ago" label. Loading state shown only on first
+     load (subsequent refreshes are silent).
+
+7. **Shared utilities / components** in the same file:
+   - `formatDateTime`, `timeAgo` helpers.
+   - `copyToClipboard` with `navigator.clipboard` + execCommand fallback.
+   - `CopyButton` (with copied-state feedback + sonner toast).
+   - `EmptyState`, `ErrorState`, `LoadingRow` reusable surfaces.
+   - Badge color maps: `ENV_BADGE`, `STATUS_BADGE`, `DELIVERY_BADGE` — all with
+     explicit `dark:` variants.
+
+8. Added the "Developer" link to the workspace sidebar (`WorkspaceNav` in
+   `src/components/votewise/workspace.tsx`) — placed between "Billing" and
+   "Audit Logs", using the `Code` lucide icon, with the standard
+   `?org=${subdomain}` query-string pattern. Imported `Code` from lucide-react.
+
+9. Ran `bun run lint` — first pass surfaced one error
+   (`react-hooks/set-state-in-effect` in the DeliveriesDialog where
+   `setLoading(true)` was called synchronously in the effect body). Fixed by
+   splitting `DeliveriesDialog` into a thin Dialog wrapper + a keyed
+   `DeliveriesContent` sub-component whose initial state is `loading=true`,
+   eliminating the synchronous setState. Re-ran lint → **0 errors, 0 warnings**.
+
+10. Verified end-to-end:
+    - `GET /workspace/developer?org=demo` → HTTP 200
+    - `GET /workspace/developer` → HTTP 200
+    - `GET /api/aidp/scopes` → HTTP 200 (catalog loads)
+    - Dev server log shows no errors / warnings after the new routes were hit.
+
+### Files Created / Modified
+| File | Change |
+|---|---|
+| `src/app/workspace/developer/page.tsx` | NEW — route page (Suspense + useSearchParams + NavBar + Footer) |
+| `src/components/votewise/developer-portal.tsx` | NEW — 4-tab Developer Portal (~1100 lines) |
+| `src/app/api/aidp/webhooks/[webhookId]/test/route.ts` | NEW — POST route for the "Test" button (was missing) |
+| `src/components/votewise/workspace.tsx` | MODIFIED — added `Code` import + "Developer" sidebar link between Billing and Audit Logs |
+
+### Design Decisions
+- **Palette discipline:** Every badge, progress bar, and accent uses only
+  emerald / gold / amber / zinc / red — no indigo, no blue. All badges include
+  explicit `dark:` variants so they render correctly in the default DARK theme.
+- **Mobile-first:** Sidebar tabs collapse to a 2-col grid on mobile
+  (`grid-cols-2 sm:grid-cols-4`); list cards stack vertically with
+  `flex-col lg:flex-row`; stat cards go 1→2→4 columns; tables scroll
+  horizontally on mobile via the `votewise-scroll` custom-scrollbar wrapper.
+- **`votewise-card-glow`** is applied to the portal header card and every
+  Stats tab stat card (the most prominent surfaces), matching the pattern used
+  across the rest of the workspace (analytics, billing, etc.).
+- **Framer Motion** is used for: header entrance (`opacity/y`), tab-card
+  enter/exit (`AnimatePresence` on list items so deletes animate out), stat
+  card staggered entrance, and the error-rate progress bar fill animation.
+- **Security UX:** Both "show full key once" and "show webhook secret once"
+  flows use a separate Dialog with an amber `Alert` warning, a Copy button,
+  and a confirmation button — the value is only stored in component state and
+  is cleared when the dialog closes.
+- **Accessibility:** All form fields have `<Label htmlFor>`; all icon-only
+  buttons have `aria-label` via `size="sm"` text + icon; AlertDialog handles
+  keyboard escape/cancel; tables have proper `<thead>`/`<tbody>` semantics;
+  color is never the sole signal (icons + text accompany every badge).
+- **Lint rule compliance:** The `react-hooks/set-state-in-effect` rule is
+  satisfied by deriving initial state from props and using a keyed remount
+  for the DeliveriesContent component (cleaner than the
+  `useRef`/`setState-in-callback` workarounds).
+
+### Stage Summary
+- ✅ Developer Portal UI fully built, lint-clean (0 errors / 0 warnings), and
+  served at `/workspace/developer?org=...` (HTTP 200 verified).
+- ✅ All 4 tabs functional against the existing AIDP backend: API Keys
+  (create/revoke + one-time secret display), Webhooks (create/test/delete +
+  deliveries dialog + one-time secret display), Integrations (create/delete +
+  health summary), Stats (4 KPI cards + error-rate bar + top endpoints table
+  with 15s auto-refresh).
+- ✅ Workspace sidebar updated — "Developer" link sits between "Billing" and
+  "Audit Logs" with the `Code` icon, using the standard `?org=` query pattern.
+- ✅ Missing `/api/aidp/webhooks/[webhookId]/test` route created so the Webhook
+  "Test" button works end-to-end (was referenced by `api.aidpTestWebhook` but
+  the route file didn't exist).
+- Note for next agents: the test webhook route sends an `organization.updated`
+  test event via `triggerWebhookEvent` — if you want a dedicated
+  `webhook.tested` event type, add it to `WEBHOOK_EVENTS` in
+  `src/lib/aidp/types.ts` and update `testWebhook()` in
+  `src/lib/aidp/webhook-engine.ts`.

@@ -199,6 +199,21 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 16: AIDP — API, Integrations & Developer Platform
+  aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  aidpCreateApiKey: (data: any, subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  aidpRevokeApiKey: (keyId: string, subdomain?: string) => req(`/api/aidp/api-keys/${keyId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  aidpGetWebhooks: (subdomain?: string) => req(`/api/aidp/webhooks${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  aidpCreateWebhook: (data: any, subdomain?: string) => req(`/api/aidp/webhooks${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  aidpDeleteWebhook: (webhookId: string, subdomain?: string) => req(`/api/aidp/webhooks/${webhookId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+  aidpTestWebhook: (webhookId: string, subdomain?: string) => req(`/api/aidp/webhooks/${webhookId}/test${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+  aidpGetWebhookDeliveries: (params: string, subdomain?: string) => req(`/api/aidp/webhooks/deliveries${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  aidpGetIntegrations: (subdomain?: string) => req(`/api/aidp/integrations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  aidpCreateIntegration: (data: any, subdomain?: string) => req(`/api/aidp/integrations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  aidpUpdateIntegration: (integrationId: string, data: any, subdomain?: string) => req(`/api/aidp/integrations/${integrationId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  aidpGetStats: (subdomain?: string) => req(`/api/aidp/stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  aidpGetScopes: () => req('/api/aidp/scopes'),
+
   // Chapter 15: PAOEM — Platform Administration, Operations & Ecosystem Management
   paoemGetDashboard: () => req('/api/paoem/dashboard'),
   paoemGetOrganizations: (params: string) => req(`/api/paoem/organizations${params ? '?' + params : ''}`),
