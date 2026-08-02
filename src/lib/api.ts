@@ -213,6 +213,9 @@ export const api = {
   bspmUpdateNegotiation: (negotiationId: string, data: any, subdomain?: string) => req(`/api/bspcm/negotiations/${negotiationId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
   bspmGetRevenue: () => req('/api/bspcm/revenue'),
   bspmGoLive: (data: any, subdomain?: string) => req(`/api/bspcm/golive${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bspmUpdateSubscription: (data: any, subdomain?: string) => req(`/api/bspcm/subscription${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bspmFinancialReport: (data: any, subdomain?: string) => req(`/api/bspcm/financial-reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  bspmWhiteLabel: (data: any, subdomain?: string) => req(`/api/bspcm/whitelabel${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Chapter 13: RAEI — Reporting, Analytics & Election Intelligence
   raeiGetPlatform: () => req('/api/raei/platform'),
