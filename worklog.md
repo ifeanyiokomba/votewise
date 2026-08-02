@@ -10055,3 +10055,53 @@ Stage Summary:
 - ✅ Existing 10 tabs untouched. Lint clean. Browser-verified.
 - The infrastructure console now has 12 tabs covering the full Ch.17 PIHED lifecycle:
   detect → alert → respond → postmortem → improve, plus planned-maintenance scheduling.
+
+---
+Task ID: CONTINUE-POSTMORTEM-MAINTENANCE-WIDGET
+Agent: Lead Architect (main)
+Task: Complete incident lifecycle with postmortems + scheduled maintenance + embeddable widget
+
+Work Log:
+- Did a broad QA sweep — all key pages return 200, no runtime errors.
+- Identified 2 gaps in the incident lifecycle: no postmortem feature
+  (detect → alert → respond but no postmortem → improve) and no scheduled
+  maintenance UI (admins can start active maintenance but can't schedule
+  future windows).
+- Added 2 Prisma models: Postmortem (title, severity, timeline, rootCause,
+  impact, whatWentWell/Wrong, actionItems, lessonsLearned, authoredBy,
+  reviewedBy, publishedAt) + ScheduledMaintenance (title, level, org,
+  scheduledStart/End, status, notifiedOrgs, createdBy).
+- Built src/lib/infra/postmortem.ts — full CRUD + stats + seeding. Seeds
+  a realistic "API latency spike during SUG election peak" postmortem
+  with 8 timeline entries, 3 action items, root cause analysis.
+- Built src/lib/infra/scheduled-maintenance.ts — create, list, cancel,
+  activateDueMaintenance (auto-activates SCHEDULED windows when start
+  arrives → creates MaintenanceMode; auto-completes when end passes →
+  deactivates MaintenanceMode), stats, seeding (3 windows: 2 upcoming,
+  1 completed).
+- Created 7 API routes: /api/pihed/postmortems (GET/POST), /postmortems/
+  [id] (GET/PATCH/DELETE), /maintenance-schedule (GET/POST),
+  /maintenance-schedule/[id]/cancel (POST), /widget (GET — public HTML).
+- Wired activateDueMaintenance() into the periodic scheduler (every 2 min).
+- Added embeddable status widget: GET /api/pihed/widget — self-contained
+  HTML page for iframe embedding on external sites. Pulsing status dot,
+  uptime %, last updated, dark mode auto-detect. No auth.
+- Launched subagent PM-MAINT to add 2 new tabs to the infra console:
+  Tab 11 (Postmortems) + Tab 12 (Maintenance). Subagent extended the
+  console from 4746 → 5969 lines, lint-clean.
+- agent-browser verified: all 12 tabs render, postmortem detail dialog
+  shows full timeline + action items, maintenance windows show countdowns.
+- Lint: 0 errors, 0 warnings. Committed (b3aad23) + pushed to GitHub.
+
+Stage Summary:
+- ✅ Postmortem system complete — incident lifecycle now full: detect →
+  alert → respond → postmortem → improve. Blameless reviews with timeline,
+  root cause, action items, lessons learned.
+- ✅ Scheduled maintenance — admins can plan future windows, auto-activate
+  when the window starts, auto-complete when it ends.
+- ✅ Embeddable status widget — external sites can iframe the widget to
+  show "VoteWise: All Systems Operational" with a pulsing emerald dot.
+- The infra console now has 12 tabs: Pre-Flight, Live Services, Metrics,
+  Backups, Deployments, Domains, Logs, Alerts, Costs, Load Test,
+  Postmortems, Maintenance.
+- The 15-min webDevReview cron will continue autonomous refinement.
