@@ -67,7 +67,12 @@ const MATRIX: Record<Role, Capability[]> = {
 }
 
 export function can(ctx: PermissionContext, cap: Capability): boolean {
-  return MATRIX[ctx.role]?.includes(cap) ?? false
+  // Normalize legacy role names
+  const role = ctx.role === 'SUPER_ADMIN' ? 'PLATFORM_SUPER_ADMIN'
+    : ctx.role === 'ELECTORAL_COMMITTEE' ? 'ORG_OWNER'
+    : ctx.role === 'FACULTY_OFFICER' || ctx.role === 'DEPARTMENT_OFFICER' ? 'ORG_ADMIN'
+    : ctx.role
+  return MATRIX[role as Role]?.includes(cap) ?? false
 }
 
 export function requires2FA(role: Role): boolean {

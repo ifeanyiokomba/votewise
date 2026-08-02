@@ -101,8 +101,27 @@ export function OfficialDashboard() {
   const { official, setOfficial, setView, election, setElection } = useApp()
   const t = useTerminology()
   const [tab, setTab] = useState('overview')
+  const [authChecked, setAuthChecked] = useState(false)
 
-  useEffect(() => { api.getElection().then(setElection).catch(() => {}) }, [setElection])
+  useEffect(() => {
+    // Check auth on mount — if not logged in, redirect to login
+    api.me().then((d) => {
+      if (d.valid) {
+        setOfficial(d.official)
+      }
+      setAuthChecked(true)
+    }).catch(() => setAuthChecked(true))
+  }, [])
+
+  useEffect(() => { if (official) api.getElection().then(setElection).catch(() => {}) }, [setElection, official])
+
+  // Show login screen if not authenticated
+  if (authChecked && !official) {
+    return <OfficialLoginView />
+  }
+  if (!authChecked || !official) {
+    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  }
 
   async function logout() {
     try { await api.logout() } catch {}
