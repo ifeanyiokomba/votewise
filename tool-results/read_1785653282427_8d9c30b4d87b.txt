@@ -1,0 +1,459 @@
+     1→// VoteWise SUG v2 — Client-side API helpers.
+     2→// Officials authenticate via HttpOnly cookies (set by /api/auth/login) → no
+     3→// token management needed; `credentials: 'include'` carries the cookies.
+     4→// Voters still use a header token (x-voter-token) for their session.
+     5→
+     6→const VOTER_TOKEN_KEY = 'votewise_voter_token'
+     7→
+     8→export function getVoterToken() { return typeof window === 'undefined' ? null : localStorage.getItem(VOTER_TOKEN_KEY) }
+     9→export function setVoterToken(t: string | null) {
+    10→  if (typeof window === 'undefined') return
+    11→  if (t) localStorage.setItem(VOTER_TOKEN_KEY, t); else localStorage.removeItem(VOTER_TOKEN_KEY)
+    12→}
+    13→
+    14→async function req<T = any>(path: string, opts: RequestInit = {}, voterToken?: string | null): Promise<T> {
+    15→  const headers: Record<string, string> = { 'content-type': 'application/json', ...(opts.headers as Record<string, string> || {}) }
+    16→  if (voterToken) headers['x-voter-token'] = voterToken
+    17→  // Officials: cookies are sent automatically with credentials:'include'.
+    18→  const res = await fetch(path, { ...opts, headers, credentials: 'include' })
+    19→  const text = await res.text()
+    20→  let data: any = null
+    21→  try { data = text ? JSON.parse(text) : null } catch { data = { raw: text } }
+    22→  if (!res.ok) {
+    23→    const msg = data?.error || `Request failed (${res.status})`
+    24→    // Provide user-friendly messages for auth/permission errors
+    25→    const friendlyMsg = res.status === 401
+    26→      ? 'Please sign in to continue.'
+    27→      : res.status === 403
+    28→      ? 'You do not have permission to perform this action. Please sign in as an admin.'
+    29→      : msg
+    30→    const err: any = new Error(friendlyMsg)
+    31→    err.status = res.status
+    32→    err.data = data
+    33→    err.originalMessage = msg
+    34→    throw err
+    35→  }
+    36→  return data as T
+    37→}
+    38→
+    39→export const api = {
+    40→  // Public
+    41→  getLegacyElection: () => req('/api/election'),
+    42→  // Tenant (multi-organization) — LEGACY (Chapter 1 retention)
+    43→  registerTenant: (data: any) => req('/api/tenant/register', { method: 'POST', body: JSON.stringify(data) }),
+    44→  getCurrentTenant: () => req('/api/tenant/current'),
+    45→  listTenants: () => req('/api/tenant/list'),
+    46→
+    47→  // Organizations (Chapter 1 — generic hierarchy)
+    48→  listOrganizations: () => req('/api/organizations'),
+    49→  getOrganization: (slug: string) => req(`/api/organizations/${slug}`),
+    50→  registerOrganization: (data: any) => req('/api/organizations/register', { method: 'POST', body: JSON.stringify(data) }),
+    51→  checkSubdomain: (sub: string) => req(`/api/organizations/check-subdomain?sub=${encodeURIComponent(sub)}`),
+    52→
+    53→  // Workspace (Chapter 2 — org-scoped, resolved from subdomain/custom domain)
+    54→  workspaceDashboard: (subdomain?: string) => req(`/api/workspace/dashboard${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    55→  workspaceSettings: (subdomain?: string) => req(`/api/workspace/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    56→  workspaceUpdateSettings: (data: any, subdomain?: string) => req(`/api/workspace/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    57→  workspaceDomains: (subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    58→  workspaceConnectDomain: (domain: string, isPrimary = true, subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ domain, isPrimary }) }),
+    59→  workspaceDisconnectDomain: (domain: string, subdomain?: string) => req(`/api/workspace/domain${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ domain }) }),
+    60→
+    61→  // Chapter 3: dynamic voter fields + import jobs
+    62→  workspaceVoterFields: (subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    63→  workspaceCreateVoterField: (data: any, subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+    64→  workspaceUpdateVoterField: (id: string, data: any, subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify({ id, ...data }) }),
+    65→  workspaceDeleteVoterField: (id: string, subdomain?: string) => req(`/api/workspace/voter-fields${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ id }) }),
+    66→  workspaceImports: (subdomain?: string) => req(`/api/workspace/imports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    67→  workspaceCreateImport: (data: any, subdomain?: string) => req(`/api/workspace/imports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+    68→  workspaceImportStatus: (id: string, subdomain?: string) => req(`/api/workspace/imports/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    69→
+    70→  // CSV template download URL — opens in the browser as an attachment.
+    71→  // Returns the URL (the caller can use <a href={url} download> or window.open).
+    72→  downloadVoterTemplate: (subdomain?: string) =>
+    73→    `${typeof window !== 'undefined' ? window.location.origin : ''}/api/workspace/voters/import-template${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`,
+    74→
+    75→  // Chapter 4: IAM — invitations
+    76→  workspaceInvitations: (subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    77→  workspaceInviteUser: (data: any, subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+    78→  workspaceRevokeInvitation: (id: string, subdomain?: string) => req(`/api/workspace/invitations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ id }) }),
+    79→  acceptInvitation: (token: string, password: string) => req('/api/workspace/invitations/accept', { method: 'POST', body: JSON.stringify({ token, password }) }),
+    80→
+    81→  // Organization Units (hierarchical election divisions)
+    82→  commandCenter: (subdomain?: string) => req(`/api/workspace/command-center${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    83→  // Organization-wide Election Analytics Dashboard (cross-election metrics).
+    84→  getAnalytics: (subdomain?: string) => req(`/api/workspace/analytics${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    85→  // Side-by-side comparison of 2–5 elections (metrics, turnout, results, integrity).
+    86→  compareElections: (electionIds: string[], subdomain?: string) => req(`/api/workspace/elections/compare${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionIds }) }),
+    87→  workspaceUnits: (subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    88→  workspaceCreateUnit: (data: any, subdomain?: string) => req(`/api/workspace/units${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+    89→  workspaceUnitObservers: (unitId: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    90→  workspaceAssignObserver: (unitId: string, data: any, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+    91→  workspaceRevokeObserver: (unitId: string, memberEmail: string, subdomain?: string) => req(`/api/workspace/units/${unitId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE', body: JSON.stringify({ memberEmail }) }),
+    92→
+    93→  // Chapter 7: Election Management System
+    94→  electionCenter: (subdomain?: string) => req(`/api/workspace/elections${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    95→  createElection: (data: any, subdomain?: string) => req(`/api/workspace/elections${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+    96→  getElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+    97→  updateElection: (id: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    98→  duplicateElection: (
+    99→    id: string,
+   100→    options?: { name?: string; startTime?: string; endTime?: string; shiftDays?: number },
+   101→    subdomain?: string,
+   102→  ) => req(`/api/workspace/elections/${id}/duplicate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {
+   103→    method: 'POST',
+   104→    body: JSON.stringify(options || {}),
+   105→  }),
+   106→  validateElection: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/validate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   107→  electionTimeline: (id: string, subdomain?: string) => req(`/api/workspace/elections/${id}/timeline${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   108→  getElectionAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   109→  // Election Templates — list/save/get/delete/apply (built-in + org-created)
+   110→  getElectionTemplates: (subdomain?: string) => req(`/api/workspace/election-templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   111→  saveElectionTemplate: (data: any, subdomain?: string) => req(`/api/workspace/election-templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   112→  getElectionTemplate: (templateId: string, subdomain?: string) => req(`/api/workspace/election-templates/${templateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   113→  deleteElectionTemplate: (templateId: string, subdomain?: string) => req(`/api/workspace/election-templates/${templateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   114→  applyElectionTemplate: (templateId: string, data: any, subdomain?: string) => req(`/api/workspace/election-templates/${templateId}/apply${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   115→  // Positions — within an election workspace
+   116→  getElectionPositions: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   117→  addElectionPosition: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   118→  updateElectionPosition: (electionId: string, positionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions/${positionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   119→  deleteElectionPosition: (electionId: string, positionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions/${positionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   120→  reorderElectionPositions: (electionId: string, positionIds: string[], subdomain?: string) => req(`/api/workspace/elections/${electionId}/positions/reorder${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ positionIds }) }),
+   121→  // Chapter 11: Settings + Support tabs (Election Workspace)
+   122→  getElectionSettings: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   123→  updateElectionSettings: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/settings${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   124→  getElectionSupport: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   125→  createElectionSupport: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   126→  updateElectionSupport: (electionId: string, ticketId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/support/${ticketId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   127→
+   128→  // Election Notifications — broadcast / direct-send + templates + stats
+   129→  getElectionNotifications: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   130→  sendElectionNotification: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   131→  getNotificationTemplates: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   132→
+   133→  // Election Scheduled Notifications — auto-send when voting opens/closes/results published
+   134→  getScheduledNotifications: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   135→  scheduleNotification: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   136→  updateScheduledNotification: (electionId: string, scheduleId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/${scheduleId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   137→  cancelScheduledNotification: (electionId: string, scheduleId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/${scheduleId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   138→  processScheduledNotifications: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/schedule/process${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+   139→
+   140→  // Notification Delivery Tracking — per-recipient delivery status
+   141→  getNotificationDeliveries: (electionId: string, notificationId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/${notificationId}/deliveries${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   142→  getNotificationDeliveryStats: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/notifications/delivery-stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   143→
+   144→  // Observer Incident Dashboard — real-time incident reporting + monitoring
+   145→  getElectionIncidents: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   146→  reportElectionIncident: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   147→  updateElectionIncident: (electionId: string, incidentId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents/${incidentId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   148→  getElectionIncidentStats: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/incidents/stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   149→
+   150→  // Candidates — within an election workspace
+   151→  getElectionCandidates: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   152→  addElectionCandidate: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   153→  updateElectionCandidate: (electionId: string, candidateId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates/${candidateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   154→  deleteElectionCandidate: (electionId: string, candidateId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates/${candidateId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   155→  screenElectionCandidate: (electionId: string, candidateId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/candidates/${candidateId}/screen${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   156→
+   157→  // Chapter 7: Election-scoped observers + voters (per-election workspace tabs)
+   158→  getElectionObservers: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   159→  assignElectionObserver: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/observers${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   160→  removeElectionObserver: (electionId: string, observerId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/observers?observerId=${observerId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   161→  getElectionVoters: (electionId: string, params: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/voters${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   162→  addElectionVoter: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/voters${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   163→
+   164→  // Chapter 8: Voter Management
+   165→  voterRegistry: (params: string, subdomain?: string) => req(`/api/workspace/voters${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   166→  addVoter: (data: any, subdomain?: string) => req(`/api/workspace/voters${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   167→  bulkVoterAction: (action: string, voterIds: string[], subdomain?: string) => req(`/api/workspace/voters${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify({ action, voterIds }) }),
+   168→  getVoterProfile: (id: string, subdomain?: string) => req(`/api/workspace/voters/${id}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   169→  voterGroups: (subdomain?: string) => req(`/api/workspace/voter-groups${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   170→  createVoterGroup: (data: any, subdomain?: string) => req(`/api/workspace/voter-groups${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   171→  accreditationDashboard: (electionId: string | null, subdomain?: string) => req(`/api/workspace/accreditation${electionId ? `?electionId=${electionId}` : ''}${subdomain ? `${electionId ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   172→  createAccreditationRule: (data: any, subdomain?: string) => req(`/api/workspace/accreditation${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   173→
+   174→  // Chapter 9: Rules Engine
+   175→  ruleSets: (electionId: string | null, subdomain?: string) => req(`/api/workspace/rules${electionId ? `?electionId=${electionId}` : ''}${subdomain ? `${electionId ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   176→  createRuleSet: (data: any, subdomain?: string) => req(`/api/workspace/rules${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   177→  testRules: (ruleSetId: string, sampleVoter: any, subdomain?: string) => req(`/api/workspace/rules/test${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ruleSetId, sampleVoter }) }),
+   178→  policies: (subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   179→  savePolicy: (data: any, subdomain?: string) => req(`/api/workspace/policies${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   180→
+   181→  // Chapter 10: Secure Voting Engine
+   182→  generateBallot: (electionId: string, voterId?: string, isSimulation?: boolean, subdomain?: string, sessionToken?: string) => req(`/api/workspace/ballot${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, voterId, isSimulation, sessionToken }) }),
+   183→  submitVote: (ballotId: string, selections: Record<string, string | string[]>, subdomain?: string) => req(`/api/workspace/ballot/submit${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ballotId, selections }) }),
+   184→  verifyReceipt: (receiptCode: string, subdomain?: string) => req(`/api/workspace/ballot/receipt${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+   185→  simulateBallot: (electionId: string, action: 'preview' | 'cast' | 'reset' | 'list' = 'preview', selections?: Record<string, string | string[]>, subdomain?: string) => req(`/api/workspace/ballot/simulate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, action, selections }) }),
+   186→  autoSaveSelections: (ballotId: string, selections: Record<string, string | string[]>, subdomain?: string) => req(`/api/workspace/ballot/auto-save${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ ballotId, selections }) }),
+   187→  getAutoSavedSelections: (ballotId: string, subdomain?: string) => req(`/api/workspace/ballot/auto-save?ballotId=${ballotId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   188→  clearAutoSavedSelections: (ballotId: string, subdomain?: string) => req(`/api/workspace/ballot/auto-save?ballotId=${ballotId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   189→  startVotingSession: (electionId: string, voterId?: string, subdomain?: string) => req(`/api/workspace/ballot/session/start${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ electionId, voterId }) }, getVoterToken()),
+   190→  getElectionLive: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/live${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   191→  tallyElection: (electionId: string, tieStrategy?: string, force?: boolean, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify({ tieStrategy, force }) }),
+   192→  getElectionTally: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/tally${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   193→  getElectionVerification: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/verification${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   194→  // Risk-Limiting Audit — statistically sample ballots to verify a certified tally.
+   195→  runRiskLimitingAudit: (electionId: string, data: any, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit-rla${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   196→  getRiskLimitingAudit: (electionId: string, subdomain?: string) => req(`/api/workspace/elections/${electionId}/audit-rla${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   197→  getDemoVoters: (electionId: string, subdomain?: string) => req(`/api/workspace/ballot/demo-voters?electionId=${electionId}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   198→  // Chapter 10: Voter Portal SVE data (voting status, receipts, timeline)
+   199→  getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
+   200→  // Public receipt verification (no org context needed)
+   201→  publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+   202→  // Chapter 17: PIHED — Production Infrastructure (health, readiness, status)
+   203→  pihedHealth: () => fetch('/api/pihed/health').then(r => r.json()),
+   204→  pihedReadiness: (subdomain?: string) => req(`/api/pihed/readiness${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   205→  pihedRunReadiness: (data: any) => req('/api/pihed/readiness/run', { method: 'POST', body: JSON.stringify(data) }),
+   206→  pihedReadinessRuns: (limit?: number) => req(`/api/pihed/readiness/runs${limit ? `?limit=${limit}` : ''}`),
+   207→  pihedStatus: () => fetch('/api/pihed/status').then(r => r.json()),
+   208→  pihedMetrics: (series?: string, limit?: number) => req(`/api/pihed/metrics${series ? `?series=${encodeURIComponent(series)}${limit ? `&limit=${limit}` : ''}` : ''}`),
+   209→  pihedUptime: (days?: number) => fetch(`/api/pihed/uptime${days ? `?days=${days}` : ''}`).then(r => r.json()),
+   210→  pihedUptimeSummary: () => fetch('/api/pihed/uptime?summary=true').then(r => r.json()),
+   211→  pihedBackups: () => req('/api/pihed/backups'),
+   212→  pihedTriggerBackup: (type?: string) => req('/api/pihed/backups/trigger', { method: 'POST', body: JSON.stringify({ type: type || 'manual' }) }),
+   213→  pihedDeployments: () => req('/api/pihed/deployments'),
+   214→  pihedPromoteCanary: (id: string) => req(`/api/pihed/deployments/${id}/promote`, { method: 'POST' }),
+   215→  pihedRollbackDeployment: (id: string, reason?: string) => req(`/api/pihed/deployments/${id}/rollback`, { method: 'POST', body: JSON.stringify({ reason }) }),
+   216→  pihedDomains: (orgId?: string) => req(`/api/pihed/domains${orgId ? `?org=${encodeURIComponent(orgId)}` : ''}`),
+   217→  pihedAddDomain: (data: any) => req('/api/pihed/domains', { method: 'POST', body: JSON.stringify(data) }),
+   218→  pihedVerifyDomain: (id: string) => req(`/api/pihed/domains/${id}/verify`, { method: 'POST' }),
+   219→  pihedRemoveDomain: (id: string) => req(`/api/pihed/domains/${id}`, { method: 'DELETE' }),
+   220→  // Chapter 17 ext: Centralized Logging, Alerting, Cost Monitoring, Load Testing
+   221→  pihedLogs: (params?: string) => req(`/api/pihed/logs${params ? '?' + params : ''}`),
+   222→  pihedAlerts: (unack?: boolean) => req(`/api/pihed/alerts${unack ? '?unacknowledged=true' : ''}`),
+   223→  pihedAckAlert: (id: string) => req(`/api/pihed/alerts/${id}/acknowledge`, { method: 'POST' }),
+   224→  pihedToggleAlertRule: (id: string, enabled: boolean) => req(`/api/pihed/alerts/rules/${id}/toggle`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+   225→  pihedCosts: (days?: number, org?: string) => req(`/api/pihed/costs${days ? `?days=${days}${org ? `&org=${encodeURIComponent(org)}` : ''}` : ''}`),
+   226→  pihedLoadTests: () => req('/api/pihed/load-test'),
+   227→  pihedRunLoadTest: (preset: string) => req('/api/pihed/load-test/run', { method: 'POST', body: JSON.stringify({ preset }) }),
+   228→  pihedSlos: () => req('/api/pihed/slos'),
+   229→  pihedSloSummary: () => req('/api/pihed/slos?summary=true'),
+   230→  pihedReadinessBadge: (voters?: number) => fetch(`/api/pihed/readiness/badge${voters ? `?voters=${voters}` : ''}`).then(r => r.json()),
+   231→
+   232→  // Chapter 16: AIDP — API, Integrations & Developer Platform
+   233→  aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   234→  aidpCreateApiKey: (data: any, subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   235→  aidpRevokeApiKey: (keyId: string, subdomain?: string) => req(`/api/aidp/api-keys/${keyId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   236→  aidpGetWebhooks: (subdomain?: string) => req(`/api/aidp/webhooks${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   237→  aidpCreateWebhook: (data: any, subdomain?: string) => req(`/api/aidp/webhooks${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   238→  aidpDeleteWebhook: (webhookId: string, subdomain?: string) => req(`/api/aidp/webhooks/${webhookId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   239→  aidpTestWebhook: (webhookId: string, subdomain?: string) => req(`/api/aidp/webhooks/${webhookId}/test${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+   240→  aidpGetWebhookDeliveries: (params: string, subdomain?: string) => req(`/api/aidp/webhooks/deliveries${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   241→  aidpGetIntegrations: (subdomain?: string) => req(`/api/aidp/integrations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   242→  aidpCreateIntegration: (data: any, subdomain?: string) => req(`/api/aidp/integrations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   243→  aidpUpdateIntegration: (integrationId: string, data: any, subdomain?: string) => req(`/api/aidp/integrations/${integrationId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   244→  aidpGetStats: (subdomain?: string) => req(`/api/aidp/stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   245→  aidpGetScopes: () => req('/api/aidp/scopes'),
+   246→  aidpGetDocs: () => req('/api/aidp/docs'),
+   247→  aidpGetPostman: () => req('/api/aidp/postman'),
+   248→  aidpGetChangelog: () => req('/api/aidp/changelog'),
+   249→  aidpOAuthRegister: (data: any, subdomain?: string) => req(`/api/aidp/oauth/register${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   250→  aidpOAuthToken: (data: any) => req('/api/aidp/oauth/token', { method: 'POST', body: JSON.stringify(data) }),
+   251→
+   252→  // Chapter 15: PAOEM — Platform Administration, Operations & Ecosystem Management
+   253→  paoemGetDashboard: () => req('/api/paoem/dashboard'),
+   254→  paoemGetOrganizations: (params: string) => req(`/api/paoem/organizations${params ? '?' + params : ''}`),
+   255→  paoemUpdateOrganization: (orgId: string, data: any) => req(`/api/paoem/organizations/${orgId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   256→  paoemGetOrgHealth: (orgId: string) => req(`/api/paoem/organizations/${orgId}/health`),
+   257→  paoemGetFeatureFlags: () => req('/api/paoem/feature-flags'),
+   258→  paoemCreateFeatureFlag: (data: any) => req('/api/paoem/feature-flags', { method: 'POST', body: JSON.stringify(data) }),
+   259→  paoemSetFeatureFlag: (key: string, enabled: boolean) => req(`/api/paoem/feature-flags/${key}`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+   260→  paoemGetMaintenance: () => req('/api/paoem/maintenance'),
+   261→  paoemStartMaintenance: (data: any) => req('/api/paoem/maintenance', { method: 'POST', body: JSON.stringify(data) }),
+   262→  paoemEndMaintenance: (maintenanceId: string) => req('/api/paoem/maintenance', { method: 'PATCH', body: JSON.stringify({ maintenanceId }) }),
+   263→  paoemGetBroadcasts: () => req('/api/paoem/broadcasts'),
+   264→  paoemCreateBroadcast: (data: any) => req('/api/paoem/broadcasts', { method: 'POST', body: JSON.stringify(data) }),
+   265→  paoemSearch: (q: string) => req(`/api/paoem/search?q=${encodeURIComponent(q)}`),
+   266→  paoemGetCommandCenter: () => req('/api/paoem/command-center'),
+   267→
+   268→  // Chapter 14: BSPCM — Billing, Subscriptions, Payments & Commercial Management
+   269→  bspmGetPricing: () => req('/api/bspcm/pricing'),
+   270→  bspmEstimate: (data: any) => req('/api/bspcm/estimate', { method: 'POST', body: JSON.stringify(data) }),
+   271→  bspmGetQuotes: (subdomain?: string) => req(`/api/bspcm/quotes${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   272→  bspmGenerateQuote: (data: any, subdomain?: string) => req(`/api/bspcm/quotes${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   273→  bspmGetInvoices: (params: string, subdomain?: string) => req(`/api/bspcm/invoices${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   274→  bspmGetPayments: (subdomain?: string) => req(`/api/bspcm/payments${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   275→  bspmInitiatePayment: (data: any, subdomain?: string) => req(`/api/bspcm/payments/initiate${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   276→  bspmVerifyPayment: (data: any) => req('/api/bspcm/payments/verify', { method: 'POST', body: JSON.stringify(data) }),
+   277→  bspmGetNegotiations: (subdomain?: string) => req(`/api/bspcm/negotiations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   278→  bspmRequestNegotiation: (data: any, subdomain?: string) => req(`/api/bspcm/negotiations${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   279→  bspmUpdateNegotiation: (negotiationId: string, data: any, subdomain?: string) => req(`/api/bspcm/negotiations/${negotiationId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   280→  bspmGetRevenue: () => req('/api/bspcm/revenue'),
+   281→  bspmGoLive: (data: any, subdomain?: string) => req(`/api/bspcm/golive${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   282→  bspmUpdateSubscription: (data: any, subdomain?: string) => req(`/api/bspcm/subscription${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   283→  bspmFinancialReport: (data: any, subdomain?: string) => req(`/api/bspcm/financial-reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   284→  bspmWhiteLabel: (data: any, subdomain?: string) => req(`/api/bspcm/whitelabel${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   285→
+   286→  // Chapter 13: RAEI — Reporting, Analytics & Election Intelligence
+   287→  raeiGetPlatform: () => req('/api/raei/platform'),
+   288→  raeiGetOrg: (subdomain?: string) => req(`/api/raei/org${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   289→  raeiGetElection: (electionId: string, subdomain?: string) => req(`/api/raei/election/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   290→  raeiGetHistorical: (subdomain?: string) => req(`/api/raei/historical${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   291→  raeiGetInsights: (subdomain?: string) => req(`/api/raei/insights${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   292→  raeiGenerateReport: (data: any, subdomain?: string) => req(`/api/raei/reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   293→  raeiGetCertification: (electionId: string, subdomain?: string) => req(`/api/raei/certification/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   294→  raeiGetReplay: (electionId: string, subdomain?: string) => req(`/api/raei/replay/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   295→  // Observer reports (structured submission)
+   296→  raeiGetObserverReports: (params: string, subdomain?: string) => req(`/api/raei/observer-reports${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   297→  raeiSubmitObserverReport: (data: any, subdomain?: string) => req(`/api/raei/observer-reports${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   298→  raeiUpdateObserverReport: (reportId: string, data: any, subdomain?: string) => req(`/api/raei/observer-reports/${reportId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   299→  raeiDeleteObserverReport: (reportId: string, subdomain?: string) => req(`/api/raei/observer-reports/${reportId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   300→  // Data retention policy
+   301→  raeiGetDataRetention: (subdomain?: string) => req(`/api/raei/data-retention${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   302→  raeiUpdateDataRetention: (data: any, subdomain?: string) => req(`/api/raei/data-retention${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   303→
+   304→  // Chapter 12: CNSE — Communication, Notification & Support Ecosystem
+   305→  cnseSend: (data: any, subdomain?: string) => req(`/api/cnse/send${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   306→  cnseGetTemplates: (params: string, subdomain?: string) => req(`/api/cnse/templates${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   307→  cnseCreateTemplate: (data: any, subdomain?: string) => req(`/api/cnse/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   308→  cnseUpdateTemplate: (data: any, subdomain?: string) => req(`/api/cnse/templates${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   309→  cnseGetAnnouncements: (params: string, subdomain?: string) => req(`/api/cnse/announcements${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   310→  cnseCreateAnnouncement: (data: any, subdomain?: string) => req(`/api/cnse/announcements${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   311→  cnseDeleteAnnouncement: (id: string, subdomain?: string) => req(`/api/cnse/announcements?id=${id}${subdomain ? `&x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'DELETE' }),
+   312→  cnseGetTimeline: (params: string, subdomain?: string) => req(`/api/cnse/timeline${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   313→  cnseGetAnalytics: (params: string, subdomain?: string) => req(`/api/cnse/analytics${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   314→  cnseGetNotifications: (params: string, subdomain?: string) => req(`/api/cnse/notifications${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   315→  cnseMarkNotificationRead: (data: any, subdomain?: string) => req(`/api/cnse/notifications${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   316→
+   317→  // Chapter 11: EIFDIRS — Election Integrity, Fraud Detection & Incident Response
+   318→  getEifdirsEvents: (params: string, subdomain?: string) => req(`/api/eifdirs/events${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   319→  getEifdirsIncidents: (params: string, subdomain?: string) => req(`/api/eifdirs/incidents${params ? '?' + params : ''}${subdomain ? `${params ? '&' : '?'}x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   320→  getEifdirsIncident: (incidentId: string, subdomain?: string) => req(`/api/eifdirs/incidents/${incidentId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   321→  updateEifdirsIncident: (incidentId: string, data: any, subdomain?: string) => req(`/api/eifdirs/incidents/${incidentId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   322→  getEifdirsDashboard: (subdomain?: string) => req(`/api/eifdirs/dashboard${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   323→  eifdirsLockdown: (data: any, subdomain?: string) => req(`/api/eifdirs/lockdown${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+   324→  getEifdirsCertificate: (electionId: string, subdomain?: string) => req(`/api/eifdirs/certificate/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   325→  generateEifdirsCertificate: (electionId: string, subdomain?: string) => req(`/api/eifdirs/certificate/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST' }),
+   326→  getEifdirsTransparencyReport: (electionId: string) => req(`/api/eifdirs/transparency/${electionId}`),
+   327→  getEifdirsForensicReplay: (electionId: string, subdomain?: string) => req(`/api/eifdirs/forensic-replay/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   328→  getEifdirsElectionStatus: (electionId: string, subdomain?: string) => req(`/api/eifdirs/election/${electionId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+   329→
+   330→  // Public live results (shareable URL)
+   331→  getPublicResults: (electionId: string) => req(`/api/elections/${electionId}/public-results`),
+   332→  // Public verification portal for certified elections (shareable URL)
+   333→  getVerificationPortal: (electionId: string) => req(`/api/elections/${electionId}/verification-portal`),
+   334→  // Public voter status portal (cross-org, no auth) — check registration +
+   335→  // voting history + receipts WITHOUT revealing vote choices.
+   336→  checkVoterStatus: (identifier: string) => req('/api/voter-status', { method: 'POST', body: JSON.stringify({ identifier }) }),
+   337→
+   338→
+   339→  // Platform (super-admin)
+   340→  platformGetOrganizations: () => req('/api/platform/organizations'),
+   341→  platformUpdateOrganization: (id: string, status: string) => req('/api/platform/organizations', { method: 'PATCH', body: JSON.stringify({ id, status }) }),
+   342→  platformGetOrganizationDetail: (id: string) => req(`/api/platform/organizations/${id}`),
+   343→  getPositions: () => req('/api/positions'),
+   344→  getResults: () => req('/api/results'),
+   345→  getCandidates: () => req('/api/candidates'),
+   346→  getFaculties: () => req('/api/faculties'),
+   347→  getTurnout: () => req('/api/turnout'),
+   348→  getVoteFeed: () => req('/api/vote-feed'),
+   349→
+   350→  // Voter
+   351→  verifyMatric: (matric: string) => req('/api/voter/verify-matric', { method: 'POST', body: JSON.stringify({ matric }) }),
+   352→  sendOtp: (matric: string, channel: string) => req('/api/voter/send-otp', { method: 'POST', body: JSON.stringify({ matric, channel }) }),
+   353→  verifyOtp: (matric: string, otp: string) => req('/api/voter/verify-otp', { method: 'POST', body: JSON.stringify({ matric, otp }) }),
+   354→  getVoterSession: () => req('/api/voter/session', {}, getVoterToken()),
+   355→  voterLogout: () => req('/api/voter/session', { method: 'POST' }, getVoterToken()),
+   356→  accredit: () => req('/api/voter/accredit', { method: 'POST' }, getVoterToken()),
+   357→  getBallot: () => req('/api/voter/ballot', {}, getVoterToken()),
+   358→  // @deprecated — use api.submitVote() via /api/workspace/ballot/submit instead.
+   359→  // The legacy /api/vote/cast route writes to EncryptedVote (not VoteRecord)
+   360→  // and is not visible to live results, RLA, or exports. Retained only for
+   361→  // backward compatibility — do not use in new code.
+   362→  castVote: (selections: Record<string, string>) =>
+   363→    req('/api/vote/cast', { method: 'POST', body: JSON.stringify({ selections }) }, getVoterToken()),
+   364→  verifyReceipt: (receiptCode: string) => req('/api/vote/verify-receipt', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+   365→  getNotifications: () => req('/api/voter/notifications', {}, getVoterToken()),
+   366→  markNotificationsRead: () => req('/api/voter/notifications', { method: 'POST' }, getVoterToken()),
+   367→
+   368→  // Support + chat
+   369→  submitTicket: (payload: any) => req('/api/support/ticket', { method: 'POST', body: JSON.stringify(payload) }),
+   370→  chat: (message: string, history: any[]) => req('/api/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+   371→  chatSend: (payload: any) => req('/api/chat/send', { method: 'POST', body: JSON.stringify(payload) }, getVoterToken()),
+   372→  chatHistory: () => req('/api/chat/history', {}, getVoterToken()),
+   373→  chatConversations: () => req('/api/chat/conversations'),
+   374→  chatReply: (threadId: string, message: string) => req('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ threadId, message }) }),
+   375→
+   376→  // Auth (officials — cookie-based)
+   377→  login: (email: string, password: string, totp?: string) =>
+   378→    req('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password, totp }) }),
+   379→  me: () => req('/api/auth/me'),
+   380→  logout: () => req('/api/auth/logout', { method: 'POST' }),
+   381→  refresh: () => req('/api/auth/refresh', { method: 'POST' }),
+   382→  setup2fa: () => req('/api/auth/2fa/setup', { method: 'POST' }),
+   383→  verify2fa: (code: string) => req('/api/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ code }) }),
+   384→  disable2fa: () => req('/api/auth/2fa/disable', { method: 'POST' }),
+   385→  requestPasswordReset: (email: string) => req('/api/auth/password-reset/request', { method: 'POST', body: JSON.stringify({ email }) }),
+   386→  confirmPasswordReset: (token: string, password: string) => req('/api/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify({ token, password }) }),
+   387→
+   388→  // Admin (officials — cookie-based, RBAC enforced server-side)
+   389→  adminGetCandidates: () => req('/api/admin/candidates'),
+   390→  adminCreateCandidate: (data: any) => req('/api/admin/candidates', { method: 'POST', body: JSON.stringify(data) }),
+   391→  adminUpdateCandidate: (id: string, data: any) => req(`/api/admin/candidates/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   392→  adminDeleteCandidate: (id: string) => req(`/api/admin/candidates/${id}`, { method: 'DELETE' }),
+   393→  adminGetPositions: () => req('/api/admin/positions'),
+   394→  adminCreatePosition: (data: any) => req('/api/admin/positions', { method: 'POST', body: JSON.stringify(data) }),
+   395→  adminGetVoters: (params: string) => req(`/api/admin/voters?${params}`),
+   396→  adminCreateVoter: (data: any) => req('/api/admin/voters', { method: 'POST', body: JSON.stringify(data) }),
+   397→  adminGetVoter: (id: string) => req(`/api/admin/voters/${id}`),
+   398→  adminFlagVoter: (id: string, flagged: boolean, reason?: string) => req(`/api/admin/voters/${id}/flag`, { method: 'POST', body: JSON.stringify({ flagged, reason }) }),
+   399→  adminResendOtp: (id: string, channel?: string) => req(`/api/admin/voters/${id}/resend-otp`, { method: 'POST', body: JSON.stringify({ channel }) }),
+   400→  adminGetActivity: (params = '') => req(`/api/admin/activity${params ? '?' + params : ''}`),
+   401→  adminGetCollations: (status?: string) => req(`/api/admin/collation${status ? `?status=${status}` : ''}`),
+   402→  adminSubmitCollation: (data: any) => req('/api/admin/collation', { method: 'POST', body: JSON.stringify(data) }),
+   403→  adminUpdateCollation: (id: string, action: string, notes?: string) => req('/api/admin/collation', { method: 'PATCH', body: JSON.stringify({ id, action, notes }) }),
+   404→  adminImportVoters: (voters: any[]) => req('/api/admin/voters/import', { method: 'POST', body: JSON.stringify({ voters }) }),
+   405→  adminGetSettings: () => req('/api/admin/settings'),
+   406→  adminUpdateSettings: (data: any) => req('/api/admin/settings', { method: 'PUT', body: JSON.stringify(data) }),
+   407→  adminGetAuditLogs: (page = 1) => req(`/api/admin/audit-logs?page=${page}`),
+   408→  adminVerifyAudit: () => req('/api/admin/audit-verify'),
+   409→  adminGetSecurityEvents: (params = '') => req(`/api/admin/security-events${params ? '?' + params : ''}`),
+   410→  adminResolveSecurityEvent: (id: string, resolved: boolean) => req('/api/admin/security-events', { method: 'PATCH', body: JSON.stringify({ id, resolved }) }),
+   411→  adminGetHealth: () => req('/api/admin/health'),
+   412→  adminElectionAction: (action: string) => req(`/api/admin/election/${action}`, { method: 'POST' }),
+   413→  adminUpdateElection: (data: any) => req('/api/election', { method: 'PUT', body: JSON.stringify(data) }),
+   414→  adminGetOfficials: () => req('/api/admin/observers'),
+   415→  adminCreateOfficial: (data: any) => req('/api/admin/observers', { method: 'POST', body: JSON.stringify(data) }),
+   416→  adminBroadcastNotification: (data: any) => req('/api/admin/notifications', { method: 'POST', body: JSON.stringify(data) }),
+   417→
+   418→  // Observer (same cookie auth; endpoints enforce OBSERVER-or-higher RBAC)
+   419→  observerAnalytics: () => req('/api/observer/analytics'),
+   420→  observerSearchVoters: (q: string) => req(`/api/observer/voters?q=${encodeURIComponent(q)}`),
+   421→  observerGetTickets: (status?: string) => req(`/api/observer/tickets${status ? `?status=${status}` : ''}`),
+   422→  observerUpdateTicket: (id: string, data: any) => req(`/api/observer/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+   423→
+   424→  // Results export (officials)
+   425→  exportResults: (format: 'csv' | 'json') => `/api/results/export?format=${format}`,
+   426→
+   427→  // Per-election export & reports — returns a direct-download URL for use
+   428→  // with window.open() or <a href download>. The browser handles auth via
+   429→  // the existing HttpOnly cookies (credentials:'include' isn't honoured by
+   430→  // window.open, but the cookies are sent automatically for same-origin
+   431→  // navigations, which is what we want here).
+   432→  exportElectionData: (
+   433→    electionId: string,
+   434→    type: 'results' | 'audit' | 'voters' | 'full',
+   435→    format: 'csv' | 'json' | 'printable',
+   436→    subdomain?: string,
+   437→  ) => {
+   438→    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+   439→    const q = new URLSearchParams()
+   440→    q.set('type', type)
+   441→    q.set('format', format)
+   442→    if (subdomain) q.set('x-vw-org', subdomain)
+   443→    return `${origin}/api/workspace/elections/${electionId}/export?${q.toString()}`
+   444→  },
+   445→
+   446→  // Public printable official result sheet — opens in a new tab. No auth
+   447→  // required (it's a PUBLIC endpoint), so the URL can be shared externally.
+   448→  getPrintableResultSheet: (electionId: string, subdomain?: string) => {
+   449→    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+   450→    const q = new URLSearchParams()
+   451→    if (subdomain) q.set('x-vw-org', subdomain)
+   452→    const qs = q.toString()
+   453→    return `${origin}/api/workspace/elections/${electionId}/export/printable${qs ? `?${qs}` : ''}`
+   454→  },
+   455→
+   456→  // Public certificate
+   457→  getCertificate: () => req('/api/results/certificate'),
+   458→}
+   459→
