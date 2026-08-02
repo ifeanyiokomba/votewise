@@ -10,3 +10,4 @@ export {
   createIntegration, listIntegrations, updateIntegrationStatus,
   recordSync, deleteIntegration, getIntegrationHealth, logApiRequest, getApiStats,
 } from './integration-manager'
+export { API_MODULES, API_CHANGELOG, generatePostmanCollection, CURRENT_API_VERSION, SUPPORTED_VERSIONS } from './api-docs'

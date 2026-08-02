@@ -213,6 +213,11 @@ export const api = {
   aidpUpdateIntegration: (integrationId: string, data: any, subdomain?: string) => req(`/api/aidp/integrations/${integrationId}${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'PATCH', body: JSON.stringify(data) }),
   aidpGetStats: (subdomain?: string) => req(`/api/aidp/stats${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
   aidpGetScopes: () => req('/api/aidp/scopes'),
+  aidpGetDocs: () => req('/api/aidp/docs'),
+  aidpGetPostman: () => req('/api/aidp/postman'),
+  aidpGetChangelog: () => req('/api/aidp/changelog'),
+  aidpOAuthRegister: (data: any, subdomain?: string) => req(`/api/aidp/oauth/register${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, { method: 'POST', body: JSON.stringify(data) }),
+  aidpOAuthToken: (data: any) => req('/api/aidp/oauth/token', { method: 'POST', body: JSON.stringify(data) }),
 
   // Chapter 15: PAOEM — Platform Administration, Operations & Ecosystem Management
   paoemGetDashboard: () => req('/api/paoem/dashboard'),

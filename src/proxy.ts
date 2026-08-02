@@ -29,6 +29,8 @@ export function proxy(req: NextRequest) {
     const res = NextResponse.next()
     res.headers.set('x-vw-org', orgParam.toLowerCase())
     res.headers.set('x-vw-org-host', host)
+    // CORS headers for public APIs
+    addCorsHeaders(req, res)
     return res
   }
 
@@ -37,7 +39,32 @@ export function proxy(req: NextRequest) {
   if (host) {
     res.headers.set('x-vw-org-host', host)
   }
+  // CORS headers for public APIs
+  addCorsHeaders(req, res)
   return res
+}
+
+// Chapter 16: CORS support for public APIs
+const CORS_ALLOWED_PATHS = [
+  '/api/aidp/',
+  '/api/elections/',
+  '/api/receipt/',
+  '/api/voter-status',
+  '/api/eifdirs/transparency/',
+  '/api/bspcm/pricing',
+  '/api/bspcm/estimate',
+  '/api/organizations',
+]
+
+function addCorsHeaders(req: NextRequest, res: NextResponse) {
+  const origin = req.headers.get('origin')
+  if (!origin) return
+  const path = req.nextUrl.pathname
+  const isAllowed = CORS_ALLOWED_PATHS.some((p) => path.startsWith(p))
+  if (!isAllowed) return
+  res.headers.set('Access-Control-Allow-Origin', origin)
+  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-vw-org, x-voter-token')
 }
 
 export const config = {
