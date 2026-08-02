@@ -29,6 +29,8 @@ export function proxy(req: NextRequest) {
     const res = NextResponse.next()
     res.headers.set('x-vw-org', orgParam.toLowerCase())
     res.headers.set('x-vw-org-host', host)
+    // Security headers (Chapter 17 — defense-in-depth, complements Caddy/ALB)
+    addSecurityHeaders(res)
     // CORS headers for public APIs
     addCorsHeaders(req, res)
     return res
@@ -39,9 +41,27 @@ export function proxy(req: NextRequest) {
   if (host) {
     res.headers.set('x-vw-org-host', host)
   }
+  // Security headers (Chapter 17 — defense-in-depth, complements Caddy/ALB)
+  addSecurityHeaders(res)
   // CORS headers for public APIs
   addCorsHeaders(req, res)
   return res
+}
+
+// Chapter 17 — Security headers (defense-in-depth layer in addition to
+// Caddy/ALB/next.config). Spec: "HSTS, strong cipher suites, encryption everywhere."
+function addSecurityHeaders(res: NextResponse) {
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('X-Frame-Options', 'DENY')
+  res.headers.set('X-XSS-Protection', '1; mode=block')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+  if (process.env.NODE_ENV === 'production') {
+    res.headers.set(
+      'Strict-Transport-Security',
+      'max-age=63072000; includeSubDomains; preload',
+    )
+  }
 }
 
 // Chapter 16: CORS support for public APIs

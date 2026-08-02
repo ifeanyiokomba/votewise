@@ -6,7 +6,7 @@
 // This module is the SINGLE source of truth for all analytics in VoteWise.
 // Dashboards, reports, and exports all read from here.
 
-import { db } from '@/lib/db'
+import { dbReplica as db } from '@/lib/infra/db-replica'
 import { getDeliveryStats } from '@/lib/cnse'
 import { getIncidentStats } from '@/lib/eifdirs'
 import { getElectionRiskScore, getElectionIntegrityScore, scoreToThreatLevel } from '@/lib/eifdirs'

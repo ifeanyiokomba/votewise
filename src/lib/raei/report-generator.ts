@@ -3,7 +3,7 @@
 // Generates executive reports, certification packages, and custom reports.
 // Supports PDF, Excel, CSV, JSON, and Print formats.
 
-import { db } from '@/lib/db'
+import { dbReplica as db } from '@/lib/infra/db-replica'
 import { sha256, hmacSign } from '@/lib/crypto'
 import { getElectionDashboard, getOrgDashboard, getHistoricalComparison, getAIInsights } from './analytics-engine'
 import { getVerification } from '@/lib/sve'

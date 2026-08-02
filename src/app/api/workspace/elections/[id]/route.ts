@@ -67,6 +67,47 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // ── READINESS GATE (Chapter 17 — Election Readiness Checker) ──────────
+  // Spec: "Before any election is allowed to go live, run an automated
+  // infrastructure readiness assessment. If any critical check fails, the
+  // platform warns administrators or blocks the launch until the issue is
+  // resolved."
+  //
+  // When an admin attempts to transition the election to LIVE, run the
+  // 13-point pre-flight checklist. Block the transition if any critical
+  // check fails.
+  if (body.status === 'LIVE' && election.status !== 'LIVE') {
+    const { runReadinessCheck, recordReadinessRun } = await import('@/lib/pihed')
+    const voterCount = await db.voter.count({ where: { electionId: id } }).catch(() => 0)
+    const result = await runReadinessCheck(voterCount)
+
+    // Persist the run to the audit trail
+    await recordReadinessRun(result, {
+      organizationId: org.id,
+      electionId: id,
+      expectedVoters: voterCount,
+      triggeredBy: official.id,
+      triggeredByName: official.name,
+      notes: 'Go-live readiness gate',
+    }).catch(() => {})
+
+    if (!result.ready) {
+      const failedChecks = result.checks
+        .filter((c) => c.critical && c.status === 'UNHEALTHY')
+        .map((c) => `${c.name}: ${c.message}`)
+      return json({
+        ok: false,
+        error: 'Election Readiness Check FAILED — launch blocked',
+        ready: false,
+        criticalFailures: result.criticalFailures,
+        failedChecks,
+        capacity: result.capacity,
+        allChecks: result.checks,
+        timestamp: result.timestamp,
+      }, 403)
+    }
+  }
+
   const updated = await db.electionSession.update({ where: { id }, data: allowed })
 
   // Record timeline event for status changes

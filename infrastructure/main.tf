@@ -98,6 +98,97 @@ resource "aws_db_instance" "postgres_replica" {
   backup_retention_period = 0   # replicas can't have their own backups
 }
 
+# RDS Proxy — connection pooling (spec: "Connection pooling").
+# Reduces connection overhead on the primary during traffic spikes by
+# pooling and reusing database connections. The app connects to the proxy
+# endpoint instead of the RDS endpoint directly.
+resource "aws_db_proxy" "main" {
+  name                   = "${var.project_name}-proxy-${var.environment}"
+  debug_logging          = false
+  engine_family          = "POSTGRESQL"
+  idle_client_timeout    = 1800
+  require_tls            = true
+  role_arn               = aws_iam_role.rds_proxy.arn
+  vpc_subnet_ids         = module.vpc.private_subnets
+  vpc_security_group_ids = [aws_security_group.db.id]
+
+  target_role_arn = aws_iam_role.rds_proxy.arn
+  auth {
+    auth_scheme = "SECRETS"
+    description = "RDS Proxy auth via Secrets Manager"
+    iam_auth    = "DISABLED"
+    secret_arn  = aws_secretsmanager_secret.db_credentials.arn
+  }
+}
+
+resource "aws_db_proxy_target" "main" {
+  db_proxy_name          = aws_db_proxy.main.name
+  db_instance_identifier = aws_db_instance.postgres.id
+  target_group_name      = aws_db_proxy.main.name
+}
+
+resource "aws_secretsmanager_secret" "db_credentials" {
+  name        = "${var.project_name}-db-creds-${var.environment}"
+  description = "Database credentials for RDS Proxy"
+}
+
+resource "aws_iam_role" "rds_proxy" {
+  name = "${var.project_name}-rds-proxy-${var.environment}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "rds.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "rds_proxy" {
+  name = "${var.project_name}-rds-proxy-policy"
+  role = aws_iam_role.rds_proxy.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue"]
+      Resource = [aws_secretsmanager_secret.db_credentials.arn]
+    }]
+  })
+}
+
+# ---------------------------------------------------------------------------
+# GuardDuty — Intrusion Detection (spec: "Intrusion detection")
+# ---------------------------------------------------------------------------
+resource "aws_guardduty_detector" "main" {
+  enable                       = true
+  finding_publishing_frequency = "FIFTEEN_MINUTES"
+  datasources {
+    s3_logs { enable = true }
+    kubernetes { enable = var.environment == "production" ? true : false }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# AWS Config — compliance + configuration drift detection
+# ---------------------------------------------------------------------------
+resource "aws_config_configuration_recorder" "main" {
+  name     = "${var.project_name}-${var.environment}"
+  role_arn = aws_iam_role.config.arn
+}
+
+resource "aws_iam_role" "config" {
+  name = "${var.project_name}-config-${var.environment}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "config.amazonaws.com" }
+    }]
+  })
+}
+
 resource "aws_db_subnet_group" "main" {
   name       = "${var.project_name}-${var.environment}"
   subnet_ids = module.vpc.private_subnets
@@ -408,6 +499,7 @@ resource "aws_security_group" "redis" {
 # Outputs
 # ---------------------------------------------------------------------------
 output "db_endpoint"          { value = aws_db_instance.postgres.endpoint }
+output "db_proxy_endpoint"    { value = aws_db_proxy.main.endpoint }
 output "db_replica_endpoint"  { value = aws_db_instance.postgres_replica.endpoint }
 output "redis_endpoint"       { value = aws_elasticache_replication_group.redis.primary_endpoint_address }
 output "alb_dns"              { value = aws_lb.main.dns_name }

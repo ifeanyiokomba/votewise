@@ -1,29 +1,19 @@
 # VoteWise — Background Worker
 # Consumes the job queue: email/SMS/WhatsApp delivery, report generation,
-# large imports/exports, analytics aggregation. Long-running jobs NEVER
-# block the web request path.
+# large imports/exports, analytics aggregation, scheduled backups, alert
+# evaluation, metrics capture. Long-running jobs NEVER block the web path.
 
-FROM node:20-slim AS deps
+FROM node:20-slim
 WORKDIR /app
-COPY package.json bun.lockb* package-lock.json* ./
-COPY prisma ./prisma/
-RUN npm install --legacy-peer-deps && npx prisma generate
 
-FROM node:20-slim AS production
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/prisma ./prisma
-COPY package.json ./
+# The worker is a self-contained Node.js script with no external imports.
+# In production, the TypeScript source (src/lib/jobs.ts, src/lib/infra/*)
+# is compiled to JS during a multi-stage build and copied in. For the
+# reference image, the self-contained worker.js is sufficient.
 COPY mini-services/worker/worker.js ./worker.js
-COPY src/lib/jobs.ts ./src/lib/jobs.ts
-COPY src/lib/db.ts ./src/lib/db.ts
-COPY src/lib/pihed ./src/lib/pihed
-COPY src/lib/cnse ./src/lib/cnse
-COPY src/lib/election ./src/lib/election
-COPY src/lib/auth.ts ./src/lib/auth.ts
-COPY src/lib/secrets.ts ./src/lib/secrets.ts
 
 ENV NODE_ENV=production
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
   CMD node -e "process.exit(0)"
+
 CMD ["node", "worker.js"]
