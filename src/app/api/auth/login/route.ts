@@ -6,6 +6,7 @@ import { writeAudit, recordSecurityEvent, getClientIp, json, errorJson } from '@
 import { RATE_LIMITS } from '@/lib/ratelimit'
 import { requires2FA } from '@/lib/rbac'
 import { recordEvent } from '@/lib/eifdirs'
+import { schemas, validate } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +19,13 @@ export async function POST(req: NextRequest) {
   const rl = RATE_LIMITS.authIp(ip)
   if (!rl.allowed) return errorJson('Too many login attempts. Please wait a minute.', 429)
 
-  const body = await req.json().catch(() => ({}))
-  const email = String(body.email || '').trim().toLowerCase()
-  const password = String(body.password || '')
-  const totp = body.totp ? String(body.totp) : undefined
-  if (!email || !password) return errorJson('Email and password are required', 400)
+  const raw = await req.json().catch(() => ({}))
+
+  // Validate input with Zod (Enterprise Audit Part 4)
+  const result = validate(schemas.login, raw)
+  if (!result.success) return errorJson(result.error, 400)
+  const { email: emailRaw, password, mfaCode: totp } = result.data
+  const email = emailRaw.trim().toLowerCase()
 
   const official = await db.electionOfficial.findUnique({ where: { email } })
   if (!official || !verifyPassword(password, official.passwordHash)) {
