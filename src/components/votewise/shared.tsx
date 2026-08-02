@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/votewise/theme-toggle'
-import { LanguageSwitcher } from '@/components/votewise/language-switcher'
 import { VoterNotifications } from '@/components/votewise/voter-notifications'
 import { cn } from '@/lib/utils'
 import { useApp, View } from '@/lib/store'
@@ -93,7 +92,6 @@ export function NavBar() {
             </Button>
           )}
           {voterProfile && <VoterNotifications />}
-          <LanguageSwitcher />
           <ThemeToggle />
         </div>
 
@@ -133,10 +131,7 @@ export function NavBar() {
             )}
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-muted-foreground">{t('common.theme')}</span>
-              <div className="flex items-center gap-2">
-                <LanguageSwitcher />
-                <ThemeToggle />
-              </div>
+              <ThemeToggle />
             </div>
           </div>
         </div>

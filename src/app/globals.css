@@ -226,3 +226,51 @@
 .skip-link:focus {
   left: 0;
 }
+
+/* Mobile responsiveness improvements */
+@media (max-width: 640px) {
+  /* Prevent horizontal overflow on small screens */
+  body {
+    overflow-x: hidden;
+  }
+  /* Ensure all grid containers stack on mobile */
+  .grid {
+    gap: 0.75rem;
+  }
+  /* Smaller touch targets are fine on mobile, but not too small */
+  button, a {
+    min-height: 36px;
+  }
+  /* Tables scroll horizontally on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  /* Reduce padding on mobile */
+  .px-4 { padding-left: 1rem; padding-right: 1rem; }
+  .py-8 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+  .py-14 { padding-top: 2rem; padding-bottom: 2rem; }
+  .py-16 { padding-top: 2rem; padding-bottom: 2rem; }
+}
+
+/* Prevent text selection on buttons for better UX */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Smooth scrolling for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Ensure inputs don't zoom on iOS */
+input, textarea, select {
+  font-size: 16px;
+}
+@media (min-width: 640px) {
+  input, textarea, select {
+    font-size: inherit;
+  }
+}
