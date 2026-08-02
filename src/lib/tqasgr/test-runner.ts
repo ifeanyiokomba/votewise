@@ -346,6 +346,117 @@ const DEFAULT_SUITES: TestSuiteDef[] = [
       { name: 'Desktop responsive (1280px)', category: 'happy-path', severity: 'normal' },
     ],
   },
+
+  // ---- ELECTION INTEGRITY TESTS (spec: "Election Integrity Testing") ----
+  {
+    name: 'Election Integrity — Voting Workflows',
+    type: 'e2e',
+    module: 'sve',
+    description: 'Election integrity test suite specifically for voting workflows. Verifies no duplicate voting, vote secrecy, vote immutability, accurate tallying, audit completeness, observer restrictions, result release rules.',
+    cases: [
+      { name: 'No duplicate voting — same voter cannot vote twice', category: 'security', severity: 'blocker' },
+      { name: 'Vote secrecy — ballot cannot be linked to voter identity', category: 'security', severity: 'blocker' },
+      { name: 'Vote immutability — cast vote cannot be modified', category: 'security', severity: 'blocker' },
+      { name: 'Accurate tallying — sum of votes matches individual records', category: 'happy-path', severity: 'blocker' },
+      { name: 'Audit completeness — every vote has an audit trail entry', category: 'security', severity: 'blocker' },
+      { name: 'Observer restrictions — observers cannot see ballots or identify voters', category: 'security', severity: 'blocker' },
+      { name: 'Result release rules — results hidden until release time', category: 'security', severity: 'critical' },
+      { name: 'Receipt verification — receipt code matches cast vote', category: 'happy-path', severity: 'critical' },
+      { name: 'HMAC signature integrity — tampered ballot rejected', category: 'security', severity: 'blocker' },
+      { name: 'Tally + VoteRecord reconciliation — counts match exactly', category: 'security', severity: 'blocker' },
+    ],
+  },
+
+  // ---- LOCALIZATION TESTS (spec: "Localization Testing") ----
+  {
+    name: 'Localization & Internationalization',
+    type: 'accessibility',
+    module: 'core',
+    description: 'Verify dates, times, time zones, languages, currency, and number formatting across supported regions.',
+    cases: [
+      { name: 'Date formatting respects locale (en-NG, en-US, fr-FR)', category: 'edge-case', severity: 'major' },
+      { name: 'Time formatting respects 12h/24h preference', category: 'edge-case', severity: 'normal' },
+      { name: 'Time zone conversion — voter in UTC+1 sees correct times', category: 'edge-case', severity: 'critical' },
+      { name: 'Currency formatting — ₦ for NGN, $ for USD', category: 'happy-path', severity: 'normal' },
+      { name: 'Number formatting — 1,234.56 vs 1.234,56', category: 'edge-case', severity: 'minor' },
+      { name: 'Election start/end times display in voter timezone', category: 'happy-path', severity: 'critical' },
+      { name: 'Receipt timestamps are timezone-aware', category: 'edge-case', severity: 'major' },
+    ],
+  },
+
+  // ---- REGRESSION TESTS (spec: "Regression Testing") ----
+  {
+    name: 'Regression Suite — Core Functionality',
+    type: 'integration',
+    module: 'core',
+    description: 'Automated regression suite. Every new release must ensure existing functionality still works. Covers the critical paths that must never break.',
+    cases: [
+      { name: 'User registration still works', category: 'happy-path', severity: 'critical' },
+      { name: 'Organization login still works', category: 'happy-path', severity: 'critical' },
+      { name: 'Voter OTP delivery still works', category: 'happy-path', severity: 'critical' },
+      { name: 'Vote casting still works end-to-end', category: 'happy-path', severity: 'blocker' },
+      { name: 'Receipt verification still works', category: 'happy-path', severity: 'critical' },
+      { name: 'Live results display still works', category: 'happy-path', severity: 'critical' },
+      { name: 'Observer monitoring view still works', category: 'happy-path', severity: 'major' },
+      { name: 'Payment flow still works (Paystack)', category: 'happy-path', severity: 'critical' },
+      { name: 'Admin dashboard still loads', category: 'happy-path', severity: 'major' },
+      { name: 'API authentication still works', category: 'security', severity: 'critical' },
+    ],
+  },
+
+  // ---- BACKUP RECOVERY TESTS (spec: "Backup Recovery Testing") ----
+  {
+    name: 'Backup Recovery Testing',
+    type: 'security',
+    module: 'pihed',
+    description: 'Regularly verify that backups restore successfully, no vote data is lost, and recovery objectives are met. A backup that has never been restored is not a trusted backup.',
+    cases: [
+      { name: 'Latest backup restores successfully', category: 'happy-path', severity: 'blocker' },
+      { name: 'Restored backup has zero vote loss', category: 'security', severity: 'blocker' },
+      { name: 'RTO < 30 minutes (recovery time objective)', category: 'performance', severity: 'critical' },
+      { name: 'RPO < 5 minutes (recovery point objective)', category: 'performance', severity: 'critical' },
+      { name: 'Cross-region backup is restorable', category: 'edge-case', severity: 'major' },
+      { name: 'Point-in-time recovery to specific timestamp', category: 'edge-case', severity: 'major' },
+      { name: 'Backup integrity verified (SHA-256 checksum)', category: 'security', severity: 'critical' },
+      { name: 'Encrypted backup decrypts with correct key', category: 'security', severity: 'critical' },
+    ],
+  },
+
+  // ---- SOAK TESTS (spec: "Soak Testing") ----
+  {
+    name: 'Soak Testing — Sustained Load',
+    type: 'performance',
+    module: 'pihed',
+    description: 'Run the platform continuously for days under sustained load. Detect memory leaks, resource exhaustion, queue buildup, performance degradation over time.',
+    cases: [
+      { name: '24-hour sustained load — no memory leak (>10% growth)', category: 'performance', severity: 'critical' },
+      { name: '48-hour sustained load — queue depth stable', category: 'performance', severity: 'critical' },
+      { name: '72-hour sustained load — p95 latency not degraded', category: 'performance', severity: 'major' },
+      { name: 'Connection pool stable over 24h (no leak)', category: 'performance', severity: 'critical' },
+      { name: 'Redis memory stable over 24h (no unbounded growth)', category: 'performance', severity: 'major' },
+      { name: 'Database query performance not degraded over 48h', category: 'performance', severity: 'major' },
+      { name: 'No file descriptor leak over 24h', category: 'performance', severity: 'major' },
+    ],
+  },
+
+  // ---- CHAOS TESTS (spec: "Chaos Testing") ----
+  {
+    name: 'Chaos Engineering — Resilience Testing',
+    type: 'fraud-sim',
+    module: 'pihed',
+    description: 'Intentionally break components. Stop Redis, disconnect SMS provider, kill application instances, simulate network latency. Verify automatic recovery and graceful degradation.',
+    cases: [
+      { name: 'Redis failure — app falls back to in-memory cache', category: 'edge-case', severity: 'critical' },
+      { name: 'Redis recovery — app reconnects within 30s', category: 'edge-case', severity: 'critical' },
+      { name: 'SMS provider outage — WhatsApp fallback activates', category: 'edge-case', severity: 'major' },
+      { name: 'All notification providers down — votes still accepted', category: 'edge-case', severity: 'blocker' },
+      { name: 'App instance killed — load balancer routes to healthy instances', category: 'edge-case', severity: 'critical' },
+      { name: 'Database failover — Multi-AZ promotes standby < 60s', category: 'edge-case', severity: 'critical' },
+      { name: 'Network latency injection (500ms) — no vote loss, graceful slowdown', category: 'edge-case', severity: 'major' },
+      { name: 'Disk full — app rejects writes gracefully (no crash)', category: 'edge-case', severity: 'major' },
+      { name: 'Clock skew (5 min) — OTP validation tolerates drift', category: 'edge-case', severity: 'normal' },
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -353,10 +464,14 @@ const DEFAULT_SUITES: TestSuiteDef[] = [
 // ---------------------------------------------------------------------------
 
 export async function ensureTestSuitesSeeded() {
-  const count = await db.testSuite.count()
-  if (count > 0) return
+  // Upsert: add any suites that don't exist yet (by name), so new suites
+  // added in later chapters are picked up without re-seeding existing ones.
+  const existing = await db.testSuite.findMany({ select: { name: true } })
+  const existingNames = new Set(existing.map((e) => e.name))
 
   for (const def of DEFAULT_SUITES) {
+    if (existingNames.has(def.name)) continue
+
     const suite = await db.testSuite.create({
       data: {
         name: def.name,

@@ -2845,3 +2845,76 @@ model CertificationSeal {
   @@index([organizationId])
   @@index([status])
 }
+
+// ---------------------------------------------------------------------------
+// CHAPTER 18 ext — UAT, Release Management, Documentation Validation
+// ---------------------------------------------------------------------------
+
+/// A UAT (User Acceptance Testing) session — testing with real users
+/// (platform admins, org admins, observers, candidates, voters) who provide
+/// structured feedback before release.
+model UatSession {
+  id              String   @id @default(cuid())
+  releaseVersion  String   // e.g. "v18.0.0"
+  participantName String
+  participantRole String   // platform-admin | org-admin | observer | candidate | voter
+  scenario        String   // the user journey tested
+  status          String   @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | BLOCKED
+  feedback        String?  // free-text feedback
+  rating          Int?     // 1-5 stars
+  issues          String?  // JSON array of { severity, description }
+  approved        Boolean  @default(false) // did the participant approve?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([releaseVersion])
+  @@index([status])
+  @@index([participantRole])
+}
+
+/// A release track — tracks the release phase (Alpha/Beta/RC/Stable) and
+/// which feature flags are enabled for each. Spec: "Support: Alpha, Beta,
+/// Release Candidate (RC), Stable. Feature flags should allow gradual rollout."
+model ReleaseTrack {
+  id              String   @id @default(cuid())
+  version         String   @unique // e.g. "v18.0.0"
+  phase           String   @default("alpha") // alpha | beta | rc | stable
+  releaseDate     DateTime?
+  rolloutPct      Int      @default(0) // 0-100 (canary percentage)
+  featureFlags    String?  // JSON array of { flag, enabled } for this release
+  changelog       String?  // markdown changelog
+  knownIssues     String?  // JSON array of { issue, severity, workaround }
+  status          String   @default("DRAFT") // DRAFT | SCHEDULED | LIVE | ROLLED_BACK | ARCHIVED
+  approvedBy      String?
+  approvedAt      DateTime?
+  createdBy       String
+  createdByName   String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([phase])
+  @@index([status])
+}
+
+/// A documentation validation item — ensures every release updates the
+/// required documentation. Spec: "Ensure every release updates: user guides,
+/// API documentation, administrator manuals, observer manuals, deployment
+/// documentation, change logs."
+model DocValidation {
+  id              String   @id @default(cuid())
+  version         String   // release version
+  docType         String   // user-guide | api-docs | admin-manual | observer-manual | deployment-doc | changelog
+  docName         String   // specific doc name/path
+  required        Boolean  @default(true)
+  verified        Boolean  @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  docUrl          String?  // link to the updated doc
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([version])
+  @@index([verified])
+  @@index([docType])
+}

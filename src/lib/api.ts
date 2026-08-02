@@ -255,6 +255,16 @@ export const api = {
   tqasgrCertifications: () => req('/api/tqasgr/certify'),
   tqasgrIssueCertification: (data: any) => req('/api/tqasgr/certify', { method: 'POST', body: JSON.stringify(data) }),
   tqasgrVerifyCertification: (certId: string) => fetch(`/api/tqasgr/certify/${encodeURIComponent(certId)}`).then(r => r.json()),
+  tqasgrUat: (version?: string, status?: string) => req(`/api/tqasgr/uat${version ? `?version=${encodeURIComponent(version)}${status ? `&status=${status}` : ''}` : ''}`),
+  tqasgrCreateUat: (data: any) => req('/api/tqasgr/uat', { method: 'POST', body: JSON.stringify(data) }),
+  tqasgrUpdateUat: (id: string, data: any) => req(`/api/tqasgr/uat/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  tqasgrReleases: (phase?: string) => req(`/api/tqasgr/releases${phase ? `?phase=${phase}` : ''}`),
+  tqasgrCreateRelease: (data: any) => req('/api/tqasgr/releases', { method: 'POST', body: JSON.stringify(data) }),
+  tqasgrUpdateRelease: (version: string, data: any) => req(`/api/tqasgr/releases/${encodeURIComponent(version)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  tqasgrDocValidations: () => req('/api/tqasgr/docs'),
+  tqasgrCreateDocValidation: (version: string) => req('/api/tqasgr/docs', { method: 'POST', body: JSON.stringify({ version }) }),
+  tqasgrDocValidation: (version: string) => req(`/api/tqasgr/docs/${encodeURIComponent(version)}`),
+  tqasgrVerifyDoc: (version: string, itemId: string, docUrl?: string, notes?: string) => req(`/api/tqasgr/docs/${encodeURIComponent(version)}/${itemId}`, { method: 'PATCH', body: JSON.stringify({ docUrl, notes }) }),
 
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
