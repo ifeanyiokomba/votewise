@@ -84,6 +84,15 @@ export function NavBar() {
               {n.label}
             </Button>
           ))}
+          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/trust'} className="text-sm">
+            Trust
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/compliance'} className="text-sm">
+            Compliance
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/success-stories'} className="text-sm">
+            Stories
+          </Button>
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
