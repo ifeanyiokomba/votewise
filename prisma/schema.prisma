@@ -3014,3 +3014,820 @@ model StaffNote {
   @@index([conversationId])
   @@index([createdAt])
 }
+
+// ===========================================================================
+// ENTERPRISE AUDIT PART 2 — Database Architecture Expansion
+//
+// Per the CTO recommendation: "Add new enterprise modules one domain at a
+// time. Maintain backward compatibility. Only perform breaking refactors
+// when all dependent code has been migrated."
+//
+// All models below are NEW additions — they do not modify existing tables.
+// This is a non-breaking schema evolution.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// DOMAIN: FRAUD ENGINE (Critical)
+// Spec: FraudCase, FraudRule, FraudScore, FraudEvidence, FraudAlert, FraudDecision
+// ---------------------------------------------------------------------------
+
+/// A fraud detection rule — configurable thresholds for each detector type.
+/// Spec: "Multiple device login, Duplicate IP, VPN, Bot detection, Impossible
+/// travel, High velocity. Everything recorded."
+model FraudRule {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  name            String
+  detector        String   // VOTE_FLOODING | GEO_ANOMALY | DEVICE_REUSE | VELOCITY | OTVP_ABUSE | SESSION_HIJACK | BALLOT_STUFFING | COORDINATED_ATTACK | VPN | BOT | DUPLICATE_IP
+  enabled         Boolean  @default(true)
+  threshold       Float    // detector-specific threshold
+  windowMinutes   Int      @default(5)
+  severity        String   @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  action          String   @default("ALERT") // ALERT | BLOCK | LOCK_ELECTION
+  description     String?
+  lastTriggeredAt DateTime?
+  triggerCount    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([detector])
+  @@index([enabled])
+}
+
+/// A fraud risk score — computed per voter per election. Aggregates signals
+/// from all detectors into a single 0-100 score.
+model FraudScore {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  voterId         String?
+  score           Int      @default(0) // 0-100 (0=safe, 100=certain fraud)
+  level           String   @default("LOW") // LOW | MODERATE | ELEVATED | HIGH | CRITICAL
+  signals         String?  // JSON array of { detector, weight, detail }
+  factors         String?  // JSON: { deviceReuse, velocity, geoAnomaly, ... }
+  computedAt      DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([voterId])
+  @@index([score])
+}
+
+/// Evidence attached to a FraudIncident — immutable records that prove the
+/// fraud occurred. Spec: "Everything recorded."
+model FraudEvidence {
+  id              String   @id @default(cuid())
+  incidentId      String   // link to FraudIncident
+  type            String   // LOG | SCREENSHOT | NETWORK_TRACE | DEVICE_PRINT | IP_RECORD | TIMELINE | OTHER
+  description     String
+  data            String   // JSON: the evidence payload
+  collectedBy     String?  // SYSTEM | admin name | observer name
+  collectedAt     DateTime @default(now())
+
+  @@index([incidentId])
+  @@index([type])
+}
+
+/// A decision made on a fraud incident — who decided what, when, and why.
+/// Creates an immutable audit trail of every fraud resolution.
+model FraudDecision {
+  id              String   @id @default(cuid())
+  incidentId      String
+  decision        String   // CONFIRMED | FALSE_POSITIVE | ESCALATED | DISMISSED | AUTO_RESOLVED
+  decidedBy       String
+  decidedByName   String
+  reason          String?
+  actionTaken     String?  // e.g. "Voter session terminated", "Election locked"
+  createdAt       DateTime @default(now())
+
+  @@index([incidentId])
+  @@index([decision])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: SESSION TRACKING (Critical)
+// Spec: "LoginSession, VotingSession, AdminSession, ObserverSession. Never
+// mix them."
+// ---------------------------------------------------------------------------
+
+/// A login session — tracks admin/official login sessions separately from
+/// voting sessions. Spec: "Never mix them."
+model LoginSession {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  officialId      String?
+  sessionToken    String   @unique
+  role            String   // PLATFORM_SUPER_ADMIN | ORG_OWNER | ORG_ADMIN | OBSERVER | SUPPORT_AGENT
+  ipAddress       String?
+  deviceFingerprint String?
+  userAgent       String?
+  mfaVerified     Boolean  @default(false)
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([officialId])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+/// An admin session — tracks admin actions separately from voter sessions.
+model AdminSession {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  officialId      String?
+  sessionToken    String   @unique
+  ipAddress       String?
+  deviceFingerprint String?
+  actions         Int      @default(0) // count of actions taken in this session
+  lastActionAt    DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([officialId])
+  @@index([organizationId])
+}
+
+/// An observer session — tracks observer monitoring sessions.
+model ObserverSession {
+  id              String   @id @default(cuid())
+  organizationId  String
+  officialId      String?
+  electionId      String?
+  sessionToken    String   @unique
+  ipAddress       String?
+  deviceFingerprint String?
+  reportsFiled    Int      @default(0)
+  incidentsFlagged Int     @default(0)
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  @@index([officialId])
+  @@index([electionId])
+  @@index([organizationId])
+}
+
+/// A trusted device — devices that have been verified by the user and don't
+/// require additional challenge. Spec: "Device, Browser, OS, Fingerprint,
+/// TrustedDevice."
+model TrustedDevice {
+  id              String   @id @default(cuid())
+  voterId         String?
+  officialId      String?
+  fingerprint     String   // sha256(UA + screen + tz + salt)
+  label           String?  // "Chrome on Android"
+  browser         String?
+  os              String?
+  ipAddress       String?
+  trustedAt       DateTime @default(now())
+  lastUsedAt      DateTime @default(now())
+  revokedAt       DateTime?
+
+  @@index([voterId])
+  @@index([officialId])
+  @@index([fingerprint])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: COMMUNICATION PROVIDERS (High)
+// Spec: "EmailProvider, SMSProvider, WhatsAppProvider, ProviderHealth.
+// Allows failover."
+// ---------------------------------------------------------------------------
+
+/// A communication provider configuration — stores credentials + settings
+/// for each provider (Resend, Termii, Twilio, etc.). Supports failover.
+model CommunicationProvider {
+  id              String   @id @default(cuid())
+  organizationId  String?  // null = platform-level provider
+  channel         String   // EMAIL | SMS | WHATSAPP | PUSH
+  providerName    String   // resend | termii | twilio | messagebird
+  displayName     String   // "Resend (Primary)"
+  priority        Int      @default(1) // 1=primary, 2=secondary (failover order)
+  enabled         Boolean  @default(true)
+  credentials     String   // JSON: encrypted API keys + config
+  fromAddress     String?  // sender email/phone/name
+  rateLimit       Int      @default(100) // max messages per minute
+  totalSent       Int      @default(0)
+  totalDelivered  Int      @default(0)
+  totalFailed     Int      @default(0)
+  lastUsedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([channel])
+  @@index([enabled])
+}
+
+/// Provider health check — periodic pings to verify the provider is
+/// responsive. Drives the failover logic.
+model ProviderHealth {
+  id              String   @id @default(cuid())
+  providerId      String
+  status          String   // HEALTHY | DEGRADED | DOWN
+  latencyMs       Int      @default(0)
+  errorRate       Float    @default(0) // %
+  lastError       String?
+  checkedAt       DateTime @default(now())
+
+  @@index([providerId])
+  @@index([checkedAt])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: PORTAL CUSTOMIZATION (High)
+// Spec: "PortalSettings, HomepageBlocks, HomepageAnnouncements,
+// HomepageBanners. Every organization customizes its portal."
+// ---------------------------------------------------------------------------
+
+/// Portal settings — controls the public org portal behavior + appearance.
+model PortalSettings {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  showCountdown   Boolean  @default(true)
+  showStats       Boolean  @default(true)
+  showCandidates  Boolean  @default(true)
+  showCommittee   Boolean  @default(true)
+  showTimetable   Boolean  @default(true)
+  showAnnouncements Boolean @default(true)
+  resultsVisibility String @default("turnout-only") // hidden | turnout-only | partial | public
+  customWelcomeText String?
+  customFooterText  String?
+  socialLinks     String?  // JSON: { twitter, facebook, instagram, linkedin, website }
+  metaDescription String?  // SEO meta description
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+/// A homepage block — customizable content blocks on the org portal.
+model HomepageBlock {
+  id              String   @id @default(cuid())
+  organizationId  String
+  blockType       String   // HERO | STATS | COUNTDOWN | ELECTIONS | CANDIDATES | ANNOUNCEMENTS | COMMITTEE | CUSTOM
+  title           String?
+  content         String?  // markdown or HTML
+  position        Int      @default(0) // display order
+  visible         Boolean  @default(true)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([blockType])
+  @@index([position])
+}
+
+/// A homepage banner — promotional or informational banners.
+model HomepageBanner {
+  id              String   @id @default(cuid())
+  organizationId  String
+  title           String
+  message         String
+  type            String   @default("INFO") // INFO | WARNING | SUCCESS | URGENT
+  imageUrl        String?
+  actionUrl       String?
+  actionLabel     String?
+  dismissible     Boolean  @default(true)
+  startDate       DateTime?
+  endDate         DateTime?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([active])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: UNIVERSITY HIERARCHY EXPANSION (High)
+// Spec: "University → Campus → Faculty → Department → Programme → Level → Class"
+// ---------------------------------------------------------------------------
+
+/// A campus — many universities have multiple campuses.
+model Campus {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // "Main Campus", "College of Medicine Campus"
+  code            String?
+  address         String?
+  city            String?
+  state           String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+/// A class — the finest level of the hierarchy (e.g., "300 Level Civil
+/// Engineering 2024/2025 Session").
+model ClassRoom {
+  id              String   @id @default(cuid())
+  organizationId  String
+  campusId        String?
+  facultyId       String?
+  departmentId    String?
+  programmeId     String?
+  name            String   // "300 Level 2024/2025"
+  level           String?  // "100" | "200" | "300" | "400" | "500"
+  session         String?  // "2024/2025"
+  studentCount    Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([departmentId])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: ELECTION GROUP (High — Multi-Election Support)
+// Spec: "University → Election Group → Student Union, Faculty Elections,
+// Department Elections, Hostel Elections, Club Elections. Each group owns
+// positions, candidates, observers, results. Independent."
+// ---------------------------------------------------------------------------
+
+/// An election group — groups related elections under one umbrella. E.g.,
+/// "2025 SUG Elections" contains the Student Union election + all faculty
+/// elections + all department elections.
+model ElectionGroup {
+  id              String   @id @default(cuid())
+  organizationId  String
+  name            String   // "2025 SUG Elections"
+  description     String?
+  type            String   // STUDENT_UNION | FACULTY | DEPARTMENT | HOSTEL | CLUB | MIXED
+  status          String   @default("DRAFT") // DRAFT | ACTIVE | COMPLETED | ARCHIVED
+  electionIds     String?  // JSON array of election session IDs
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: SUPPORT EXPANSION (High)
+// Spec: "SupportAttachment, SupportEscalation, SupportBotLog"
+// ---------------------------------------------------------------------------
+
+/// An attachment on a support message — screenshots, PDFs, images.
+/// Spec: "All files are scanned before storage."
+model SupportAttachment {
+  id              String   @id @default(cuid())
+  conversationId  String
+  messageId       String?
+  fileName        String
+  fileType        String   // IMAGE | PDF | DOCUMENT | SCREENSHOT | OTHER
+  fileSizeBytes   Int
+  storageKey      String   // S3 key or local path
+  mimeType        String?
+  scannedForMalware Boolean @default(false)
+  scanResult      String?  // CLEAN | INFECTED | ERROR
+  uploadedBy      String
+  uploadedAt      DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([fileType])
+}
+
+/// An escalation record — tracks every escalation step with reason + timestamp.
+model SupportEscalation {
+  id              String   @id @default(cuid())
+  conversationId  String
+  fromLevel       Int      // 0=org admin, 1=observer, 2=votewise support, 3=platform admin
+  toLevel         Int
+  reason          String
+  escalatedBy     String
+  escalatedByName String
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+/// A chatbot interaction log — records what the bot said + whether it helped.
+/// Spec: "Before a human joins, an AI-powered chatbot handles common requests."
+model SupportBotLog {
+  id              String   @id @default(cuid())
+  conversationId  String
+  voterQuery      String
+  botResponse     String
+  intent          String?  // HOW_TO_VOTE | OTP_NOT_RECEIVED | ELIGIBILITY | VOTING_CLOSE | RECEIPT_VERIFY | CANDIDATES | OTHER
+  confidence      Float    @default(0)
+  resolved        Boolean  @default(false) // did the bot resolve it?
+  escalatedToHuman Boolean @default(false)
+  feedbackRating  Int?     // 1-5 (voter rates the bot)
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([intent])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: REPORT GENERATION (High)
+// Spec: "Report, GeneratedReport, ScheduledReport, ReportDownload"
+// ---------------------------------------------------------------------------
+
+/// A report definition — what the report contains + who can access it.
+model ReportDefinition {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  name            String   // "Election Summary Report"
+  type            String   // ELECTION_SUMMARY | TURNOUT | CERTIFICATION | AUDIT_TRAIL | OBSERVER | INTEGRITY | FINANCIAL | ANALYTICS
+  description     String?
+  format          String   @default("PDF") // PDF | CSV | JSON | XLSX
+  template        String?  // report template identifier
+  accessLevel     String   @default("ORG_ADMIN") // who can generate it
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+}
+
+/// A generated report instance — the actual file + metadata.
+model GeneratedReport {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  definitionId    String?
+  reportName      String
+  reportType      String
+  format          String
+  storageKey      String   // S3 key or local path
+  fileSizeBytes   Int      @default(0)
+  generatedBy     String?
+  generatedByName String?
+  parameters      String?  // JSON: the params used to generate
+  status          String   @default("COMPLETED") // PENDING | GENERATING | COMPLETED | FAILED
+  error           String?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([reportType])
+}
+
+/// A scheduled report — recurring report generation (e.g., weekly turnout).
+model ScheduledReport {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  definitionId    String?
+  cronExpression  String   // e.g., "0 9 * * 1" = every Monday 9am
+  recipients      String   // JSON array of email addresses
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([enabled])
+}
+
+/// A report download record — tracks who downloaded what + when.
+model ReportDownload {
+  id              String   @id @default(cuid())
+  reportId        String
+  downloadedBy    String
+  downloadedByName String?
+  ipAddress       String?
+  createdAt       DateTime @default(now())
+
+  @@index([reportId])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: AI CHATBOT (Medium)
+// Spec: "BotConversation, BotKnowledge, BotFeedback, BotEscalation"
+// ---------------------------------------------------------------------------
+
+/// A bot conversation — a dedicated conversation between a voter and the AI
+/// chatbot (distinct from SupportConversation which is human-staffed).
+model BotConversation {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  voterId         String?
+  voterIdentifier String?
+  status          String   @default("ACTIVE") // ACTIVE | ESCALATED | RESOLVED | ABANDONED
+  messageCount    Int      @default(0)
+  resolvedByBot   Boolean  @default(false)
+  escalatedToHuman Boolean @default(false)
+  supportConversationId String? // link to SupportConversation if escalated
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+/// Bot knowledge base entries — FAQ items the bot uses to answer questions.
+model BotKnowledge {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  question        String
+  answer          String
+  category        String   // VOTING | OTP | ELIGIBILITY | RESULTS | RECEIPT | CANDIDATES | TIMETETABLE | SUPPORT
+  keywords        String?  // JSON array of keywords for matching
+  enabled         Boolean  @default(true)
+  hitCount        Int      @default(0)
+  helpfulCount    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([category])
+  @@index([enabled])
+}
+
+/// Voter feedback on the bot — helps improve bot quality.
+model BotFeedback {
+  id              String   @id @default(cuid())
+  conversationId  String
+  messageId       String?
+  rating          Int      // 1-5
+  comment         String?
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+/// A bot escalation — when the bot can't resolve and escalates to human.
+model BotEscalation {
+  id              String   @id @default(cuid())
+  conversationId  String
+  reason          String   // UNRESOLVED | COMPLEX | VOTER_REQUESTED | LOW_CONFIDENCE
+  botMessage      String?
+  supportConversationId String?
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: HEALTH MONITORING (Medium)
+// Spec: "ServiceHealth, WorkerHealth, QueueHealth, ProviderHealth"
+// ---------------------------------------------------------------------------
+
+/// Service health snapshot — periodic health check for each service.
+model ServiceHealth {
+  id              String   @id @default(cuid())
+  service         String   // API | DATABASE | REDIS | WEBSOCKET | WORKER | SCHEDULER | NOTIFICATION | FRAUD_ENGINE | ANALYTICS_ENGINE
+  status          String   // HEALTHY | DEGRADED | UNHEALTHY
+  latencyMs       Int      @default(0)
+  uptimePct       Float    @default(100)
+  details         String?  // JSON: { cpu, memory, connections, ... }
+  checkedAt       DateTime @default(now())
+
+  @@index([service])
+  @@index([checkedAt])
+}
+
+/// Worker health — tracks the background worker process.
+model WorkerHealth {
+  id              String   @id @default(cuid())
+  workerName      String   // email-worker | sms-worker | report-worker | fraud-worker
+  status          String   // IDLE | PROCESSING | OVERLOADED | STOPPED
+  jobsProcessed   Int      @default(0)
+  jobsFailed      Int      @default(0)
+  avgJobDurationMs Int     @default(0)
+  queueDepth      Int      @default(0)
+  lastHeartbeat   DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([workerName])
+  @@index([status])
+}
+
+/// Queue health — tracks the job queue depth + processing rate.
+model QueueHealth {
+  id              String   @id @default(cuid())
+  queueName       String   // email | sms | whatsapp | report | analytics | backup
+  depth           Int      @default(0)
+  processingRate  Float    @default(0) // jobs per second
+  avgWaitTimeMs   Int      @default(0)
+  oldestJobAge    Int      @default(0) // seconds
+  checkedAt       DateTime @default(now())
+
+  @@index([queueName])
+  @@index([checkedAt])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: VOTER EXPANSION (Medium)
+// Spec: "VoterIdentity, VoterEligibility, VoterVerification"
+// ---------------------------------------------------------------------------
+
+/// Voter identity — separated from the Voter core record for privacy + GDPR.
+/// Stores PII separately so it can be anonymized without losing the vote record.
+model VoterIdentity {
+  id              String   @id @default(cuid())
+  voterId         String   @unique
+  organizationId  String
+  fullName        String
+  email           String?
+  phone           String?
+  whatsapp        String?
+  matricNumber    String?
+  photoUrl        String?
+  dateOfBirth     DateTime?
+  gender          String?
+  nationality     String?
+  stateOfOrigin   String?
+  lga             String?
+  anonymized      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([matricNumber])
+}
+
+/// Voter eligibility — the rules that determine if a voter can vote in a
+/// specific election. Separated for flexibility.
+model VoterEligibility {
+  id              String   @id @default(cuid())
+  voterId         String
+  electionId      String
+  organizationId  String
+  eligible        Boolean  @default(true)
+  reason          String?  // why ineligible (if applicable)
+  facultyId       String?
+  departmentId    String?
+  programmeId     String?
+  level           String?
+  classId         String?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  createdAt       DateTime @default(now())
+
+  @@unique([voterId, electionId])
+  @@index([electionId])
+  @@index([organizationId])
+}
+
+/// Voter verification — tracks identity verification attempts (matric check,
+/// OTP, biometric, etc.).
+model VoterVerification {
+  id              String   @id @default(cuid())
+  voterId         String
+  organizationId  String
+  electionId      String?
+  method          String   // MATRIC | OTP | EMAIL | PHONE | BIOMETRIC | ADMIN_OVERRIDE
+  status          String   @default("PENDING") // PENDING | VERIFIED | FAILED | EXPIRED
+  attempts        Int      @default(0)
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  ipAddress       String?
+  deviceFingerprint String?
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+
+  @@index([voterId])
+  @@index([electionId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: RECEIPT EXPANSION (Medium)
+// Spec: "VoteReceipt, ReceiptVerification, ReceiptAudit. A receipt should
+// always prove vote exists, never reveal choice."
+// ---------------------------------------------------------------------------
+
+/// A receipt verification log — every time someone verifies a receipt.
+model ReceiptVerification {
+  id              String   @id @default(cuid())
+  receiptCode     String
+  verifiedBy      String?  // null = anonymous public verification
+  ipAddress       String?
+  userAgent       String?
+  valid           Boolean
+  verifiedAt      DateTime @default(now())
+
+  @@index([receiptCode])
+  @@index([verifiedAt])
+}
+
+/// A receipt audit — internal audit trail for receipt-related actions
+/// (generation, verification, revocation).
+model ReceiptAudit {
+  id              String   @id @default(cuid())
+  receiptCode     String
+  action          String   // GENERATED | VERIFIED | REVOKED | REGENERATED
+  actorId         String?
+  actorName       String?
+  ipAddress       String?
+  details         String?  // JSON
+  createdAt       DateTime @default(now())
+
+  @@index([receiptCode])
+  @@index([action])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: ANALYTICS EXPANSION (Medium)
+// Spec: "ElectionAnalytics, VotingAnalytics, TurnoutAnalytics, RealtimeMetrics"
+// ---------------------------------------------------------------------------
+
+/// Election analytics snapshot — periodic aggregate metrics for an election.
+model ElectionAnalytics {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String
+  totalEligible   Int      @default(0)
+  totalVerified   Int      @default(0)
+  totalVotes      Int      @default(0)
+  turnoutPct      Float    @default(0)
+  invalidVotes    Int      @default(0)
+  blankVotes      Int      @default(0)
+  rejectedOtps    Int      @default(0)
+  avgVoteTimeMs   Int      @default(0)
+  peakConcurrentVoters Int @default(0)
+  capturedAt      DateTime @default(now())
+
+  @@index([electionId])
+  @@index([capturedAt])
+}
+
+/// Turnout analytics — turnout broken down by faculty/department/level.
+model TurnoutAnalytics {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String
+  breakdown       String   // FACULTY | DEPARTMENT | PROGRAMME | LEVEL | CLASS | GENDER | GEOGRAPHIC
+  breakdownKey    String   // the faculty/department/level identifier
+  breakdownLabel  String   // human-readable label
+  eligible        Int      @default(0)
+  voted           Int      @default(0)
+  turnoutPct      Float    @default(0)
+  capturedAt      DateTime @default(now())
+
+  @@index([electionId])
+  @@index([breakdown])
+  @@index([capturedAt])
+}
+
+/// Realtime activity — live voter activity feed for the Election Operations
+/// Console. Spec: "RealtimeActivity → Login → Verification → OTVP → Vote
+/// Started → Vote Completed."
+model RealtimeActivity {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  voterId         String?
+  activityType    String   // LOGIN | VERIFY_MATRIC | OTP_SENT | OTP_VERIFIED | VOTING_STARTED | VOTE_RECORDED | SESSION_EXPIRED | SUPPORT_REQUEST
+  ipAddress       String?
+  deviceFingerprint String?
+  metadata        String?  // JSON
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([activityType])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// DOMAIN: ORGANIZATION SPLITTING (Medium)
+// Spec: "OrganizationSettings, OrganizationSecurity, OrganizationBilling"
+// ---------------------------------------------------------------------------
+
+/// Organization security settings — 2FA policy, IP allowlist, session config.
+model OrganizationSecurity {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  requireMfa      Boolean  @default(false)
+  mfaRoles        String?  // JSON array of roles that require MFA
+  ipAllowlist     String?  // JSON array of allowed CIDR ranges
+  sessionTimeoutMin Int    @default(15)
+  maxLoginAttempts Int     @default(5)
+  lockoutDurationMin Int   @default(30)
+  passwordPolicy  String?  // JSON: { minLength, requireUppercase, ... }
+  auditLogRetentionDays Int @default(365)
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+/// Organization billing profile — billing address, tax info, payment methods.
+model OrganizationBilling {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  billingEmail    String?
+  billingName     String?
+  billingAddress  String?
+  billingCity     String?
+  billingState    String?
+  billingCountry  String   @default("Nigeria")
+  billingPostalCode String?
+  taxId           String?  // TIN / VAT number
+  taxExempt       Boolean  @default(false)
+  paymentMethodId String?  // default payment method
+  currency        String   @default("NGN")
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+}
