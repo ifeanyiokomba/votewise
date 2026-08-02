@@ -501,6 +501,12 @@ model OrganizationBrand {
   font            String?  // "Inter" | "Geist" | custom
   customCSS       String?
   loginBackground String?
+  // Chapter: Multi-Tenant Workspace — extended branding fields
+  banner          String?  // hero banner image URL
+  background      String?  // page background color or image
+  welcomeMessage  String?  // custom homepage welcome text
+  footer          String?  // custom footer text
+  socialLinks     String?  // JSON: { twitter, facebook, instagram, linkedin, website }
   updatedAt       DateTime @updatedAt
 }
 
