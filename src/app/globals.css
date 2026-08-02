@@ -274,3 +274,104 @@ input, textarea, select {
     font-size: inherit;
   }
 }
+
+/* =========================================================================
+   Accessibility Enhancements (Enterprise Audit Part 3)
+   ========================================================================= */
+
+/* High Contrast Mode — increases contrast for visually impaired users */
+.high-contrast {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 0%;
+  --muted: 0 0% 90%;
+  --muted-foreground: 0 0% 20%;
+  --border: 0 0% 0%;
+  --input: 0 0% 0%;
+  --ring: 0 0% 0%;
+}
+.high-contrast.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 80%;
+  --border: 0 0% 100%;
+  --input: 0 0% 100%;
+  --ring: 0 0% 100%;
+}
+.high-contrast * {
+  border-color: hsl(var(--border)) !important;
+}
+.high-contrast a, .high-contrast button {
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
+}
+.high-contrast a:focus, .high-contrast button:focus, .high-contrast input:focus {
+  outline: 2px solid hsl(var(--foreground)) !important;
+}
+
+/* Large Text Mode — scales font sizes up for readability */
+.large-text {
+  font-size: 1.125rem; /* 18px base (was 16px) */
+}
+.large-text h1 { font-size: 1.25em !important; }
+.large-text h2 { font-size: 1.2em !important; }
+.large-text h3 { font-size: 1.15em !important; }
+.large-text .text-sm { font-size: 1rem !important; }
+.large-text .text-xs { font-size: 0.875rem !important; }
+.large-text input, .large-text textarea, .large-text select {
+  font-size: 1.125rem !important;
+}
+
+/* Reduced Motion — disables animations for vestibular disorders */
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Respect prefers-reduced-motion at the OS level */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus indicators — visible focus rings for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Screen reader only — visually hidden but available to screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip to content link — for keyboard users */
+.skip-to-content {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  z-index: 100;
+  padding: 8px 16px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.skip-to-content:focus {
+  top: 0;
+}
