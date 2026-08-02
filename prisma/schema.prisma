@@ -2654,3 +2654,194 @@ model ScheduledMaintenance {
   @@index([scheduledStart])
   @@index([organizationId])
 }
+
+// ===========================================================================
+// CHAPTER 18 — Testing, Quality Assurance, Security Certification & Go-Live
+//             Readiness (TQASGR)
+// ===========================================================================
+
+/// A test suite — a collection of test cases (unit / integration / e2e /
+/// security / fraud-sim / performance). Each suite has a type and a target
+/// module. Runs are recorded as TestRun rows.
+model TestSuite {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // unit | integration | e2e | security | fraud-sim | performance | accessibility | browser
+  module      String   // sve | eifdirs | cnse | raei | bspcm | paoem | aidp | pihed | tqasgr | core
+  description String?
+  totalCases  Int      @default(0)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([module])
+  @@index([enabled])
+}
+
+/// A single test case within a suite. Has a status (pass/fail/skip) that's
+/// updated when the suite is run.
+model TestCase {
+  id          String   @id @default(cuid())
+  suiteId     String
+  name        String
+  description String?
+  category    String   // happy-path | edge-case | error-handling | security | performance | a11y
+  severity    String   @default("normal") // blocker | critical | major | normal | minor
+  status      String   @default("pending") // pending | running | passed | failed | skipped | flaky
+  durationMs  Int      @default(0)
+  errorMessage String?
+  lastRunAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([suiteId])
+  @@index([status])
+  @@index([severity])
+}
+
+/// A single run of a test suite. Records pass/fail counts, duration, and
+/// the full result JSON for the audit trail.
+model TestRun {
+  id           String   @id @default(cuid())
+  suiteId      String
+  suiteName    String
+  suiteType    String
+  status       String   // running | passed | failed | partial | aborted
+  totalCases   Int      @default(0)
+  passed       Int      @default(0)
+  failed       Int      @default(0)
+  skipped      Int      @default(0)
+  durationMs   Int      @default(0)
+  coveragePct  Float    @default(0)
+  resultsJson  String?  // JSON array of { caseId, name, status, durationMs, error }
+  triggeredBy  String?
+  triggeredByName String?
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+
+  @@index([suiteId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+/// A release readiness checklist item. Each release must verify all items
+/// before shipping. Spec: "All automated tests passed, Code review completed,
+/// Security scan passed, Performance benchmarks met, Accessibility verified,
+/// Documentation updated, Backups successful, Monitoring configured,
+/// Rollback plan ready, Deployment approved."
+model ReleaseChecklist {
+  id          String   @id @default(cuid())
+  version     String   // e.g. "v18.0.0"
+  itemName    String
+  category    String   // testing | code-review | security | performance | a11y | docs | backup | monitoring | rollback | approval
+  required    Boolean  @default(true)
+  verified    Boolean  @default(false)
+  verifiedBy  String?
+  verifiedAt  DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([version])
+  @@index([verified])
+}
+
+/// A production go-live checklist item. Every org must verify all items
+/// before launching an election. Spec: "Organization configured, Election
+/// validated, Candidates approved, Voters imported, OTVP channels operational,
+/// Infrastructure healthy, Monitoring active, Backup verified, SSL valid,
+/// Domain verified, Support team available."
+model GoLiveChecklist {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  itemName        String
+  category        String   // org | election | candidates | voters | otvp | infra | monitoring | backup | ssl | domain | support
+  required        Boolean  @default(true)
+  verified        Boolean  @default(false)
+  verifiedBy      String?
+  verifiedAt      DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([verified])
+}
+
+/// A pilot election — a controlled small-scale election before general
+/// availability. Spec: "Student association, Small NGO, Company committee,
+/// Department election."
+model PilotElection {
+  id              String   @id @default(cuid())
+  organizationId  String
+  electionId      String?
+  name            String
+  type            String   // student-association | ngo | company-committee | department | faculty | other
+  scale           String   // micro | small | medium | large
+  expectedVoters  Int      @default(0)
+  actualVoters    Int      @default(0)
+  status          String   @default("PLANNED") // PLANNED | ACTIVE | COMPLETED | CANCELLED
+  startDate       DateTime?
+  endDate         DateTime?
+  metrics         String?  // JSON: { turnout, errorRate, p95Latency, incidents }
+  lessonsLearned  String?
+  successCriteria String?  // JSON array of { criterion, met }
+  approvedForGA   Boolean  @default(false) // approved for general availability?
+  createdBy       String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+/// A compliance framework (ISO 27001, SOC 2, GDPR, NDPR). Tracks control
+/// evidence and certification status. Spec: "Prepare for ISO 27001, SOC 2,
+/// GDPR, Local data protection regulations."
+model ComplianceFramework {
+  id              String   @id @default(cuid())
+  name            String   // ISO 27001 | SOC 2 | GDPR | NDPR (Nigeria)
+  description     String?
+  status          String   @default("not-started") // not-started | in-progress | certified | expired
+  totalControls   Int      @default(0)
+  metControls     Int      @default(0)
+  certifyingBody  String?
+  certificateUrl  String?
+  validFrom       DateTime?
+  validUntil      DateTime?
+  evidence        String?  // JSON array of { control, status, evidence, lastReviewed }
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+}
+
+/// A digitally-signed election certification seal — the public-facing
+/// "VoteWise Certification Seal" that can be verified at /certify/[id].
+/// Distinct from IntegrityCertificate (Ch.11) which is the internal integrity
+/// record; this is the public seal with a verification ID.
+model CertificationSeal {
+  id              String   @id @default(cuid())
+  certificationId String   @unique // VW-2027-000184 (human-readable)
+  electionId      String
+  organizationId  String?
+  electionName    String
+  organizationName String?
+  status          String   @default("CERTIFIED") // CERTIFIED | REVOKED | EXPIRED
+  integrityScore  Float    @default(100)
+  votesVerified   Int      @default(0)
+  auditLogsComplete Boolean @default(true)
+  observerReportsComplete Boolean @default(true)
+  securityIncidents  String  @default("None Critical")
+  certifiedBy     String   @default("VoteWise Platform")
+  certifiedAt     DateTime @default(now())
+  signature       String   // HMAC-SHA256 signature for verification
+  revokedAt       DateTime?
+  revokeReason    String?
+  createdAt       DateTime @default(now())
+
+  @@index([electionId])
+  @@index([organizationId])
+  @@index([status])
+}
