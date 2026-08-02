@@ -202,7 +202,21 @@ export const api = {
   // Chapter 17: PIHED — Production Infrastructure (health, readiness, status)
   pihedHealth: () => fetch('/api/pihed/health').then(r => r.json()),
   pihedReadiness: (subdomain?: string) => req(`/api/pihed/readiness${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),
+  pihedRunReadiness: (data: any) => req('/api/pihed/readiness/run', { method: 'POST', body: JSON.stringify(data) }),
+  pihedReadinessRuns: (limit?: number) => req(`/api/pihed/readiness/runs${limit ? `?limit=${limit}` : ''}`),
   pihedStatus: () => fetch('/api/pihed/status').then(r => r.json()),
+  pihedMetrics: (series?: string, limit?: number) => req(`/api/pihed/metrics${series ? `?series=${encodeURIComponent(series)}${limit ? `&limit=${limit}` : ''}` : ''}`),
+  pihedUptime: (days?: number) => fetch(`/api/pihed/uptime${days ? `?days=${days}` : ''}`).then(r => r.json()),
+  pihedUptimeSummary: () => fetch('/api/pihed/uptime?summary=true').then(r => r.json()),
+  pihedBackups: () => req('/api/pihed/backups'),
+  pihedTriggerBackup: (type?: string) => req('/api/pihed/backups/trigger', { method: 'POST', body: JSON.stringify({ type: type || 'manual' }) }),
+  pihedDeployments: () => req('/api/pihed/deployments'),
+  pihedPromoteCanary: (id: string) => req(`/api/pihed/deployments/${id}/promote`, { method: 'POST' }),
+  pihedRollbackDeployment: (id: string, reason?: string) => req(`/api/pihed/deployments/${id}/rollback`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  pihedDomains: (orgId?: string) => req(`/api/pihed/domains${orgId ? `?org=${encodeURIComponent(orgId)}` : ''}`),
+  pihedAddDomain: (data: any) => req('/api/pihed/domains', { method: 'POST', body: JSON.stringify(data) }),
+  pihedVerifyDomain: (id: string) => req(`/api/pihed/domains/${id}/verify`, { method: 'POST' }),
+  pihedRemoveDomain: (id: string) => req(`/api/pihed/domains/${id}`, { method: 'DELETE' }),
 
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

@@ -2362,3 +2362,113 @@ model ApiLog {
   @@index([statusCode])
   @@index([createdAt])
 }
+
+// ===========================================================================
+// CHAPTER 17 — Production Infrastructure, Hosting & Deployment (PIHD)
+// ===========================================================================
+
+/// A single point-in-time readiness assessment run by an admin before an
+/// election goes live. Acts as the "pre-flight checklist" for the platform.
+model ReadinessRun {
+  id              String   @id @default(cuid())
+  organizationId  String?
+  electionId      String?
+  expectedVoters  Int      @default(0)
+  ready           Boolean
+  criticalFailures Int     @default(0)
+  warnings        Int      @default(0)
+  checksJson      String   // JSON-serialised HealthCheck[]
+  triggeredBy     String?  // admin user id
+  triggeredByName String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([electionId])
+  @@index([createdAt])
+}
+
+/// Periodic system metric snapshot (CPU, memory, queue depth, DB size, etc.).
+/// One row per scrape interval — used for the infra dashboard sparklines.
+model SystemMetric {
+  id          String   @id @default(cuid())
+  metric      String   // cpu | memory | queueDepth | dbSizeMb | apiLatencyMs | errorRate | activeConnections | rps
+  value       Float
+  unit        String?
+  labels      String?  // JSON object of extra labels
+  createdAt   DateTime @default(now())
+
+  @@index([metric])
+  @@index([createdAt])
+}
+
+/// A database / file backup record. Tracks type, status, size, location.
+model BackupRecord {
+  id           String   @id @default(cuid())
+  type         String   // hourly | daily | weekly | monthly | manual
+  status       String   // PENDING | RUNNING | COMPLETED | FAILED
+  sizeBytes    Int      @default(0)
+  location     String   // s3://bucket/key | local path
+  checksum     String?  // SHA-256 of the backup file
+  encrypted    Boolean  @default(true)
+  durationMs   Int      @default(0)
+  error        String?
+  triggeredBy  String?
+  createdAt    DateTime @default(now())
+  completedAt  DateTime?
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+/// A deployment record — tracks blue/green and canary releases.
+model DeploymentRecord {
+  id              String   @id @default(cuid())
+  version         String   // git SHA / semver tag
+  environment     String   // staging | production
+  strategy        String   // blue-green | canary | rolling
+  status          String   // PENDING | BUILDING | DEPLOYING | LIVE | ROLLED_BACK | FAILED
+  canaryPct       Int      @default(0)  // 0/25/50/100 for canary
+  commitMessage   String?
+  deployedBy      String?
+  healthCheckPassed Boolean @default(false)
+  rollbackOf      String?  // deployment id this rolls back
+  notes           String?
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+}
+
+/// A custom (apex/sub) domain mapped to an organization for multi-tenant routing.
+model CustomDomain {
+  id              String   @id @default(cuid())
+  organizationId  String
+  domain          String   @unique // vote.university.edu.ng
+  type            String   // apex | subdomain | wildcard
+  status          String   // PENDING | VERIFYING | ACTIVE | FAILED | EXPIRED
+  verificationToken String? // TXT record value
+  sslStatus       String   // PENDING | ISSUING | ACTIVE | FAILED
+  sslExpiresAt    DateTime?
+  dnsVerifiedAt   DateTime?
+  lastCheckedAt   DateTime?
+  primary         Boolean  @default(false) // is this the org's primary domain?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+/// Aggregated uptime sample (one per day per service). Drives the 90-day bar.
+model UptimeRecord {
+  id          String   @id @default(cuid())
+  service     String   // Database | Redis Cache | API | WebSocket | ...
+  date        String   // YYYY-MM-DD (one row per service per day)
+  uptimePct   Float    @default(100) // 99.98
+  incidents   Int      @default(0)
+  avgLatencyMs Int     @default(0)
+  createdAt   DateTime @default(now())
+
+  @@unique([service, date])
+  @@index([service])
+}

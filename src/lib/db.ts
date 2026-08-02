@@ -10,7 +10,7 @@ import { PrismaClient } from '@prisma/client'
 //
 // If you add or remove a Prisma model field, bump SCHEMA_SIG below to force
 // every dev server to pick up the new client on the next request.
-const SCHEMA_SIG = 'v16-aidp'
+const SCHEMA_SIG = 'v17-pihed'
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient
@@ -23,7 +23,11 @@ function makeClient() {
   // readers (live-results queries) avoid blocking on the single writer
   // (vote-recorder transactions), which is critical for concurrent voting.
   // No migration cost — it's a PRAGMA, not a schema change.
-  client.$executeRawUnsafe('PRAGMA journal_mode=WAL').catch(() => {
+  //
+  // NOTE: `PRAGMA journal_mode=WAL` returns a row (the new mode), so we must
+  // use $queryRawUnsafe (which permits results) — $executeRawUnsafe throws
+  // "ExecuteReturnedResults" in Prisma 6+.
+  client.$queryRawUnsafe('PRAGMA journal_mode=WAL').catch(() => {
     // Ignore if not SQLite (e.g., Postgres in production).
   })
   return client
