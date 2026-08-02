@@ -228,6 +228,14 @@ export const api = {
   pihedSlos: () => req('/api/pihed/slos'),
   pihedSloSummary: () => req('/api/pihed/slos?summary=true'),
   pihedReadinessBadge: (voters?: number) => fetch(`/api/pihed/readiness/badge${voters ? `?voters=${voters}` : ''}`).then(r => r.json()),
+  pihedPostmortems: (status?: string) => req(`/api/pihed/postmortems${status ? `?status=${status}` : ''}`),
+  pihedPostmortem: (id: string) => req(`/api/pihed/postmortems/${id}`),
+  pihedCreatePostmortem: (data: any) => req('/api/pihed/postmortems', { method: 'POST', body: JSON.stringify(data) }),
+  pihedUpdatePostmortem: (id: string, data: any) => req(`/api/pihed/postmortems/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  pihedDeletePostmortem: (id: string) => req(`/api/pihed/postmortems/${id}`, { method: 'DELETE' }),
+  pihedMaintenanceSchedule: (status?: string) => req(`/api/pihed/maintenance-schedule${status ? `?status=${status}` : ''}`),
+  pihedScheduleMaintenance: (data: any) => req('/api/pihed/maintenance-schedule', { method: 'POST', body: JSON.stringify(data) }),
+  pihedCancelMaintenance: (id: string) => req(`/api/pihed/maintenance-schedule/${id}/cancel`, { method: 'POST' }),
 
   // Chapter 16: AIDP — API, Integrations & Developer Platform
   aidpGetApiKeys: (subdomain?: string) => req(`/api/aidp/api-keys${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`),

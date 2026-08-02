@@ -31,6 +31,8 @@ import {
   ScrollText, BellRing, DollarSign, Terminal, Play, Search, Filter, Eraser,
   MessageSquare, Smartphone, Megaphone, Timer, MemoryStick, Boxes, Calculator,
   Inbox, FileText, Power, Target,
+  // New icons for the 2 additional tabs (Postmortems + Scheduled Maintenance)
+  Lightbulb, CalendarClock, Ban,
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -808,6 +810,12 @@ function InfrastructureConsoleInner() {
             <TabsTrigger value="loadtest" className="gap-1.5">
               <Gauge className="h-4 w-4" /> Load Test
             </TabsTrigger>
+            <TabsTrigger value="postmortems" className="gap-1.5">
+              <FileText className="h-4 w-4" /> Postmortems
+            </TabsTrigger>
+            <TabsTrigger value="maintenance" className="gap-1.5">
+              <Wrench className="h-4 w-4" /> Maintenance
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -840,6 +848,12 @@ function InfrastructureConsoleInner() {
         </TabsContent>
         <TabsContent value="loadtest" className="mt-0">
           <LoadTestingTab />
+        </TabsContent>
+        <TabsContent value="postmortems" className="mt-0">
+          <PostmortemsTab />
+        </TabsContent>
+        <TabsContent value="maintenance" className="mt-0">
+          <MaintenanceTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -4740,6 +4754,1216 @@ function DisasterRecoverySection() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// ===========================================================================
+// TAB 11 — Postmortems (Incident Lifecycle)
+// Blameless incident reviews: detect → alert → respond → postmortem → improve.
+// ===========================================================================
+
+const PM_SEVERITY_BADGE: Record<string, string> = {
+  critical: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 ring-1 ring-red-400/40 dark:ring-red-700/40',
+  warning: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  info: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+}
+
+const PM_STATUS_BADGE: Record<string, string> = {
+  published: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+  draft: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+  archived: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-400',
+}
+
+const PM_ACTION_STATUS_BADGE: Record<string, string> = {
+  todo: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+  'in-progress': 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  done: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+}
+
+interface Postmortem {
+  id: string
+  incidentId: string | null
+  title: string
+  severity: string
+  status: string
+  summary: string
+  timeline: string
+  rootCause: string
+  impact: string
+  whatWentWell: string
+  whatWentWrong: string
+  actionItems: string
+  lessonsLearned: string
+  authoredBy: string
+  authoredByName: string | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+interface PostmortemDetail extends Postmortem {
+  timeline: Array<{ time: string; event: string }>
+  whatWentWell: string[]
+  whatWentWrong: string[]
+  actionItems: Array<{ item: string; owner?: string; due?: string; status: string }>
+  lessonsLearned: string[]
+}
+
+interface PostmortemStats {
+  total: number
+  published: number
+  drafts: number
+  recent90d: number
+  openActionItems: number
+}
+
+function PostmortemsTab() {
+  const [postmortems, setPostmortems] = useState<Postmortem[]>([])
+  const [stats, setStats] = useState<PostmortemStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const firstLoadRef = useRef(true)
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true)
+    try {
+      setError(null)
+      const res = await api.pihedPostmortems() as { postmortems: Postmortem[]; stats: PostmortemStats }
+      setPostmortems(res.postmortems || [])
+      setStats(res.stats)
+    } catch (e: any) {
+      if (firstLoadRef.current) setError(e?.message || 'Failed to load postmortems')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+      firstLoadRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const id = setInterval(() => load(true), 60000)
+    return () => clearInterval(id)
+  }, [load])
+
+  if (loading) return <LoadingRow label="Loading postmortems…" />
+  if (error && !stats) {
+    return (
+      <Card>
+        <CardContent>
+          <ErrorState message={error} onRetry={() => load()} />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* ---- Header ---- */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <Card className="votewise-card-glow">
+          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <FileText className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-bold">Postmortems</h2>
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  Blameless incident reviews. Learn from every failure. Complete the incident lifecycle:
+                  detect → alert → respond → postmortem → improve.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-1.5 sm:items-end">
+              <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Create Postmortem
+              </Button>
+              <Button onClick={() => load()} variant="outline" size="sm" disabled={refreshing} className="gap-1.5">
+                {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Refresh
+              </Button>
+              <Badge variant="secondary" className="gap-1.5 text-xs text-muted-foreground">
+                <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                Auto · 60s
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ---- Stat cards ---- */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Card className="votewise-card-glow">
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.total)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</div>
+            </CardContent>
+          </Card>
+          <Card className="votewise-card-glow border-emerald-300/40 dark:border-emerald-800/40">
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.published)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Published</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.drafts)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Drafts</div>
+            </CardContent>
+          </Card>
+          <Card className={cn(stats.openActionItems > 0 && 'votewise-card-glow ring-1 ring-red-400/40 dark:ring-red-700/40')}>
+            <CardContent className="p-4">
+              <div className={cn(
+                'grid h-9 w-9 place-items-center rounded-lg',
+                stats.openActionItems > 0
+                  ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+              )}>
+                {stats.openActionItems > 0 ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+              </div>
+              <div className="mt-3 flex items-center gap-1.5">
+                <span className="font-display text-xl font-bold tabular-nums">{formatNumber(stats.openActionItems)}</span>
+                {stats.openActionItems > 0 && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Open Action Items</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ---- Postmortem list ---- */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 font-display text-base">
+            <ScrollText className="h-4 w-4 text-primary" /> Incident Postmortems
+            <Badge variant="outline" className="text-[10px]">{postmortems.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {postmortems.length === 0 ? (
+            <EmptyState icon={FileText} title="No postmortems yet" hint="Create your first blameless incident review to complete the incident lifecycle." />
+          ) : (
+            <div className="votewise-scroll max-h-[600px] space-y-3 overflow-y-auto p-4">
+              {postmortems.map((pm, i) => (
+                <motion.div
+                  key={pm.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: Math.min(i * 0.03, 0.4) }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(pm.id)}
+                    className="w-full rounded-lg border border-border/60 bg-card p-4 text-left transition-all hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge className={cn('text-[9px]', PM_SEVERITY_BADGE[pm.severity] || PM_SEVERITY_BADGE.info)}>
+                            {pm.severity}
+                          </Badge>
+                          <Badge className={cn('text-[9px]', PM_STATUS_BADGE[pm.status] || PM_STATUS_BADGE.draft)}>
+                            {pm.status}
+                          </Badge>
+                        </div>
+                        <h4 className="mt-1.5 font-display text-sm font-semibold leading-tight">{pm.title}</h4>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{pm.summary}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1 text-[10px] text-muted-foreground">
+                        <span className="max-w-[12rem] truncate">{pm.authoredByName || '—'}</span>
+                        <span>{timeAgo(pm.createdAt)}</span>
+                      </div>
+                    </div>
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ---- Detail dialog ---- */}
+      {selectedId && (
+        <PostmortemDetailDialog
+          id={selectedId}
+          onClose={() => setSelectedId(null)}
+          onChanged={() => load(true)}
+        />
+      )}
+
+      {/* ---- Create dialog ---- */}
+      <PostmortemCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => load(true)}
+      />
+    </div>
+  )
+}
+
+function PostmortemDetailDialog({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
+  const [pm, setPm] = useState<PostmortemDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [togglingItem, setTogglingItem] = useState<number | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      setError(null)
+      const res = await api.pihedPostmortem(id) as { postmortem: PostmortemDetail }
+      setPm(res.postmortem)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load postmortem')
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => { load() }, [load])
+
+  async function handlePublish() {
+    setPublishing(true)
+    try {
+      await api.pihedUpdatePostmortem(id, { status: 'published' })
+      toast.success('Postmortem published', { description: 'It is now visible across the organization.' })
+      await load()
+      onChanged()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to publish')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      await api.pihedDeletePostmortem(id)
+      toast.success('Postmortem deleted')
+      onChanged()
+      onClose()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete')
+    } finally {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
+  async function handleToggleActionItem(idx: number) {
+    if (!pm) return
+    const items = [...pm.actionItems]
+    const item = items[idx]
+    if (!item) return
+    const done = item.status === 'done' || item.status === 'completed'
+    const newStatus = done ? 'todo' : 'done'
+    items[idx] = { ...item, status: newStatus }
+    setPm({ ...pm, actionItems: items })
+    setTogglingItem(idx)
+    try {
+      await api.pihedUpdatePostmortem(id, { actionItems: items })
+      toast.success(newStatus === 'done' ? 'Action item marked done' : 'Action item reopened')
+      onChanged()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to update action item')
+      await load()
+    } finally {
+      setTogglingItem(null)
+    }
+  }
+
+  return (
+    <>
+      <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
+          <DialogHeader className="border-b border-border/60 p-6 pb-4">
+            {loading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading postmortem…
+              </div>
+            ) : error ? (
+              <ErrorState message={error} onRetry={load} />
+            ) : pm ? (
+              <>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge className={cn('text-[9px]', PM_SEVERITY_BADGE[pm.severity] || PM_SEVERITY_BADGE.info)}>
+                    {pm.severity}
+                  </Badge>
+                  <Badge className={cn('text-[9px]', PM_STATUS_BADGE[pm.status] || PM_STATUS_BADGE.draft)}>
+                    {pm.status}
+                  </Badge>
+                  {pm.incidentId && (
+                    <Badge variant="outline" className="text-[9px]">incident: {pm.incidentId.slice(0, 8)}</Badge>
+                  )}
+                </div>
+                <DialogTitle className="mt-2 font-display text-xl">{pm.title}</DialogTitle>
+                <DialogDescription className="sr-only">Postmortem detail</DialogDescription>
+              </>
+            ) : null}
+          </DialogHeader>
+
+          {pm && (
+            <div className="votewise-scroll max-h-[calc(90vh-220px)] space-y-6 overflow-y-auto p-6">
+              {/* Summary */}
+              <section>
+                <SectionLabel icon={FileText} label="Summary" />
+                <p className="mt-2 text-sm leading-relaxed text-foreground">{pm.summary}</p>
+              </section>
+
+              {/* Timeline */}
+              {pm.timeline.length > 0 && (
+                <section>
+                  <SectionLabel icon={Clock} label="Timeline" />
+                  <div className="mt-3 space-y-3 border-l-2 border-border pl-4">
+                    {pm.timeline.map((t, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, delay: i * 0.03 }}
+                        className="relative"
+                      >
+                        <span className="absolute -left-[21px] top-1 grid h-3 w-3 place-items-center rounded-full border-2 border-background bg-primary" />
+                        <div className="flex flex-wrap gap-2">
+                          <span className="shrink-0 font-mono text-xs font-semibold text-primary">{t.time}</span>
+                          <span className="text-sm text-foreground">{t.event}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Root Cause + Impact (2-col) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <section className="rounded-lg border border-red-300/30 bg-red-50/40 p-4 dark:border-red-900/30 dark:bg-red-950/10">
+                  <SectionLabel icon={AlertCircle} label="Root Cause" accent="text-red-600 dark:text-red-400" />
+                  <p className="mt-2 text-sm leading-relaxed">{pm.rootCause}</p>
+                </section>
+                <section className="rounded-lg border border-amber-300/30 bg-amber-50/40 p-4 dark:border-amber-900/30 dark:bg-amber-950/10">
+                  <SectionLabel icon={AlertTriangle} label="Impact" accent="text-amber-600 dark:text-amber-400" />
+                  <p className="mt-2 text-sm leading-relaxed">{pm.impact}</p>
+                </section>
+              </div>
+
+              {/* What Went Well / Wrong (2-col) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <section>
+                  <SectionLabel icon={CheckCircle2} label="What Went Well" accent="text-emerald-600 dark:text-emerald-400" />
+                  <ul className="mt-2 space-y-1.5">
+                    {pm.whatWentWell.length === 0 ? (
+                      <li className="text-xs text-muted-foreground">—</li>
+                    ) : pm.whatWentWell.map((w, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+                <section>
+                  <SectionLabel icon={XCircle} label="What Went Wrong" accent="text-red-600 dark:text-red-400" />
+                  <ul className="mt-2 space-y-1.5">
+                    {pm.whatWentWrong.length === 0 ? (
+                      <li className="text-xs text-muted-foreground">—</li>
+                    ) : pm.whatWentWrong.map((w, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+                        <span>{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+
+              {/* Action Items */}
+              <section>
+                <SectionLabel icon={ListChecks} label={`Action Items (${pm.actionItems.length})`} />
+                <div className="votewise-scroll mt-2 overflow-x-auto rounded-lg border border-border/60">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60">
+                      <tr className="text-left">
+                        <th className="w-10 p-2"></th>
+                        <th className="p-2 font-semibold">Item</th>
+                        <th className="hidden p-2 font-semibold sm:table-cell">Owner</th>
+                        <th className="hidden p-2 font-semibold md:table-cell">Due</th>
+                        <th className="p-2 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pm.actionItems.length === 0 ? (
+                        <tr><td colSpan={5} className="p-4 text-center text-xs text-muted-foreground">No action items yet</td></tr>
+                      ) : pm.actionItems.map((a, i) => {
+                        const done = a.status === 'done' || a.status === 'completed'
+                        return (
+                          <tr key={i} className="border-t border-border/60">
+                            <td className="p-2">
+                              <Checkbox
+                                checked={done}
+                                disabled={togglingItem === i}
+                                onCheckedChange={() => handleToggleActionItem(i)}
+                              />
+                            </td>
+                            <td className={cn('p-2', done && 'text-muted-foreground line-through')}>{a.item}</td>
+                            <td className="hidden p-2 text-xs text-muted-foreground sm:table-cell">{a.owner || '—'}</td>
+                            <td className="hidden p-2 text-xs text-muted-foreground md:table-cell">{a.due || '—'}</td>
+                            <td className="p-2">
+                              <Badge className={cn('text-[9px]', PM_ACTION_STATUS_BADGE[a.status] || PM_ACTION_STATUS_BADGE.todo)}>
+                                {a.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              {/* Lessons Learned */}
+              {pm.lessonsLearned.length > 0 && (
+                <section>
+                  <SectionLabel icon={Lightbulb} label="Lessons Learned" accent="text-amber-600 dark:text-amber-400" />
+                  <ul className="mt-2 space-y-1.5">
+                    {pm.lessonsLearned.map((l, i) => (
+                      <li key={i} className="flex items-start gap-2 rounded-md bg-amber-50/60 p-2 text-sm dark:bg-amber-950/10">
+                        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <span>{l}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Footer */}
+              <section className="border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>Authored by: <span className="font-medium text-foreground">{pm.authoredByName || '—'}</span></span>
+                  <span>Reviewed by: <span className="font-medium text-foreground">{pm.reviewedBy || '—'}</span></span>
+                  <span>Published: <span className="font-medium text-foreground">{pm.publishedAt ? formatDateTime(pm.publishedAt) : '—'}</span></span>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {pm && (
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/60 p-4">
+              {pm.status === 'draft' && (
+                <Button onClick={handlePublish} disabled={publishing} className="gap-1.5">
+                  {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                  Publish
+                </Button>
+              )}
+              <Button onClick={() => setConfirmDelete(true)} variant="destructive" size="sm" className="gap-1.5">
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this postmortem?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the postmortem and all its content. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+            >
+              {deleting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
+function PostmortemCreateDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void }) {
+  const [form, setForm] = useState({
+    title: '',
+    severity: 'warning',
+    summary: '',
+    rootCause: '',
+    impact: '',
+  })
+  const [busy, setBusy] = useState(false)
+
+  async function submit() {
+    if (!form.title.trim() || !form.summary.trim() || !form.rootCause.trim()) {
+      toast.error('Title, summary, and root cause are required')
+      return
+    }
+    setBusy(true)
+    try {
+      await api.pihedCreatePostmortem({
+        title: form.title.trim(),
+        severity: form.severity,
+        summary: form.summary.trim(),
+        rootCause: form.rootCause.trim(),
+        impact: form.impact.trim() || 'Not yet documented.',
+      })
+      toast.success('Postmortem created', { description: 'You can now add timeline, action items, and lessons via the detail view.' })
+      setForm({ title: '', severity: 'warning', summary: '', rootCause: '', impact: '' })
+      onOpenChange(false)
+      onCreated()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to create postmortem')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
+        <DialogHeader className="border-b border-border/60 p-6 pb-4">
+          <DialogTitle className="font-display text-lg">Create Postmortem</DialogTitle>
+          <DialogDescription>
+            Start a blameless review. You can fill in the timeline, action items, and lessons learned after creation.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="votewise-scroll max-h-[calc(90vh-220px)] space-y-4 overflow-y-auto p-6">
+          <div className="space-y-1.5">
+            <Label>Title *</Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. API latency spike during SUG election peak"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Severity *</Label>
+            <Select value={form.severity} onValueChange={(v) => setForm((f) => ({ ...f, severity: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="critical">Critical — major outage / data loss</SelectItem>
+                <SelectItem value="warning">Warning — degraded performance</SelectItem>
+                <SelectItem value="info">Info — minor / near-miss</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Summary *</Label>
+            <Textarea
+              value={form.summary}
+              onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+              rows={3}
+              placeholder="One-paragraph summary of what happened, the impact, and the resolution."
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Root Cause *</Label>
+            <Textarea
+              value={form.rootCause}
+              onChange={(e) => setForm((f) => ({ ...f, rootCause: e.target.value }))}
+              rows={3}
+              placeholder="The underlying technical or process cause. Blameless — focus on systems, not people."
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Impact</Label>
+            <Textarea
+              value={form.impact}
+              onChange={(e) => setForm((f) => ({ ...f, impact: e.target.value }))}
+              rows={2}
+              placeholder="User-visible impact, duration, vote loss (should be 0), etc."
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border/60 p-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+          <Button onClick={submit} disabled={busy} className="gap-1.5">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            Create Postmortem
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function SectionLabel({ icon: Icon, label, accent }: { icon: any; label: string; accent?: string }) {
+  return (
+    <div className={cn('flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground', accent)}>
+      <Icon className="h-3.5 w-3.5" /> {label}
+    </div>
+  )
+}
+
+// ===========================================================================
+// TAB 12 — Scheduled Maintenance (Maintenance Windows)
+// Plan future maintenance windows, notify affected orgs, auto-activate.
+// ===========================================================================
+
+const MAINT_LEVEL_BADGE: Record<string, string> = {
+  PLATFORM: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 ring-1 ring-red-400/40 dark:ring-red-700/40',
+  ORGANIZATION: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  MODULE: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+}
+
+const MAINT_STATUS_BADGE: Record<string, string> = {
+  SCHEDULED: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+  IN_PROGRESS: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 ring-1 ring-amber-400/40 dark:ring-amber-700/40',
+  COMPLETED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  CANCELLED: 'bg-zinc-100 text-zinc-500 line-through dark:bg-zinc-500/15 dark:text-zinc-400',
+}
+
+interface ScheduledMaintenance {
+  id: string
+  title: string
+  description: string
+  level: string
+  organizationId: string | null
+  module: string | null
+  scheduledStart: string
+  scheduledEnd: string
+  status: string
+  notifiedOrgs: boolean
+  createdBy: string
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+interface MaintenanceStats {
+  total: number
+  scheduled: number
+  inProgress: number
+  completed: number
+  cancelled: number
+  upcoming: number
+}
+
+function MaintenanceTab() {
+  const [windows, setWindows] = useState<ScheduledMaintenance[]>([])
+  const [stats, setStats] = useState<MaintenanceStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<ScheduledMaintenance | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const firstLoadRef = useRef(true)
+
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true)
+    try {
+      setError(null)
+      const res = await api.pihedMaintenanceSchedule() as { windows: ScheduledMaintenance[]; stats: MaintenanceStats }
+      setWindows(res.windows || [])
+      setStats(res.stats)
+    } catch (e: any) {
+      if (firstLoadRef.current) setError(e?.message || 'Failed to load maintenance schedule')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+      firstLoadRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const id = setInterval(() => load(true), 30000)
+    return () => clearInterval(id)
+  }, [load])
+
+  async function handleCancel() {
+    if (!cancelTarget) return
+    setCancelling(true)
+    try {
+      await api.pihedCancelMaintenance(cancelTarget.id)
+      toast.success('Maintenance window cancelled')
+      setCancelTarget(null)
+      await load(true)
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to cancel maintenance')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  if (loading) return <LoadingRow label="Loading maintenance schedule…" />
+  if (error && !stats) {
+    return (
+      <Card>
+        <CardContent>
+          <ErrorState message={error} onRetry={() => load()} />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const upcoming = windows.filter((w) => w.status === 'SCHEDULED')
+  const active = windows.filter((w) => w.status === 'IN_PROGRESS')
+  const past = windows.filter((w) => w.status === 'COMPLETED' || w.status === 'CANCELLED')
+
+  return (
+    <div className="space-y-6">
+      {/* ---- Header ---- */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <Card className="votewise-card-glow">
+          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Wrench className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-bold">Scheduled Maintenance</h2>
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  Plan future maintenance windows, notify affected organizations, and auto-activate when the window starts.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-1.5 sm:items-end">
+              <Button onClick={() => setCreateOpen(true)} size="sm" className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Schedule Maintenance
+              </Button>
+              <Button onClick={() => load()} variant="outline" size="sm" disabled={refreshing} className="gap-1.5">
+                {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Refresh
+              </Button>
+              <Badge variant="secondary" className="gap-1.5 text-xs text-muted-foreground">
+                <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                Auto · 30s
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ---- Stat cards ---- */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <Card className="votewise-card-glow">
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300">
+                <Wrench className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.total)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300">
+                <CalendarClock className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.scheduled)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Scheduled</div>
+            </CardContent>
+          </Card>
+          <Card className={cn(stats.inProgress > 0 && 'votewise-card-glow ring-1 ring-amber-400/40 dark:ring-amber-700/40')}>
+            <CardContent className="p-4">
+              <div className={cn(
+                'grid h-9 w-9 place-items-center rounded-lg',
+                stats.inProgress > 0
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                  : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+              )}>
+                <Activity className="h-5 w-5" />
+              </div>
+              <div className="mt-3 flex items-center gap-1.5">
+                <span className="font-display text-xl font-bold tabular-nums">{formatNumber(stats.inProgress)}</span>
+                {stats.inProgress > 0 && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">In Progress</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.completed)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Completed</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-500/15 dark:text-zinc-400">
+                <Ban className="h-5 w-5" />
+              </div>
+              <div className="mt-3 font-display text-xl font-bold tabular-nums">{formatNumber(stats.cancelled)}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Cancelled</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ---- Maintenance groups ---- */}
+      {windows.length === 0 ? (
+        <Card>
+          <CardContent>
+            <EmptyState icon={Wrench} title="No maintenance scheduled" hint="Plan your next maintenance window to notify affected organizations in advance." />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <MaintenanceGroup title="Active" icon={Activity} accent="text-amber-600 dark:text-amber-400" items={active} onCancel={setCancelTarget} />
+          <MaintenanceGroup title="Upcoming" icon={CalendarClock} accent="text-zinc-600 dark:text-zinc-300" items={upcoming} onCancel={setCancelTarget} />
+          <MaintenanceGroup title="Past" icon={History} accent="text-muted-foreground" items={past} onCancel={setCancelTarget} />
+        </div>
+      )}
+
+      {/* ---- Create dialog ---- */}
+      <MaintenanceCreateDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={() => load(true)} />
+
+      {/* ---- Cancel confirm ---- */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(o) => { if (!o) setCancelTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this maintenance window?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTarget?.title} will be marked as cancelled. Affected organizations will no longer be notified.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Keep</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+            >
+              {cancelling && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Cancel Window
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+function MaintenanceGroup({ title, icon: Icon, accent, items, onCancel }: {
+  title: string
+  icon: any
+  accent: string
+  items: ScheduledMaintenance[]
+  onCancel: (w: ScheduledMaintenance) => void
+}) {
+  if (items.length === 0) return null
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className={cn('flex items-center gap-2 font-display text-base', accent)}>
+          <Icon className="h-4 w-4" /> {title}
+          <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="votewise-scroll max-h-[600px] space-y-3 overflow-y-auto p-4">
+          {items.map((w, i) => (
+            <MaintenanceCard key={w.id} w={w} index={i} onCancel={() => onCancel(w)} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function MaintenanceCard({ w, index, onCancel }: { w: ScheduledMaintenance; index: number; onCancel: () => void }) {
+  const countdown = useMemo(() => maintenanceCountdown(w), [w])
+  const cancelled = w.status === 'CANCELLED'
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.4) }}
+      className={cn(
+        'rounded-lg border border-border/60 bg-card p-4',
+        cancelled && 'opacity-60',
+        w.status === 'IN_PROGRESS' && 'border-amber-300/60 dark:border-amber-800/60',
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge className={cn('text-[9px]', MAINT_LEVEL_BADGE[w.level] || MAINT_LEVEL_BADGE.MODULE)}>
+              {w.level}
+            </Badge>
+            <Badge className={cn('text-[9px]', MAINT_STATUS_BADGE[w.status] || MAINT_STATUS_BADGE.SCHEDULED)}>
+              {w.status.replace('_', ' ')}
+            </Badge>
+            {w.status === 'IN_PROGRESS' && (
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-500 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+              </span>
+            )}
+          </div>
+          <h4 className={cn('mt-1.5 font-display text-sm font-semibold', cancelled && 'line-through')}>{w.title}</h4>
+          <p className={cn('mt-1 line-clamp-2 text-xs text-muted-foreground', cancelled && 'line-through')}>{w.description}</p>
+        </div>
+        {w.status === 'SCHEDULED' && (
+          <Button onClick={onCancel} variant="outline" size="sm" className="shrink-0 gap-1.5">
+            <Ban className="h-3.5 w-3.5" /> Cancel
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/40 pt-2 text-[11px]">
+        <span className="inline-flex items-center gap-1 font-mono">
+          <CalendarClock className="h-3 w-3 text-muted-foreground" />
+          {formatDateTime(w.scheduledStart)} → {formatDateTime(w.scheduledEnd)}
+          <span className="ml-1 text-muted-foreground">({maintenanceDuration(w)})</span>
+        </span>
+        <Badge variant="outline" className={cn('text-[9px]', countdown.accent)}>{countdown.label}</Badge>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground">
+        {w.module && <span>module: <span className="font-mono text-foreground">{w.module}</span></span>}
+        {w.organizationId && <span>org: <span className="font-mono text-foreground">{w.organizationId.slice(0, 8)}</span></span>}
+        <span>by {w.createdByName || '—'}</span>
+        <span>· {timeAgo(w.createdAt)}</span>
+      </div>
+    </motion.div>
+  )
+}
+
+function maintenanceDuration(w: ScheduledMaintenance): string {
+  const ms = new Date(w.scheduledEnd).getTime() - new Date(w.scheduledStart).getTime()
+  if (!Number.isFinite(ms) || ms <= 0) return '—'
+  const mins = Math.round(ms / 60000)
+  if (mins < 60) return `${mins}m`
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m ? `${h}h ${m}m` : `${h}h`
+}
+
+function maintenanceCountdown(w: ScheduledMaintenance): { label: string; accent: string } {
+  const now = Date.now()
+  const start = new Date(w.scheduledStart).getTime()
+  const end = new Date(w.scheduledEnd).getTime()
+  if (w.status === 'CANCELLED') return { label: 'cancelled', accent: 'text-zinc-500' }
+  if (w.status === 'COMPLETED' || now > end) {
+    const ago = now - end
+    if (ago < 0) return { label: 'completed', accent: 'text-emerald-600 dark:text-emerald-400' }
+    return { label: `completed ${humanizeDuration(ago)} ago`, accent: 'text-emerald-600 dark:text-emerald-400' }
+  }
+  if (w.status === 'IN_PROGRESS' || (now >= start && now < end)) {
+    return { label: 'active now', accent: 'text-amber-600 dark:text-amber-400' }
+  }
+  const until = start - now
+  return { label: `in ${humanizeDuration(until)}`, accent: 'text-zinc-600 dark:text-zinc-300' }
+}
+
+function humanizeDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return 'now'
+  const sec = Math.floor(ms / 1000)
+  if (sec < 60) return `${sec}s`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min}m`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr}h`
+  const day = Math.floor(hr / 24)
+  if (day < 30) return `${day}d`
+  const mo = Math.floor(day / 30)
+  return `${mo}mo`
+}
+
+function MaintenanceCreateDialog({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (o: boolean) => void; onCreated: () => void }) {
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    level: 'PLATFORM',
+    organizationId: '',
+    module: '',
+    scheduledStart: '',
+    scheduledEnd: '',
+  })
+  const [orgs, setOrgs] = useState<Array<{ id: string; name: string }>>([])
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      api.listOrganizations()
+        .then((d: any) => setOrgs(d.organizations || []))
+        .catch(() => {})
+    }
+  }, [open])
+
+  function defaultWindow() {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    d.setHours(2, 0, 0, 0)
+    const start = new Date(d)
+    const end = new Date(d.getTime() + 2 * 60 * 60 * 1000)
+    const toLocal = (dt: Date) => {
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+    }
+    setForm((f) => ({ ...f, scheduledStart: toLocal(start), scheduledEnd: toLocal(end) }))
+  }
+
+  async function submit() {
+    if (!form.title.trim() || !form.description.trim() || !form.scheduledStart || !form.scheduledEnd) {
+      toast.error('Title, description, start, and end are required')
+      return
+    }
+    const start = new Date(form.scheduledStart)
+    const end = new Date(form.scheduledEnd)
+    if (end <= start) {
+      toast.error('End time must be after start time')
+      return
+    }
+    setBusy(true)
+    try {
+      const payload: any = {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        level: form.level,
+        scheduledStart: start.toISOString(),
+        scheduledEnd: end.toISOString(),
+      }
+      if (form.level === 'ORGANIZATION' && form.organizationId) payload.organizationId = form.organizationId
+      if (form.level === 'MODULE' && form.module.trim()) payload.module = form.module.trim()
+      await api.pihedScheduleMaintenance(payload)
+      toast.success('Maintenance window scheduled')
+      setForm({ title: '', description: '', level: 'PLATFORM', organizationId: '', module: '', scheduledStart: '', scheduledEnd: '' })
+      onOpenChange(false)
+      onCreated()
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to schedule maintenance')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
+        <DialogHeader className="border-b border-border/60 p-6 pb-4">
+          <DialogTitle className="font-display text-lg">Schedule Maintenance Window</DialogTitle>
+          <DialogDescription>
+            Plan a future maintenance window. Affected organizations will be notified, and the window will auto-activate when it starts.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="votewise-scroll max-h-[calc(90vh-220px)] space-y-4 overflow-y-auto p-6">
+          <div className="space-y-1.5">
+            <Label>Title *</Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Database maintenance — index rebuild"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Description *</Label>
+            <Textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              rows={3}
+              placeholder="What will be done? Will there be downtime? Who is affected?"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Level *</Label>
+              <Select value={form.level} onValueChange={(v) => setForm((f) => ({ ...f, level: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PLATFORM">PLATFORM — entire platform</SelectItem>
+                  <SelectItem value="ORGANIZATION">ORGANIZATION — single org</SelectItem>
+                  <SelectItem value="MODULE">MODULE — single module</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {form.level === 'ORGANIZATION' && (
+              <div className="space-y-1.5">
+                <Label>Organization *</Label>
+                <Select value={form.organizationId} onValueChange={(v) => setForm((f) => ({ ...f, organizationId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select organization…" /></SelectTrigger>
+                  <SelectContent>
+                    {orgs.length === 0 ? (
+                      <SelectItem value="__none__" disabled>No active organizations found</SelectItem>
+                    ) : orgs.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {form.level === 'MODULE' && (
+              <div className="space-y-1.5">
+                <Label>Module name *</Label>
+                <Input
+                  value={form.module}
+                  onChange={(e) => setForm((f) => ({ ...f, module: e.target.value }))}
+                  placeholder="e.g. results-service"
+                />
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Scheduled start *</Label>
+              <Input
+                type="datetime-local"
+                value={form.scheduledStart}
+                onChange={(e) => setForm((f) => ({ ...f, scheduledStart: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Scheduled end *</Label>
+              <Input
+                type="datetime-local"
+                value={form.scheduledEnd}
+                onChange={(e) => setForm((f) => ({ ...f, scheduledEnd: e.target.value }))}
+              />
+            </div>
+          </div>
+          <Button onClick={defaultWindow} variant="outline" size="sm" className="gap-1.5">
+            <CalendarClock className="h-3.5 w-3.5" /> Suggest: tomorrow 02:00 → 04:00
+          </Button>
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border/60 p-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
+          <Button onClick={submit} disabled={busy} className="gap-1.5">
+            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarClock className="h-3.5 w-3.5" />}
+            Schedule Window
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

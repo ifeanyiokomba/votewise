@@ -17,6 +17,9 @@ import { ensureAlertRulesSeeded } from '@/lib/infra/alerting'
 import { ensureCostsSeeded } from '@/lib/infra/cost-tracker'
 import { ensureInfraSeeded } from '@/lib/pihed'
 import { recordAllSliSamples, ensureSlosSeeded } from '@/lib/infra/slo-tracker'
+import { activateDueMaintenance } from '@/lib/infra/scheduled-maintenance'
+import { ensurePostmortemSeeded } from '@/lib/infra/postmortem'
+import { ensureScheduledMaintenanceSeeded } from '@/lib/infra/scheduled-maintenance'
 
 let initialized = false
 
@@ -37,6 +40,9 @@ export async function initInfra() {
   registerHandler('slo.sample', async () => {
     await recordAllSliSamples().catch(() => {})
   })
+  registerHandler('maintenance.activate', async () => {
+    await activateDueMaintenance().catch(() => {})
+  })
 
   // Start the periodic scheduler (30s interval)
   startPeriodicJobs()
@@ -46,4 +52,6 @@ export async function initInfra() {
   await ensureCostsSeeded().catch(() => {})
   await ensureInfraSeeded().catch(() => {})
   await ensureSlosSeeded().catch(() => {})
+  await ensurePostmortemSeeded().catch(() => {})
+  await ensureScheduledMaintenanceSeeded().catch(() => {})
 }

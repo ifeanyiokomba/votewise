@@ -1,0 +1,574 @@
+  4173→function LoadTestingTab() {
+  4174→  return (
+  4175→    <div className="space-y-8">
+  4176→      <LoadTestingSection />
+  4177→      <DisasterRecoverySection />
+  4178→    </div>
+  4179→  )
+  4180→}
+  4181→
+  4182→function LoadTestingSection() {
+  4183→  const [presets, setPresets] = useState<LoadTestPreset[]>([])
+  4184→  const [history, setHistory] = useState<LoadTestHistoryItem[]>([])
+  4185→  const [loading, setLoading] = useState(true)
+  4186→  const [error, setError] = useState<string | null>(null)
+  4187→  const [runningKey, setRunningKey] = useState<string | null>(null)
+  4188→  const [results, setResults] = useState<Record<string, LoadTestResult>>({})
+  4189→  const [selectedHistory, setSelectedHistory] = useState<LoadTestHistoryItem | null>(null)
+  4190→
+  4191→  const load = useCallback(async () => {
+  4192→    try {
+  4193→      setError(null)
+  4194→      const res = await api.pihedLoadTests() as { presets: LoadTestPreset[]; history: LoadTestHistoryItem[] }
+  4195→      setPresets(res.presets || [])
+  4196→      setHistory(res.history || [])
+  4197→    } catch (e: any) {
+  4198→      setError(e?.message || 'Failed to load load test data')
+  4199→    } finally {
+  4200→      setLoading(false)
+  4201→    }
+  4202→  }, [])
+  4203→
+  4204→  useEffect(() => { load() }, [load])
+  4205→
+  4206→  async function handleRun(preset: LoadTestPreset) {
+  4207→    setRunningKey(preset.key)
+  4208→    try {
+  4209→      const res = await api.pihedRunLoadTest(preset.key) as { result: LoadTestResult; message: string }
+  4210→      setResults((r) => ({ ...r, [preset.key]: res.result }))
+  4211→      toast.success(`Load test complete: ${res.result.verdict}`, {
+  4212→        description: `${preset.label} · ${res.result.errorRatePct}% errors · p95 ${res.result.p95LatencyMs}ms`,
+  4213→      })
+  4214→      await load()
+  4215→    } catch (e: any) {
+  4216→      toast.error(e?.message || 'Failed to run load test')
+  4217→    } finally {
+  4218→      setRunningKey(null)
+  4219→    }
+  4220→  }
+  4221→
+  4222→  if (loading) return <LoadingRow label="Loading load test data…" />
+  4223→  if (error && presets.length === 0) {
+  4224→    return (
+  4225→      <Card>
+  4226→        <CardContent>
+  4227→          <ErrorState message={error} onRetry={load} />
+  4228→        </CardContent>
+  4229→      </Card>
+  4230→    )
+  4231→  }
+  4232→
+  4233→  return (
+  4234→    <div className="space-y-6">
+  4235→      {/* ---- Section header ---- */}
+  4236→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  4237→        <Card className="votewise-card-glow">
+  4238→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+  4239→            <div className="flex items-center gap-4">
+  4240→              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+  4241→                <Gauge className="h-6 w-6" />
+  4242→              </div>
+  4243→              <div>
+  4244→                <h2 className="font-display text-xl font-bold">Performance Testing</h2>
+  4245→                <p className="max-w-2xl text-sm text-muted-foreground">
+  4246→                  Before every major release, test at 10K / 50K / 100K / 500K / 1M concurrent voters.
+  4247→                  Measure response time, error rate, resource usage.
+  4248→                </p>
+  4249→              </div>
+  4250→            </div>
+  4251→            <Button onClick={load} variant="outline" size="sm" className="gap-1.5">
+  4252→              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+  4253→            </Button>
+  4254→          </CardContent>
+  4255→        </Card>
+  4256→      </motion.div>
+  4257→
+  4258→      {/* ---- Preset cards ---- */}
+  4259→      <div>
+  4260→        <h3 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+  4261→          Test Presets
+  4262→        </h3>
+  4263→        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+  4264→          {presets.map((p, i) => {
+  4265→            const isRunning = runningKey === p.key
+  4266→            const result = results[p.key]
+  4267→            return (
+  4268→              <motion.div
+  4269→                key={p.key}
+  4270→                initial={{ opacity: 0, y: 8 }}
+  4271→                animate={{ opacity: 1, y: 0 }}
+  4272→                transition={{ duration: 0.25, delay: i * 0.04 }}
+  4273→              >
+  4274→                <Card className={cn(
+  4275→                  'h-full transition-colors',
+  4276→                  result?.verdict === 'PASS' && 'border-emerald-300/50 dark:border-emerald-800/50',
+  4277→                  result?.verdict === 'DEGRADED' && 'border-amber-300/50 dark:border-amber-800/50',
+  4278→                  result?.verdict === 'FAIL' && 'border-red-300/60 dark:border-red-900/60',
+  4279→                )}>
+  4280→                  <CardContent className="flex h-full flex-col p-4">
+  4281→                    <div className="flex items-start justify-between">
+  4282→                      <Badge className={cn('text-[10px]', LOAD_TEST_PRESET_BADGE[p.key] || LOAD_TEST_PRESET_BADGE['10k'])}>
+  4283→                        {p.key.toUpperCase()}
+  4284→                      </Badge>
+  4285→                      {result && (
+  4286→                        <Badge className={cn('text-[9px]', LOAD_TEST_VERDICT_BADGE[result.verdict])}>
+  4287→                          {result.verdict}
+  4288→                        </Badge>
+  4289→                      )}
+  4290→                    </div>
+  4291→                    <div className="mt-2 font-display text-2xl font-bold tabular-nums">
+  4292→                      {p.concurrentVoters.toLocaleString()}
+  4293→                    </div>
+  4294→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">concurrent voters</div>
+  4295→                    <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+  4296→                      <span className="inline-flex items-center gap-1">
+  4297→                        <Timer className="h-3 w-3" /> {p.durationMinutes}m
+  4298→                      </span>
+  4299→                      <span className="inline-flex items-center gap-1">
+  4300→                        <TrendingUp className="h-3 w-3" /> ramp {p.rampUpSeconds}s
+  4301→                      </span>
+  4302→                    </div>
+  4303→
+  4304→                    {/* Inline result */}
+  4305→                    {result && (
+  4306→                      <motion.div
+  4307→                        initial={{ opacity: 0, height: 0 }}
+  4308→                        animate={{ opacity: 1, height: 'auto' }}
+  4309→                        transition={{ duration: 0.3 }}
+  4310→                        className="mt-3 space-y-1.5 border-t border-border/40 pt-3 text-[10px]"
+  4311→                      >
+  4312→                        <div className="grid grid-cols-2 gap-1.5">
+  4313→                          <ResultStat label="Total reqs" value={formatNumber(result.totalRequests)} />
+  4314→                          <ResultStat label="Errors" value={`${result.errorRatePct}%`} accent={result.errorRatePct > 1 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} />
+  4315→                          <ResultStat label="p50" value={`${result.p50LatencyMs}ms`} />
+  4316→                          <ResultStat label="p95" value={`${result.p95LatencyMs}ms`} />
+  4317→                          <ResultStat label="p99" value={`${result.p99LatencyMs}ms`} />
+  4318→                          <ResultStat label="RPS" value={formatNumber(result.requestsPerSecond)} />
+  4319→                          <ResultStat label="Peak mem" value={`${result.resourceUsage.peakMemoryMb}MB`} />
+  4320→                          <ResultStat label="Avg CPU" value={`${result.resourceUsage.avgCpuPct}%`} />
+  4321→                        </div>
+  4322→                        <p className="text-[10px] leading-snug text-muted-foreground">{result.notes}</p>
+  4323→                      </motion.div>
+  4324→                    )}
+  4325→
+  4326→                    <div className="mt-auto pt-3">
+  4327→                      <Button
+  4328→                        onClick={() => handleRun(p)}
+  4329→                        disabled={isRunning}
+  4330→                        size="sm"
+  4331→                        className="w-full gap-1.5"
+  4332→                      >
+  4333→                        {isRunning
+  4334→                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+  4335→                          : <Play className="h-3.5 w-3.5" />}
+  4336→                        {isRunning ? 'Running…' : result ? 'Re-run Test' : 'Run Test'}
+  4337→                      </Button>
+  4338→                    </div>
+  4339→                  </CardContent>
+  4340→                </Card>
+  4341→              </motion.div>
+  4342→            )
+  4343→          })}
+  4344→        </div>
+  4345→      </div>
+  4346→
+  4347→      {/* ---- History table ---- */}
+  4348→      <Card>
+  4349→        <CardHeader className="pb-3">
+  4350→          <CardTitle className="flex items-center gap-2 font-display text-base">
+  4351→            <History className="h-4 w-4 text-primary" /> Load Test History
+  4352→          </CardTitle>
+  4353→        </CardHeader>
+  4354→        <CardContent className="p-0">
+  4355→          {history.length === 0 ? (
+  4356→            <EmptyState icon={History} title="No runs yet" hint="Run a preset above to see the history." />
+  4357→          ) : (
+  4358→            <div className="votewise-scroll overflow-x-auto">
+  4359→              <table className="w-full text-sm">
+  4360→                <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+  4361→                  <tr className="text-left">
+  4362→                    <th className="p-3 font-semibold">Date</th>
+  4363→                    <th className="p-3 font-semibold">Preset</th>
+  4364→                    <th className="p-3 font-semibold">Verdict</th>
+  4365→                    <th className="hidden p-3 text-right font-semibold sm:table-cell">Error Rate</th>
+  4366→                    <th className="hidden p-3 text-right font-semibold md:table-cell">p95</th>
+  4367→                    <th className="hidden p-3 text-right font-semibold lg:table-cell">RPS</th>
+  4368→                  </tr>
+  4369→                </thead>
+  4370→                <tbody>
+  4371→                  {history.map((h) => (
+  4372→                    <tr
+  4373→                      key={h.id}
+  4374→                      onClick={() => setSelectedHistory(selectedHistory?.id === h.id ? null : h)}
+  4375→                      className={cn(
+  4376→                        'cursor-pointer border-t border-border hover:bg-muted/30',
+  4377→                        selectedHistory?.id === h.id && 'bg-primary/5',
+  4378→                      )}
+  4379→                    >
+  4380→                      <td className="whitespace-nowrap p-3 text-xs text-muted-foreground">
+  4381→                        {timeAgo(h.startedAt)}
+  4382→                      </td>
+  4383→                      <td className="p-3">
+  4384→                        <Badge className={cn('text-[9px]', LOAD_TEST_PRESET_BADGE[h.preset] || LOAD_TEST_PRESET_BADGE['10k'])}>
+  4385→                          {h.preset.toUpperCase()}
+  4386→                        </Badge>
+  4387→                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+  4388→                          {h.config.concurrentVoters.toLocaleString()} voters
+  4389→                        </div>
+  4390→                      </td>
+  4391→                      <td className="p-3">
+  4392→                        <Badge className={cn('text-[9px]', LOAD_TEST_VERDICT_BADGE[h.verdict])}>
+  4393→                          {h.verdict}
+  4394→                        </Badge>
+  4395→                      </td>
+  4396→                      <td className="hidden p-3 text-right font-mono text-xs sm:table-cell">
+  4397→                        <span className={h.errorRatePct > 1 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>
+  4398→                          {h.errorRatePct.toFixed(2)}%
+  4399→                        </span>
+  4400→                      </td>
+  4401→                      <td className="hidden p-3 text-right font-mono text-xs md:table-cell">{h.p95LatencyMs}ms</td>
+  4402→                      <td className="hidden p-3 text-right font-mono text-xs lg:table-cell">{formatNumber(h.requestsPerSecond)}</td>
+  4403→                    </tr>
+  4404→                  ))}
+  4405→                </tbody>
+  4406→              </table>
+  4407→            </div>
+  4408→          )}
+  4409→        </CardContent>
+  4410→      </Card>
+  4411→
+  4412→      {/* ---- Selected history detail panel ---- */}
+  4413→      <AnimatePresence>
+  4414→        {selectedHistory && (
+  4415→          <motion.div
+  4416→            initial={{ opacity: 0, y: 8 }}
+  4417→            animate={{ opacity: 1, y: 0 }}
+  4418→            exit={{ opacity: 0, y: -8 }}
+  4419→            transition={{ duration: 0.25 }}
+  4420→          >
+  4421→            <Card className="votewise-card-glow">
+  4422→              <CardHeader className="pb-3">
+  4423→                <div className="flex items-center justify-between">
+  4424→                  <CardTitle className="flex items-center gap-2 font-display text-base">
+  4425→                    <FileText className="h-4 w-4 text-primary" /> Run Detail · {selectedHistory.preset.toUpperCase()}
+  4426→                  </CardTitle>
+  4427→                  <Badge className={cn('text-[10px]', LOAD_TEST_VERDICT_BADGE[selectedHistory.verdict])}>
+  4428→                    {selectedHistory.verdict}
+  4429→                  </Badge>
+  4430→                </div>
+  4431→              </CardHeader>
+  4432→              <CardContent className="space-y-4">
+  4433→                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+  4434→                  <StatCell label="Total Requests" value={formatNumber(selectedHistory.totalRequests)} icon={Hash} />
+  4435→                  <StatCell label="Successful" value={formatNumber(selectedHistory.successfulRequests)} icon={CheckCircle2} />
+  4436→                  <StatCell label="Failed" value={formatNumber(selectedHistory.failedRequests)} icon={XCircle} />
+  4437→                  <StatCell label="Error Rate" value={`${selectedHistory.errorRatePct}%`} icon={AlertCircle} />
+  4438→                  <StatCell label="Avg Latency" value={`${selectedHistory.avgLatencyMs}ms`} icon={Clock} />
+  4439→                  <StatCell label="p50" value={`${selectedHistory.p50LatencyMs}ms`} icon={TrendingUp} />
+  4440→                  <StatCell label="p95" value={`${selectedHistory.p95LatencyMs}ms`} icon={TrendingUp} />
+  4441→                  <StatCell label="p99" value={`${selectedHistory.p99LatencyMs}ms`} icon={TrendingUp} />
+  4442→                  <StatCell label="Max Latency" value={`${selectedHistory.maxLatencyMs}ms`} icon={Clock} />
+  4443→                  <StatCell label="RPS" value={formatNumber(selectedHistory.requestsPerSecond)} icon={Activity} />
+  4444→                  <StatCell label="Peak Memory" value={`${selectedHistory.resourceUsage.peakMemoryMb}MB`} icon={MemoryStick} />
+  4445→                  <StatCell label="Avg CPU" value={`${selectedHistory.resourceUsage.avgCpuPct}%`} icon={Cpu} />
+  4446→                </div>
+  4447→                <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+  4448→                  <StatCell label="Voters" value={selectedHistory.config.concurrentVoters.toLocaleString()} icon={Hash} />
+  4449→                  <StatCell label="Duration" value={`${selectedHistory.config.durationMinutes}m`} icon={Timer} />
+  4450→                  <StatCell label="Ramp-up" value={`${selectedHistory.config.rampUpSeconds}s`} icon={TrendingUp} />
+  4451→                  <StatCell label="Endpoint" value={selectedHistory.config.targetEndpoint} icon={Activity} />
+  4452→                </div>
+  4453→                <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-xs">
+  4454→                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes</p>
+  4455→                  <p className="mt-1">{selectedHistory.notes}</p>
+  4456→                </div>
+  4457→                <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+  4458→                  <span>Started: <span className="font-mono text-foreground">{formatDateTime(selectedHistory.startedAt)}</span></span>
+  4459→                  <span>·</span>
+  4460→                  <span>Completed: <span className="font-mono text-foreground">{formatDateTime(selectedHistory.completedAt)}</span></span>
+  4461→                </div>
+  4462→              </CardContent>
+  4463→            </Card>
+  4464→          </motion.div>
+  4465→        )}
+  4466→      </AnimatePresence>
+  4467→    </div>
+  4468→  )
+  4469→}
+  4470→
+  4471→function ResultStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  4472→  return (
+  4473→    <div className="rounded border border-border/40 bg-muted/30 px-1.5 py-1">
+  4474→      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+  4475→      <div className={cn('font-mono text-[11px] font-semibold tabular-nums', accent)}>{value}</div>
+  4476→    </div>
+  4477→  )
+  4478→}
+  4479→
+  4480→// --- DR Runbook section ----------------------------------------------------
+  4481→
+  4482→const DR_RUNBOOKS: Array<{
+  4483→  id: string
+  4484→  title: string
+  4485→  severity: 'critical' | 'warning' | 'info'
+  4486→  steps: string[]
+  4487→}> = [
+  4488→  {
+  4489→    id: 'db-corruption',
+  4490→    title: 'Database corruption detected',
+  4491→    severity: 'critical',
+  4492→    steps: [
+  4493→      'Trigger `ElectionLock` to freeze all active elections (prevents new votes).',
+  4494→      'Snapshot the corrupted instance (for forensics).',
+  4495→      'Restore from the most recent hourly backup via PITR.',
+  4496→      'Verify the restored instance with `scripts/verify-backup.sh`.',
+  4497→      'Repoint the application to the restored instance.',
+  4498→      'Release the `ElectionLock`.',
+  4499→      'File an incident report.',
+  4500→    ],
+  4501→  },
+  4502→  {
+  4503→    id: 'region-failure',
+  4504→    title: 'Region failure',
+  4505→    severity: 'critical',
+  4506→    steps: [
+  4507→      'Trigger `ElectionLock` globally.',
+  4508→      'Run `scripts/dr-failover.sh` — promotes the DR region.',
+  4509→      'Verify `https://votewise.com.ng/api/pihed/health` returns `ready: true`.',
+  4510→      'Release the `ElectionLock`.',
+  4511→      'Once the primary region recovers, fail back with `scripts/dr-failback.sh`.',
+  4512→    ],
+  4513→  },
+  4514→  {
+  4515→    id: 'vote-loss-suspected',
+  4516→    title: 'Vote loss suspected',
+  4517→    severity: 'critical',
+  4518→    steps: [
+  4519→      'Trigger `ElectionLock`.',
+  4520→      'Query `VoteRecord` count vs `CandidateTally` sum — they must match.',
+  4521→      'If mismatch: restore from PITR to a scratch instance, diff the tables, identify the missing records.',
+  4522→      'Re-apply missing records from the audit log (`AuditEvent` table).',
+  4523→      'Release the `ElectionLock`.',
+  4524→    ],
+  4525→  },
+  4526→]
+  4527→
+  4528→const DR_BACKUP_SCHEDULE: Array<{ type: string; frequency: string; retention: string; storage: string; badge: string }> = [
+  4529→  {
+  4530→    type: 'Hourly',
+  4531→    frequency: 'every hour at :05',
+  4532→    retention: '24 hours',
+  4533→    storage: 'S3 `backups` bucket (region A)',
+  4534→    badge: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+  4535→  },
+  4536→  {
+  4537→    type: 'Daily',
+  4538→    frequency: '02:00 daily',
+  4539→    retention: '7 days',
+  4540→    storage: 'S3 `backups` + cross-region DR',
+  4541→    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  4542→  },
+  4543→  {
+  4544→    type: 'Weekly',
+  4545→    frequency: 'Sun 03:00',
+  4546→    retention: '4 weeks',
+  4547→    storage: 'S3 `backups` + Glacier lifecycle',
+  4548→    badge: 'bg-accent text-accent-foreground',
+  4549→  },
+  4550→  {
+  4551→    type: 'Monthly',
+  4552→    frequency: '1st 04:00',
+  4553→    retention: '12 months',
+  4554→    storage: 'S3 `backups` + Glacier Deep Archive',
+  4555→    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  4556→  },
+  4557→]
+  4558→
+  4559→const DR_SCRIPTS: Array<{ path: string; description: string }> = [
+  4560→  { path: 'scripts/dr-test.sh', description: 'Verify the latest backup is restorable' },
+  4561→  { path: 'scripts/dr-failover.sh', description: 'Run a full failover drill — promotes the DR region' },
+  4562→  { path: 'scripts/blue-green-deploy.sh', description: 'Blue-green deployment switcher with health gate' },
+  4563→  { path: 'scripts/rollback.sh', description: 'Rollback the active deployment to the previous version' },
+  4564→]
+  4565→
+  4566→function DisasterRecoverySection() {
+  4567→  return (
+  4568→    <div className="space-y-6">
+  4569→      {/* ---- Header ---- */}
+  4570→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  4571→        <Card className="votewise-card-glow">
+  4572→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+  4573→            <div className="flex items-center gap-4">
+  4574→              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+  4575→                <Shield className="h-6 w-6" />
+  4576→              </div>
+  4577→              <div>
+  4578→                <h2 className="font-display text-xl font-bold">Disaster Recovery Runbook</h2>
+  4579→                <p className="max-w-2xl text-sm text-muted-foreground">
+  4580→                  Documented recovery procedures. Tested monthly (restore drill), quarterly (failover drill), annually (cold-start).
+  4581→                </p>
+  4582→              </div>
+  4583→            </div>
+  4584→          </CardContent>
+  4585→        </Card>
+  4586→      </motion.div>
+  4587→
+  4588→      {/* ---- RTO / RPO / Vote Loss stat badges ---- */}
+  4589→      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+  4590→        <Card className="votewise-card-glow border-emerald-300/40 dark:border-emerald-800/40">
+  4591→          <CardContent className="flex items-center gap-3 p-4">
+  4592→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+  4593→              <Clock className="h-5 w-5" />
+  4594→            </div>
+  4595→            <div>
+  4596→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">RTO</div>
+  4597→              <div className="font-display text-lg font-bold text-emerald-700 dark:text-emerald-300">&lt; 30 min</div>
+  4598→              <div className="text-[10px] text-muted-foreground">Recovery Time Objective</div>
+  4599→            </div>
+  4600→          </CardContent>
+  4601→        </Card>
+  4602→        <Card className="votewise-card-glow border-amber-300/40 dark:border-amber-800/40">
+  4603→          <CardContent className="flex items-center gap-3 p-4">
+  4604→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+  4605→              <Timer className="h-5 w-5" />
+  4606→            </div>
+  4607→            <div>
+  4608→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">RPO</div>
+  4609→              <div className="font-display text-lg font-bold text-amber-700 dark:text-amber-300">&lt; 5 min</div>
+  4610→              <div className="text-[10px] text-muted-foreground">PITR + WAL streaming</div>
+  4611→            </div>
+  4612→          </CardContent>
+  4613→        </Card>
+  4614→        <Card className="votewise-card-glow border-red-300/40 dark:border-red-900/40">
+  4615→          <CardContent className="flex items-center gap-3 p-4">
+  4616→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+  4617→              <ShieldCheck className="h-5 w-5" />
+  4618→            </div>
+  4619→            <div>
+  4620→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Vote Loss</div>
+  4621→              <div className="font-display text-lg font-bold text-red-700 dark:text-red-300">0</div>
+  4622→              <div className="text-[10px] text-muted-foreground">Transactional + receipt-anchored</div>
+  4623→            </div>
+  4624→          </CardContent>
+  4625→        </Card>
+  4626→      </div>
+  4627→
+  4628→      {/* ---- Runbooks (accordion) ---- */}
+  4629→      <Card>
+  4630→        <CardHeader className="pb-3">
+  4631→          <CardTitle className="flex items-center gap-2 font-display text-base">
+  4632→            <FileText className="h-4 w-4 text-primary" /> Runbooks
+  4633→          </CardTitle>
+  4634→        </CardHeader>
+  4635→        <CardContent>
+  4636→          <Accordion type="single" collapsible defaultValue="db-corruption" className="w-full">
+  4637→            {DR_RUNBOOKS.map((rb) => (
+  4638→              <AccordionItem key={rb.id} value={rb.id}>
+  4639→                <AccordionTrigger className="hover:no-underline">
+  4640→                  <div className="flex flex-1 items-center gap-2 pr-2">
+  4641→                    <Badge className={cn('text-[9px]', ALERT_SEVERITY_BADGE[rb.severity] || ALERT_SEVERITY_BADGE.critical)}>
+  4642→                      {rb.severity}
+  4643→                    </Badge>
+  4644→                    <span className="text-left font-medium">{rb.title}</span>
+  4645→                  </div>
+  4646→                </AccordionTrigger>
+  4647→                <AccordionContent>
+  4648→                  <ol className="ml-1 space-y-2">
+  4649→                    {rb.steps.map((step, i) => (
+  4650→                      <motion.li
+  4651→                        key={i}
+  4652→                        initial={{ opacity: 0, x: -4 }}
+  4653→                        animate={{ opacity: 1, x: 0 }}
+  4654→                        transition={{ duration: 0.2, delay: i * 0.03 }}
+  4655→                        className="flex items-start gap-2.5 text-sm"
+  4656→                      >
+  4657→                        <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 font-mono text-[10px] font-bold text-primary">
+  4658→                          {i + 1}
+  4659→                        </span>
+  4660→                        <span className="text-foreground">{step}</span>
+  4661→                      </motion.li>
+  4662→                    ))}
+  4663→                  </ol>
+  4664→                </AccordionContent>
+  4665→              </AccordionItem>
+  4666→            ))}
+  4667→          </Accordion>
+  4668→        </CardContent>
+  4669→      </Card>
+  4670→
+  4671→      {/* ---- Backup schedule ---- */}
+  4672→      <Card>
+  4673→        <CardHeader className="pb-3">
+  4674→          <CardTitle className="flex items-center gap-2 font-display text-base">
+  4675→            <Database className="h-4 w-4 text-primary" /> Backup Schedule
+  4676→          </CardTitle>
+  4677→        </CardHeader>
+  4678→        <CardContent className="p-0">
+  4679→          <div className="votewise-scroll overflow-x-auto">
+  4680→            <table className="w-full text-sm">
+  4681→              <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+  4682→                <tr className="text-left">
+  4683→                  <th className="p-3 font-semibold">Type</th>
+  4684→                  <th className="p-3 font-semibold">Frequency</th>
+  4685→                  <th className="hidden p-3 font-semibold sm:table-cell">Retention</th>
+  4686→                  <th className="hidden p-3 font-semibold md:table-cell">Storage</th>
+  4687→                </tr>
+  4688→              </thead>
+  4689→              <tbody>
+  4690→                {DR_BACKUP_SCHEDULE.map((row) => (
+  4691→                  <tr key={row.type} className="border-t border-border hover:bg-muted/30">
+  4692→                    <td className="p-3">
+  4693→                      <Badge className={cn('text-[9px]', row.badge)}>{row.type}</Badge>
+  4694→                    </td>
+  4695→                    <td className="p-3 font-mono text-xs">{row.frequency}</td>
+  4696→                    <td className="hidden p-3 font-mono text-xs sm:table-cell">{row.retention}</td>
+  4697→                    <td className="hidden p-3 text-xs text-muted-foreground md:table-cell">{row.storage}</td>
+  4698→                  </tr>
+  4699→                ))}
+  4700→              </tbody>
+  4701→            </table>
+  4702→          </div>
+  4703→          <div className="border-t border-border/40 p-3 text-[10px] text-muted-foreground">
+  4704→            All backups are AES-256 encrypted at rest and TLS-encrypted in transit. The `backups` bucket
+  4705→            replicates to <code className="font-mono">eu-central-1</code> (Frankfurt) for cross-region disaster recovery.
+  4706→          </div>
+  4707→        </CardContent>
+  4708→      </Card>
+  4709→
+  4710→      {/* ---- DR scripts ---- */}
+  4711→      <Card>
+  4712→        <CardHeader className="pb-3">
+  4713→          <CardTitle className="flex items-center gap-2 font-display text-base">
+  4714→            <Terminal className="h-4 w-4 text-primary" /> DR &amp; Deployment Scripts
+  4715→          </CardTitle>
+  4716→        </CardHeader>
+  4717→        <CardContent className="space-y-2">
+  4718→          {DR_SCRIPTS.map((s) => (
+  4719→            <div
+  4720→              key={s.path}
+  4721→              className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+  4722→            >
+  4723→              <div className="min-w-0 flex-1">
+  4724→                <code className="font-mono text-xs font-semibold text-foreground">./{s.path}</code>
+  4725→                <p className="mt-0.5 text-[11px] text-muted-foreground">{s.description}</p>
+  4726→              </div>
+  4727→              <CopyButton text={`./${s.path}`} size="sm" />
+  4728→            </div>
+  4729→          ))}
+  4730→          <div className="mt-3 rounded-lg border border-emerald-300/40 bg-emerald-50/60 p-3 text-xs text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+  4731→            <p className="flex items-center gap-1.5 font-semibold">
+  4732→              <Power className="h-3.5 w-3.5" /> Recovery Test Schedule
+  4733→            </p>
+  4734→            <ul className="mt-1 space-y-0.5 text-[11px] opacity-90">
+  4735→              <li>· <strong>Monthly</strong> — restore latest daily backup to scratch RDS, verify counts, tear down.</li>
+  4736→              <li>· <strong>Quarterly</strong> — full failover drill (promote DR region, smoke tests, fail back).</li>
+  4737→              <li>· <strong>Annually</strong> — full cold-start from backups only (validates Terraform + restore path end-to-end).</li>
+  4738→            </ul>
+  4739→          </div>
+  4740→        </CardContent>
+  4741→      </Card>
+  4742→    </div>
+  4743→  )
+  4744→}
+  4745→
+  4746→

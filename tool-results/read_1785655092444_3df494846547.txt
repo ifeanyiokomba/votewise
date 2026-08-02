@@ -1,0 +1,574 @@
+     1→  4173→function LoadTestingTab() {
+     2→  4174→  return (
+     3→  4175→    <div className="space-y-8">
+     4→  4176→      <LoadTestingSection />
+     5→  4177→      <DisasterRecoverySection />
+     6→  4178→    </div>
+     7→  4179→  )
+     8→  4180→}
+     9→  4181→
+    10→  4182→function LoadTestingSection() {
+    11→  4183→  const [presets, setPresets] = useState<LoadTestPreset[]>([])
+    12→  4184→  const [history, setHistory] = useState<LoadTestHistoryItem[]>([])
+    13→  4185→  const [loading, setLoading] = useState(true)
+    14→  4186→  const [error, setError] = useState<string | null>(null)
+    15→  4187→  const [runningKey, setRunningKey] = useState<string | null>(null)
+    16→  4188→  const [results, setResults] = useState<Record<string, LoadTestResult>>({})
+    17→  4189→  const [selectedHistory, setSelectedHistory] = useState<LoadTestHistoryItem | null>(null)
+    18→  4190→
+    19→  4191→  const load = useCallback(async () => {
+    20→  4192→    try {
+    21→  4193→      setError(null)
+    22→  4194→      const res = await api.pihedLoadTests() as { presets: LoadTestPreset[]; history: LoadTestHistoryItem[] }
+    23→  4195→      setPresets(res.presets || [])
+    24→  4196→      setHistory(res.history || [])
+    25→  4197→    } catch (e: any) {
+    26→  4198→      setError(e?.message || 'Failed to load load test data')
+    27→  4199→    } finally {
+    28→  4200→      setLoading(false)
+    29→  4201→    }
+    30→  4202→  }, [])
+    31→  4203→
+    32→  4204→  useEffect(() => { load() }, [load])
+    33→  4205→
+    34→  4206→  async function handleRun(preset: LoadTestPreset) {
+    35→  4207→    setRunningKey(preset.key)
+    36→  4208→    try {
+    37→  4209→      const res = await api.pihedRunLoadTest(preset.key) as { result: LoadTestResult; message: string }
+    38→  4210→      setResults((r) => ({ ...r, [preset.key]: res.result }))
+    39→  4211→      toast.success(`Load test complete: ${res.result.verdict}`, {
+    40→  4212→        description: `${preset.label} · ${res.result.errorRatePct}% errors · p95 ${res.result.p95LatencyMs}ms`,
+    41→  4213→      })
+    42→  4214→      await load()
+    43→  4215→    } catch (e: any) {
+    44→  4216→      toast.error(e?.message || 'Failed to run load test')
+    45→  4217→    } finally {
+    46→  4218→      setRunningKey(null)
+    47→  4219→    }
+    48→  4220→  }
+    49→  4221→
+    50→  4222→  if (loading) return <LoadingRow label="Loading load test data…" />
+    51→  4223→  if (error && presets.length === 0) {
+    52→  4224→    return (
+    53→  4225→      <Card>
+    54→  4226→        <CardContent>
+    55→  4227→          <ErrorState message={error} onRetry={load} />
+    56→  4228→        </CardContent>
+    57→  4229→      </Card>
+    58→  4230→    )
+    59→  4231→  }
+    60→  4232→
+    61→  4233→  return (
+    62→  4234→    <div className="space-y-6">
+    63→  4235→      {/* ---- Section header ---- */}
+    64→  4236→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+    65→  4237→        <Card className="votewise-card-glow">
+    66→  4238→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+    67→  4239→            <div className="flex items-center gap-4">
+    68→  4240→              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+    69→  4241→                <Gauge className="h-6 w-6" />
+    70→  4242→              </div>
+    71→  4243→              <div>
+    72→  4244→                <h2 className="font-display text-xl font-bold">Performance Testing</h2>
+    73→  4245→                <p className="max-w-2xl text-sm text-muted-foreground">
+    74→  4246→                  Before every major release, test at 10K / 50K / 100K / 500K / 1M concurrent voters.
+    75→  4247→                  Measure response time, error rate, resource usage.
+    76→  4248→                </p>
+    77→  4249→              </div>
+    78→  4250→            </div>
+    79→  4251→            <Button onClick={load} variant="outline" size="sm" className="gap-1.5">
+    80→  4252→              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+    81→  4253→            </Button>
+    82→  4254→          </CardContent>
+    83→  4255→        </Card>
+    84→  4256→      </motion.div>
+    85→  4257→
+    86→  4258→      {/* ---- Preset cards ---- */}
+    87→  4259→      <div>
+    88→  4260→        <h3 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+    89→  4261→          Test Presets
+    90→  4262→        </h3>
+    91→  4263→        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    92→  4264→          {presets.map((p, i) => {
+    93→  4265→            const isRunning = runningKey === p.key
+    94→  4266→            const result = results[p.key]
+    95→  4267→            return (
+    96→  4268→              <motion.div
+    97→  4269→                key={p.key}
+    98→  4270→                initial={{ opacity: 0, y: 8 }}
+    99→  4271→                animate={{ opacity: 1, y: 0 }}
+   100→  4272→                transition={{ duration: 0.25, delay: i * 0.04 }}
+   101→  4273→              >
+   102→  4274→                <Card className={cn(
+   103→  4275→                  'h-full transition-colors',
+   104→  4276→                  result?.verdict === 'PASS' && 'border-emerald-300/50 dark:border-emerald-800/50',
+   105→  4277→                  result?.verdict === 'DEGRADED' && 'border-amber-300/50 dark:border-amber-800/50',
+   106→  4278→                  result?.verdict === 'FAIL' && 'border-red-300/60 dark:border-red-900/60',
+   107→  4279→                )}>
+   108→  4280→                  <CardContent className="flex h-full flex-col p-4">
+   109→  4281→                    <div className="flex items-start justify-between">
+   110→  4282→                      <Badge className={cn('text-[10px]', LOAD_TEST_PRESET_BADGE[p.key] || LOAD_TEST_PRESET_BADGE['10k'])}>
+   111→  4283→                        {p.key.toUpperCase()}
+   112→  4284→                      </Badge>
+   113→  4285→                      {result && (
+   114→  4286→                        <Badge className={cn('text-[9px]', LOAD_TEST_VERDICT_BADGE[result.verdict])}>
+   115→  4287→                          {result.verdict}
+   116→  4288→                        </Badge>
+   117→  4289→                      )}
+   118→  4290→                    </div>
+   119→  4291→                    <div className="mt-2 font-display text-2xl font-bold tabular-nums">
+   120→  4292→                      {p.concurrentVoters.toLocaleString()}
+   121→  4293→                    </div>
+   122→  4294→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">concurrent voters</div>
+   123→  4295→                    <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+   124→  4296→                      <span className="inline-flex items-center gap-1">
+   125→  4297→                        <Timer className="h-3 w-3" /> {p.durationMinutes}m
+   126→  4298→                      </span>
+   127→  4299→                      <span className="inline-flex items-center gap-1">
+   128→  4300→                        <TrendingUp className="h-3 w-3" /> ramp {p.rampUpSeconds}s
+   129→  4301→                      </span>
+   130→  4302→                    </div>
+   131→  4303→
+   132→  4304→                    {/* Inline result */}
+   133→  4305→                    {result && (
+   134→  4306→                      <motion.div
+   135→  4307→                        initial={{ opacity: 0, height: 0 }}
+   136→  4308→                        animate={{ opacity: 1, height: 'auto' }}
+   137→  4309→                        transition={{ duration: 0.3 }}
+   138→  4310→                        className="mt-3 space-y-1.5 border-t border-border/40 pt-3 text-[10px]"
+   139→  4311→                      >
+   140→  4312→                        <div className="grid grid-cols-2 gap-1.5">
+   141→  4313→                          <ResultStat label="Total reqs" value={formatNumber(result.totalRequests)} />
+   142→  4314→                          <ResultStat label="Errors" value={`${result.errorRatePct}%`} accent={result.errorRatePct > 1 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} />
+   143→  4315→                          <ResultStat label="p50" value={`${result.p50LatencyMs}ms`} />
+   144→  4316→                          <ResultStat label="p95" value={`${result.p95LatencyMs}ms`} />
+   145→  4317→                          <ResultStat label="p99" value={`${result.p99LatencyMs}ms`} />
+   146→  4318→                          <ResultStat label="RPS" value={formatNumber(result.requestsPerSecond)} />
+   147→  4319→                          <ResultStat label="Peak mem" value={`${result.resourceUsage.peakMemoryMb}MB`} />
+   148→  4320→                          <ResultStat label="Avg CPU" value={`${result.resourceUsage.avgCpuPct}%`} />
+   149→  4321→                        </div>
+   150→  4322→                        <p className="text-[10px] leading-snug text-muted-foreground">{result.notes}</p>
+   151→  4323→                      </motion.div>
+   152→  4324→                    )}
+   153→  4325→
+   154→  4326→                    <div className="mt-auto pt-3">
+   155→  4327→                      <Button
+   156→  4328→                        onClick={() => handleRun(p)}
+   157→  4329→                        disabled={isRunning}
+   158→  4330→                        size="sm"
+   159→  4331→                        className="w-full gap-1.5"
+   160→  4332→                      >
+   161→  4333→                        {isRunning
+   162→  4334→                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   163→  4335→                          : <Play className="h-3.5 w-3.5" />}
+   164→  4336→                        {isRunning ? 'Running…' : result ? 'Re-run Test' : 'Run Test'}
+   165→  4337→                      </Button>
+   166→  4338→                    </div>
+   167→  4339→                  </CardContent>
+   168→  4340→                </Card>
+   169→  4341→              </motion.div>
+   170→  4342→            )
+   171→  4343→          })}
+   172→  4344→        </div>
+   173→  4345→      </div>
+   174→  4346→
+   175→  4347→      {/* ---- History table ---- */}
+   176→  4348→      <Card>
+   177→  4349→        <CardHeader className="pb-3">
+   178→  4350→          <CardTitle className="flex items-center gap-2 font-display text-base">
+   179→  4351→            <History className="h-4 w-4 text-primary" /> Load Test History
+   180→  4352→          </CardTitle>
+   181→  4353→        </CardHeader>
+   182→  4354→        <CardContent className="p-0">
+   183→  4355→          {history.length === 0 ? (
+   184→  4356→            <EmptyState icon={History} title="No runs yet" hint="Run a preset above to see the history." />
+   185→  4357→          ) : (
+   186→  4358→            <div className="votewise-scroll overflow-x-auto">
+   187→  4359→              <table className="w-full text-sm">
+   188→  4360→                <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+   189→  4361→                  <tr className="text-left">
+   190→  4362→                    <th className="p-3 font-semibold">Date</th>
+   191→  4363→                    <th className="p-3 font-semibold">Preset</th>
+   192→  4364→                    <th className="p-3 font-semibold">Verdict</th>
+   193→  4365→                    <th className="hidden p-3 text-right font-semibold sm:table-cell">Error Rate</th>
+   194→  4366→                    <th className="hidden p-3 text-right font-semibold md:table-cell">p95</th>
+   195→  4367→                    <th className="hidden p-3 text-right font-semibold lg:table-cell">RPS</th>
+   196→  4368→                  </tr>
+   197→  4369→                </thead>
+   198→  4370→                <tbody>
+   199→  4371→                  {history.map((h) => (
+   200→  4372→                    <tr
+   201→  4373→                      key={h.id}
+   202→  4374→                      onClick={() => setSelectedHistory(selectedHistory?.id === h.id ? null : h)}
+   203→  4375→                      className={cn(
+   204→  4376→                        'cursor-pointer border-t border-border hover:bg-muted/30',
+   205→  4377→                        selectedHistory?.id === h.id && 'bg-primary/5',
+   206→  4378→                      )}
+   207→  4379→                    >
+   208→  4380→                      <td className="whitespace-nowrap p-3 text-xs text-muted-foreground">
+   209→  4381→                        {timeAgo(h.startedAt)}
+   210→  4382→                      </td>
+   211→  4383→                      <td className="p-3">
+   212→  4384→                        <Badge className={cn('text-[9px]', LOAD_TEST_PRESET_BADGE[h.preset] || LOAD_TEST_PRESET_BADGE['10k'])}>
+   213→  4385→                          {h.preset.toUpperCase()}
+   214→  4386→                        </Badge>
+   215→  4387→                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+   216→  4388→                          {h.config.concurrentVoters.toLocaleString()} voters
+   217→  4389→                        </div>
+   218→  4390→                      </td>
+   219→  4391→                      <td className="p-3">
+   220→  4392→                        <Badge className={cn('text-[9px]', LOAD_TEST_VERDICT_BADGE[h.verdict])}>
+   221→  4393→                          {h.verdict}
+   222→  4394→                        </Badge>
+   223→  4395→                      </td>
+   224→  4396→                      <td className="hidden p-3 text-right font-mono text-xs sm:table-cell">
+   225→  4397→                        <span className={h.errorRatePct > 1 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}>
+   226→  4398→                          {h.errorRatePct.toFixed(2)}%
+   227→  4399→                        </span>
+   228→  4400→                      </td>
+   229→  4401→                      <td className="hidden p-3 text-right font-mono text-xs md:table-cell">{h.p95LatencyMs}ms</td>
+   230→  4402→                      <td className="hidden p-3 text-right font-mono text-xs lg:table-cell">{formatNumber(h.requestsPerSecond)}</td>
+   231→  4403→                    </tr>
+   232→  4404→                  ))}
+   233→  4405→                </tbody>
+   234→  4406→              </table>
+   235→  4407→            </div>
+   236→  4408→          )}
+   237→  4409→        </CardContent>
+   238→  4410→      </Card>
+   239→  4411→
+   240→  4412→      {/* ---- Selected history detail panel ---- */}
+   241→  4413→      <AnimatePresence>
+   242→  4414→        {selectedHistory && (
+   243→  4415→          <motion.div
+   244→  4416→            initial={{ opacity: 0, y: 8 }}
+   245→  4417→            animate={{ opacity: 1, y: 0 }}
+   246→  4418→            exit={{ opacity: 0, y: -8 }}
+   247→  4419→            transition={{ duration: 0.25 }}
+   248→  4420→          >
+   249→  4421→            <Card className="votewise-card-glow">
+   250→  4422→              <CardHeader className="pb-3">
+   251→  4423→                <div className="flex items-center justify-between">
+   252→  4424→                  <CardTitle className="flex items-center gap-2 font-display text-base">
+   253→  4425→                    <FileText className="h-4 w-4 text-primary" /> Run Detail · {selectedHistory.preset.toUpperCase()}
+   254→  4426→                  </CardTitle>
+   255→  4427→                  <Badge className={cn('text-[10px]', LOAD_TEST_VERDICT_BADGE[selectedHistory.verdict])}>
+   256→  4428→                    {selectedHistory.verdict}
+   257→  4429→                  </Badge>
+   258→  4430→                </div>
+   259→  4431→              </CardHeader>
+   260→  4432→              <CardContent className="space-y-4">
+   261→  4433→                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+   262→  4434→                  <StatCell label="Total Requests" value={formatNumber(selectedHistory.totalRequests)} icon={Hash} />
+   263→  4435→                  <StatCell label="Successful" value={formatNumber(selectedHistory.successfulRequests)} icon={CheckCircle2} />
+   264→  4436→                  <StatCell label="Failed" value={formatNumber(selectedHistory.failedRequests)} icon={XCircle} />
+   265→  4437→                  <StatCell label="Error Rate" value={`${selectedHistory.errorRatePct}%`} icon={AlertCircle} />
+   266→  4438→                  <StatCell label="Avg Latency" value={`${selectedHistory.avgLatencyMs}ms`} icon={Clock} />
+   267→  4439→                  <StatCell label="p50" value={`${selectedHistory.p50LatencyMs}ms`} icon={TrendingUp} />
+   268→  4440→                  <StatCell label="p95" value={`${selectedHistory.p95LatencyMs}ms`} icon={TrendingUp} />
+   269→  4441→                  <StatCell label="p99" value={`${selectedHistory.p99LatencyMs}ms`} icon={TrendingUp} />
+   270→  4442→                  <StatCell label="Max Latency" value={`${selectedHistory.maxLatencyMs}ms`} icon={Clock} />
+   271→  4443→                  <StatCell label="RPS" value={formatNumber(selectedHistory.requestsPerSecond)} icon={Activity} />
+   272→  4444→                  <StatCell label="Peak Memory" value={`${selectedHistory.resourceUsage.peakMemoryMb}MB`} icon={MemoryStick} />
+   273→  4445→                  <StatCell label="Avg CPU" value={`${selectedHistory.resourceUsage.avgCpuPct}%`} icon={Cpu} />
+   274→  4446→                </div>
+   275→  4447→                <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+   276→  4448→                  <StatCell label="Voters" value={selectedHistory.config.concurrentVoters.toLocaleString()} icon={Hash} />
+   277→  4449→                  <StatCell label="Duration" value={`${selectedHistory.config.durationMinutes}m`} icon={Timer} />
+   278→  4450→                  <StatCell label="Ramp-up" value={`${selectedHistory.config.rampUpSeconds}s`} icon={TrendingUp} />
+   279→  4451→                  <StatCell label="Endpoint" value={selectedHistory.config.targetEndpoint} icon={Activity} />
+   280→  4452→                </div>
+   281→  4453→                <div className="rounded-lg border border-border/60 bg-muted/40 p-3 text-xs">
+   282→  4454→                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Notes</p>
+   283→  4455→                  <p className="mt-1">{selectedHistory.notes}</p>
+   284→  4456→                </div>
+   285→  4457→                <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+   286→  4458→                  <span>Started: <span className="font-mono text-foreground">{formatDateTime(selectedHistory.startedAt)}</span></span>
+   287→  4459→                  <span>·</span>
+   288→  4460→                  <span>Completed: <span className="font-mono text-foreground">{formatDateTime(selectedHistory.completedAt)}</span></span>
+   289→  4461→                </div>
+   290→  4462→              </CardContent>
+   291→  4463→            </Card>
+   292→  4464→          </motion.div>
+   293→  4465→        )}
+   294→  4466→      </AnimatePresence>
+   295→  4467→    </div>
+   296→  4468→  )
+   297→  4469→}
+   298→  4470→
+   299→  4471→function ResultStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+   300→  4472→  return (
+   301→  4473→    <div className="rounded border border-border/40 bg-muted/30 px-1.5 py-1">
+   302→  4474→      <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+   303→  4475→      <div className={cn('font-mono text-[11px] font-semibold tabular-nums', accent)}>{value}</div>
+   304→  4476→    </div>
+   305→  4477→  )
+   306→  4478→}
+   307→  4479→
+   308→  4480→// --- DR Runbook section ----------------------------------------------------
+   309→  4481→
+   310→  4482→const DR_RUNBOOKS: Array<{
+   311→  4483→  id: string
+   312→  4484→  title: string
+   313→  4485→  severity: 'critical' | 'warning' | 'info'
+   314→  4486→  steps: string[]
+   315→  4487→}> = [
+   316→  4488→  {
+   317→  4489→    id: 'db-corruption',
+   318→  4490→    title: 'Database corruption detected',
+   319→  4491→    severity: 'critical',
+   320→  4492→    steps: [
+   321→  4493→      'Trigger `ElectionLock` to freeze all active elections (prevents new votes).',
+   322→  4494→      'Snapshot the corrupted instance (for forensics).',
+   323→  4495→      'Restore from the most recent hourly backup via PITR.',
+   324→  4496→      'Verify the restored instance with `scripts/verify-backup.sh`.',
+   325→  4497→      'Repoint the application to the restored instance.',
+   326→  4498→      'Release the `ElectionLock`.',
+   327→  4499→      'File an incident report.',
+   328→  4500→    ],
+   329→  4501→  },
+   330→  4502→  {
+   331→  4503→    id: 'region-failure',
+   332→  4504→    title: 'Region failure',
+   333→  4505→    severity: 'critical',
+   334→  4506→    steps: [
+   335→  4507→      'Trigger `ElectionLock` globally.',
+   336→  4508→      'Run `scripts/dr-failover.sh` — promotes the DR region.',
+   337→  4509→      'Verify `https://votewise.com.ng/api/pihed/health` returns `ready: true`.',
+   338→  4510→      'Release the `ElectionLock`.',
+   339→  4511→      'Once the primary region recovers, fail back with `scripts/dr-failback.sh`.',
+   340→  4512→    ],
+   341→  4513→  },
+   342→  4514→  {
+   343→  4515→    id: 'vote-loss-suspected',
+   344→  4516→    title: 'Vote loss suspected',
+   345→  4517→    severity: 'critical',
+   346→  4518→    steps: [
+   347→  4519→      'Trigger `ElectionLock`.',
+   348→  4520→      'Query `VoteRecord` count vs `CandidateTally` sum — they must match.',
+   349→  4521→      'If mismatch: restore from PITR to a scratch instance, diff the tables, identify the missing records.',
+   350→  4522→      'Re-apply missing records from the audit log (`AuditEvent` table).',
+   351→  4523→      'Release the `ElectionLock`.',
+   352→  4524→    ],
+   353→  4525→  },
+   354→  4526→]
+   355→  4527→
+   356→  4528→const DR_BACKUP_SCHEDULE: Array<{ type: string; frequency: string; retention: string; storage: string; badge: string }> = [
+   357→  4529→  {
+   358→  4530→    type: 'Hourly',
+   359→  4531→    frequency: 'every hour at :05',
+   360→  4532→    retention: '24 hours',
+   361→  4533→    storage: 'S3 `backups` bucket (region A)',
+   362→  4534→    badge: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   363→  4535→  },
+   364→  4536→  {
+   365→  4537→    type: 'Daily',
+   366→  4538→    frequency: '02:00 daily',
+   367→  4539→    retention: '7 days',
+   368→  4540→    storage: 'S3 `backups` + cross-region DR',
+   369→  4541→    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   370→  4542→  },
+   371→  4543→  {
+   372→  4544→    type: 'Weekly',
+   373→  4545→    frequency: 'Sun 03:00',
+   374→  4546→    retention: '4 weeks',
+   375→  4547→    storage: 'S3 `backups` + Glacier lifecycle',
+   376→  4548→    badge: 'bg-accent text-accent-foreground',
+   377→  4549→  },
+   378→  4550→  {
+   379→  4551→    type: 'Monthly',
+   380→  4552→    frequency: '1st 04:00',
+   381→  4553→    retention: '12 months',
+   382→  4554→    storage: 'S3 `backups` + Glacier Deep Archive',
+   383→  4555→    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   384→  4556→  },
+   385→  4557→]
+   386→  4558→
+   387→  4559→const DR_SCRIPTS: Array<{ path: string; description: string }> = [
+   388→  4560→  { path: 'scripts/dr-test.sh', description: 'Verify the latest backup is restorable' },
+   389→  4561→  { path: 'scripts/dr-failover.sh', description: 'Run a full failover drill — promotes the DR region' },
+   390→  4562→  { path: 'scripts/blue-green-deploy.sh', description: 'Blue-green deployment switcher with health gate' },
+   391→  4563→  { path: 'scripts/rollback.sh', description: 'Rollback the active deployment to the previous version' },
+   392→  4564→]
+   393→  4565→
+   394→  4566→function DisasterRecoverySection() {
+   395→  4567→  return (
+   396→  4568→    <div className="space-y-6">
+   397→  4569→      {/* ---- Header ---- */}
+   398→  4570→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+   399→  4571→        <Card className="votewise-card-glow">
+   400→  4572→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+   401→  4573→            <div className="flex items-center gap-4">
+   402→  4574→              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+   403→  4575→                <Shield className="h-6 w-6" />
+   404→  4576→              </div>
+   405→  4577→              <div>
+   406→  4578→                <h2 className="font-display text-xl font-bold">Disaster Recovery Runbook</h2>
+   407→  4579→                <p className="max-w-2xl text-sm text-muted-foreground">
+   408→  4580→                  Documented recovery procedures. Tested monthly (restore drill), quarterly (failover drill), annually (cold-start).
+   409→  4581→                </p>
+   410→  4582→              </div>
+   411→  4583→            </div>
+   412→  4584→          </CardContent>
+   413→  4585→        </Card>
+   414→  4586→      </motion.div>
+   415→  4587→
+   416→  4588→      {/* ---- RTO / RPO / Vote Loss stat badges ---- */}
+   417→  4589→      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+   418→  4590→        <Card className="votewise-card-glow border-emerald-300/40 dark:border-emerald-800/40">
+   419→  4591→          <CardContent className="flex items-center gap-3 p-4">
+   420→  4592→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+   421→  4593→              <Clock className="h-5 w-5" />
+   422→  4594→            </div>
+   423→  4595→            <div>
+   424→  4596→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">RTO</div>
+   425→  4597→              <div className="font-display text-lg font-bold text-emerald-700 dark:text-emerald-300">&lt; 30 min</div>
+   426→  4598→              <div className="text-[10px] text-muted-foreground">Recovery Time Objective</div>
+   427→  4599→            </div>
+   428→  4600→          </CardContent>
+   429→  4601→        </Card>
+   430→  4602→        <Card className="votewise-card-glow border-amber-300/40 dark:border-amber-800/40">
+   431→  4603→          <CardContent className="flex items-center gap-3 p-4">
+   432→  4604→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+   433→  4605→              <Timer className="h-5 w-5" />
+   434→  4606→            </div>
+   435→  4607→            <div>
+   436→  4608→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">RPO</div>
+   437→  4609→              <div className="font-display text-lg font-bold text-amber-700 dark:text-amber-300">&lt; 5 min</div>
+   438→  4610→              <div className="text-[10px] text-muted-foreground">PITR + WAL streaming</div>
+   439→  4611→            </div>
+   440→  4612→          </CardContent>
+   441→  4613→        </Card>
+   442→  4614→        <Card className="votewise-card-glow border-red-300/40 dark:border-red-900/40">
+   443→  4615→          <CardContent className="flex items-center gap-3 p-4">
+   444→  4616→            <div className="grid h-10 w-10 place-items-center rounded-lg bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+   445→  4617→              <ShieldCheck className="h-5 w-5" />
+   446→  4618→            </div>
+   447→  4619→            <div>
+   448→  4620→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Vote Loss</div>
+   449→  4621→              <div className="font-display text-lg font-bold text-red-700 dark:text-red-300">0</div>
+   450→  4622→              <div className="text-[10px] text-muted-foreground">Transactional + receipt-anchored</div>
+   451→  4623→            </div>
+   452→  4624→          </CardContent>
+   453→  4625→        </Card>
+   454→  4626→      </div>
+   455→  4627→
+   456→  4628→      {/* ---- Runbooks (accordion) ---- */}
+   457→  4629→      <Card>
+   458→  4630→        <CardHeader className="pb-3">
+   459→  4631→          <CardTitle className="flex items-center gap-2 font-display text-base">
+   460→  4632→            <FileText className="h-4 w-4 text-primary" /> Runbooks
+   461→  4633→          </CardTitle>
+   462→  4634→        </CardHeader>
+   463→  4635→        <CardContent>
+   464→  4636→          <Accordion type="single" collapsible defaultValue="db-corruption" className="w-full">
+   465→  4637→            {DR_RUNBOOKS.map((rb) => (
+   466→  4638→              <AccordionItem key={rb.id} value={rb.id}>
+   467→  4639→                <AccordionTrigger className="hover:no-underline">
+   468→  4640→                  <div className="flex flex-1 items-center gap-2 pr-2">
+   469→  4641→                    <Badge className={cn('text-[9px]', ALERT_SEVERITY_BADGE[rb.severity] || ALERT_SEVERITY_BADGE.critical)}>
+   470→  4642→                      {rb.severity}
+   471→  4643→                    </Badge>
+   472→  4644→                    <span className="text-left font-medium">{rb.title}</span>
+   473→  4645→                  </div>
+   474→  4646→                </AccordionTrigger>
+   475→  4647→                <AccordionContent>
+   476→  4648→                  <ol className="ml-1 space-y-2">
+   477→  4649→                    {rb.steps.map((step, i) => (
+   478→  4650→                      <motion.li
+   479→  4651→                        key={i}
+   480→  4652→                        initial={{ opacity: 0, x: -4 }}
+   481→  4653→                        animate={{ opacity: 1, x: 0 }}
+   482→  4654→                        transition={{ duration: 0.2, delay: i * 0.03 }}
+   483→  4655→                        className="flex items-start gap-2.5 text-sm"
+   484→  4656→                      >
+   485→  4657→                        <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 font-mono text-[10px] font-bold text-primary">
+   486→  4658→                          {i + 1}
+   487→  4659→                        </span>
+   488→  4660→                        <span className="text-foreground">{step}</span>
+   489→  4661→                      </motion.li>
+   490→  4662→                    ))}
+   491→  4663→                  </ol>
+   492→  4664→                </AccordionContent>
+   493→  4665→              </AccordionItem>
+   494→  4666→            ))}
+   495→  4667→          </Accordion>
+   496→  4668→        </CardContent>
+   497→  4669→      </Card>
+   498→  4670→
+   499→  4671→      {/* ---- Backup schedule ---- */}
+   500→  4672→      <Card>
+   501→  4673→        <CardHeader className="pb-3">
+   502→  4674→          <CardTitle className="flex items-center gap-2 font-display text-base">
+   503→  4675→            <Database className="h-4 w-4 text-primary" /> Backup Schedule
+   504→  4676→          </CardTitle>
+   505→  4677→        </CardHeader>
+   506→  4678→        <CardContent className="p-0">
+   507→  4679→          <div className="votewise-scroll overflow-x-auto">
+   508→  4680→            <table className="w-full text-sm">
+   509→  4681→              <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+   510→  4682→                <tr className="text-left">
+   511→  4683→                  <th className="p-3 font-semibold">Type</th>
+   512→  4684→                  <th className="p-3 font-semibold">Frequency</th>
+   513→  4685→                  <th className="hidden p-3 font-semibold sm:table-cell">Retention</th>
+   514→  4686→                  <th className="hidden p-3 font-semibold md:table-cell">Storage</th>
+   515→  4687→                </tr>
+   516→  4688→              </thead>
+   517→  4689→              <tbody>
+   518→  4690→                {DR_BACKUP_SCHEDULE.map((row) => (
+   519→  4691→                  <tr key={row.type} className="border-t border-border hover:bg-muted/30">
+   520→  4692→                    <td className="p-3">
+   521→  4693→                      <Badge className={cn('text-[9px]', row.badge)}>{row.type}</Badge>
+   522→  4694→                    </td>
+   523→  4695→                    <td className="p-3 font-mono text-xs">{row.frequency}</td>
+   524→  4696→                    <td className="hidden p-3 font-mono text-xs sm:table-cell">{row.retention}</td>
+   525→  4697→                    <td className="hidden p-3 text-xs text-muted-foreground md:table-cell">{row.storage}</td>
+   526→  4698→                  </tr>
+   527→  4699→                ))}
+   528→  4700→              </tbody>
+   529→  4701→            </table>
+   530→  4702→          </div>
+   531→  4703→          <div className="border-t border-border/40 p-3 text-[10px] text-muted-foreground">
+   532→  4704→            All backups are AES-256 encrypted at rest and TLS-encrypted in transit. The `backups` bucket
+   533→  4705→            replicates to <code className="font-mono">eu-central-1</code> (Frankfurt) for cross-region disaster recovery.
+   534→  4706→          </div>
+   535→  4707→        </CardContent>
+   536→  4708→      </Card>
+   537→  4709→
+   538→  4710→      {/* ---- DR scripts ---- */}
+   539→  4711→      <Card>
+   540→  4712→        <CardHeader className="pb-3">
+   541→  4713→          <CardTitle className="flex items-center gap-2 font-display text-base">
+   542→  4714→            <Terminal className="h-4 w-4 text-primary" /> DR &amp; Deployment Scripts
+   543→  4715→          </CardTitle>
+   544→  4716→        </CardHeader>
+   545→  4717→        <CardContent className="space-y-2">
+   546→  4718→          {DR_SCRIPTS.map((s) => (
+   547→  4719→            <div
+   548→  4720→              key={s.path}
+   549→  4721→              className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+   550→  4722→            >
+   551→  4723→              <div className="min-w-0 flex-1">
+   552→  4724→                <code className="font-mono text-xs font-semibold text-foreground">./{s.path}</code>
+   553→  4725→                <p className="mt-0.5 text-[11px] text-muted-foreground">{s.description}</p>
+   554→  4726→              </div>
+   555→  4727→              <CopyButton text={`./${s.path}`} size="sm" />
+   556→  4728→            </div>
+   557→  4729→          ))}
+   558→  4730→          <div className="mt-3 rounded-lg border border-emerald-300/40 bg-emerald-50/60 p-3 text-xs text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+   559→  4731→            <p className="flex items-center gap-1.5 font-semibold">
+   560→  4732→              <Power className="h-3.5 w-3.5" /> Recovery Test Schedule
+   561→  4733→            </p>
+   562→  4734→            <ul className="mt-1 space-y-0.5 text-[11px] opacity-90">
+   563→  4735→              <li>· <strong>Monthly</strong> — restore latest daily backup to scratch RDS, verify counts, tear down.</li>
+   564→  4736→              <li>· <strong>Quarterly</strong> — full failover drill (promote DR region, smoke tests, fail back).</li>
+   565→  4737→              <li>· <strong>Annually</strong> — full cold-start from backups only (validates Terraform + restore path end-to-end).</li>
+   566→  4738→            </ul>
+   567→  4739→          </div>
+   568→  4740→        </CardContent>
+   569→  4741→      </Card>
+   570→  4742→    </div>
+   571→  4743→  )
+   572→  4744→}
+   573→  4745→
+   574→  4746→

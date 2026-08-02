@@ -2599,3 +2599,58 @@ model SloSample {
   @@unique([sloId, date])
   @@index([sloId])
 }
+
+/// A postmortem document — written after an incident is resolved. Completes
+/// the incident lifecycle: detect → alert → respond → POSTMORTEM → improve.
+/// Spec (Ch.17 Philosophy): "Infrastructure is not an afterthought—it is part
+/// of election integrity." Postmortems ensure we learn from every failure.
+model Postmortem {
+  id              String   @id @default(cuid())
+  incidentId      String?  // link to FraudIncident or AlertEvent
+  title           String
+  severity        String   // critical | warning | info
+  status          String   // draft | published | archived
+  summary         String   // executive summary
+  timeline        String   // JSON array of { time, event }
+  rootCause       String   // root cause analysis
+  impact          String   // user/election impact description
+  whatWentWell    String   // JSON array of strings
+  whatWentWrong   String   // JSON array of strings
+  actionItems     String   // JSON array of { item, owner, due, status }
+  lessonsLearned  String   // JSON array of strings
+  authoredBy      String
+  authoredByName  String
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  publishedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([incidentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// A scheduled maintenance window — planned downtime or degraded period.
+/// Distinct from MaintenanceMode (which is active). This lets admins schedule
+/// future windows, notify affected orgs, and auto-activate when the window starts.
+model ScheduledMaintenance {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  level           String   // PLATFORM | ORGANIZATION | MODULE
+  organizationId  String?
+  module          String?  // affected module (if level=MODULE)
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  status          String   // SCHEDULED | IN_PROGRESS | COMPLETED | CANCELLED
+  notifiedOrgs    Boolean  @default(false)
+  createdBy        String
+  createdByName   String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([scheduledStart])
+  @@index([organizationId])
+}

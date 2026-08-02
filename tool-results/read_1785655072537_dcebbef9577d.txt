@@ -1,0 +1,2002 @@
+     1→'use client'
+     2→
+     3→// =============================================================================
+     4→// VoteWise — Admin Infrastructure Console
+     5→// Chapter 17 — PIHED (Production Infrastructure, Hosting & Deployment) UI
+     6→// =============================================================================
+     7→// 6 tabs:
+     8→//   1. Pre-Flight Checklist (Election Readiness Checker — the hero feature)
+     9→//   2. Live Services (real-time platform status)
+    10→//   3. System Metrics (memory / heap / queue / db / rps / error rate sparklines)
+    11→//   4. Backups (manual trigger + history)
+    12→//   5. Deployments (active deployment, canary promote, rollback, history)
+    13→//   6. Custom Domains (multi-tenant domain routing + DNS/SSL verification)
+    14→//
+    15→// Palette: emerald / gold / amber / zinc / red ONLY — NO indigo, NO blue.
+    16→// Default theme is DARK — every badge has explicit dark: variants.
+    17→// Auth gate: requires SUPER_ADMIN or PLATFORM_SUPER_ADMIN. Falls back to a
+    18→// login card if the session is invalid.
+    19→// =============================================================================
+    20→
+    21→import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+    22→import { motion, AnimatePresence } from 'framer-motion'
+    23→import Link from 'next/link'
+    24→import {
+    25→  Server, Mail, Cloud, Shield, Activity, Gauge, Loader2, RefreshCw, Plus,
+    26→  CheckCircle2, AlertCircle, XCircle, AlertTriangle, Lock, Zap,
+    27→  Clock, Cpu, Database, HardDrive, ListChecks, Rocket, ArrowLeft,
+    28→  Copy, Trash2, Globe, ShieldCheck, KeyRound, Siren, Wrench, Sparkles, TrendingUp,
+    29→  Hash, ArrowUpRight, ArrowRightLeft, History, Building2,
+    30→  // New icons for the 4 additional tabs (Logs / Alerts / Costs / Load Test + DR)
+    31→  ScrollText, BellRing, DollarSign, Terminal, Play, Search, Filter, Eraser,
+    32→  MessageSquare, Smartphone, Megaphone, Timer, MemoryStick, Boxes, Calculator,
+    33→  Inbox, FileText, Power, Target,
+    34→} from 'lucide-react'
+    35→import {
+    36→  Card, CardContent, CardHeader, CardTitle,
+    37→} from '@/components/ui/card'
+    38→import { Badge } from '@/components/ui/badge'
+    39→import { Button } from '@/components/ui/button'
+    40→import { Input } from '@/components/ui/input'
+    41→import { Label } from '@/components/ui/label'
+    42→import { Textarea } from '@/components/ui/textarea'
+    43→import { Progress } from '@/components/ui/progress'
+    44→import { Checkbox } from '@/components/ui/checkbox'
+    45→import {
+    46→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    47→} from '@/components/ui/select'
+    48→import {
+    49→  Tabs, TabsList, TabsTrigger, TabsContent,
+    50→} from '@/components/ui/tabs'
+    51→import {
+    52→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+    53→} from '@/components/ui/dialog'
+    54→import {
+    55→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    56→  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    57→} from '@/components/ui/alert-dialog'
+    58→import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+    59→import { Switch } from '@/components/ui/switch'
+    60→import {
+    61→  Accordion, AccordionItem, AccordionTrigger, AccordionContent,
+    62→} from '@/components/ui/accordion'
+    63→import {
+    64→  Tooltip, TooltipContent, TooltipTrigger,
+    65→} from '@/components/ui/tooltip'
+    66→import {
+    67→  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+    68→  CartesianGrid, Tooltip as RechartsTooltip,
+    69→} from 'recharts'
+    70→import { api } from '@/lib/api'
+    71→import { cn } from '@/lib/utils'
+    72→import { toast } from 'sonner'
+    73→
+    74→// ---------------------------------------------------------------------------
+    75→// Palette + type maps (emerald / gold / amber / zinc / red only)
+    76→// ---------------------------------------------------------------------------
+    77→
+    78→const HEALTH_BADGE: Record<string, string> = {
+    79→  HEALTHY: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    80→  DEGRADED: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+    81→  UNHEALTHY: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+    82→  UNKNOWN: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-300',
+    83→}
+    84→
+    85→const PLATFORM_STATUS_STYLE: Record<string, { badge: string; ring: string; label: string }> = {
+    86→  OPERATIONAL: {
+    87→    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    88→    ring: 'ring-emerald-300/40 dark:ring-emerald-700/40',
+    89→    label: 'All Systems Operational',
+    90→  },
+    91→  DEGRADED: {
+    92→    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+    93→    ring: 'ring-amber-300/40 dark:ring-amber-700/40',
+    94→    label: 'Degraded Performance',
+    95→  },
+    96→  PARTIAL_OUTAGE: {
+    97→    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 ring-1 ring-amber-300/40 dark:ring-amber-700/40',
+    98→    ring: 'ring-amber-400/50 dark:ring-amber-700/50',
+    99→    label: 'Partial Outage',
+   100→  },
+   101→  MAJOR_OUTAGE: {
+   102→    badge: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   103→    ring: 'ring-red-400/50 dark:ring-red-800/50',
+   104→    label: 'Major Outage',
+   105→  },
+   106→}
+   107→
+   108→const CATEGORY_STYLE: Record<string, string> = {
+   109→  core: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   110→  messaging: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   111→  storage: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   112→  security: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   113→  ops: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   114→  capacity: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   115→}
+   116→
+   117→const CATEGORY_ICON: Record<string, any> = {
+   118→  core: Server,
+   119→  messaging: Mail,
+   120→  storage: Cloud,
+   121→  security: Shield,
+   122→  ops: Activity,
+   123→  capacity: Gauge,
+   124→}
+   125→
+   126→const BACKUP_TYPE_BADGE: Record<string, string> = {
+   127→  hourly: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   128→  daily: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   129→  weekly: 'bg-accent text-accent-foreground',
+   130→  monthly: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   131→  manual: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   132→}
+   133→
+   134→const BACKUP_STATUS_BADGE: Record<string, string> = {
+   135→  COMPLETED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   136→  RUNNING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   137→  FAILED: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   138→  PENDING: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-300',
+   139→}
+   140→
+   141→const ENV_BADGE: Record<string, string> = {
+   142→  production: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   143→  staging: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   144→  development: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   145→}
+   146→
+   147→const STRATEGY_BADGE: Record<string, string> = {
+   148→  'blue-green': 'bg-accent text-accent-foreground',
+   149→  canary: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   150→  rolling: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   151→}
+   152→
+   153→const DEPLOY_STATUS_BADGE: Record<string, string> = {
+   154→  LIVE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   155→  DEPLOYING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   156→  ROLLED_BACK: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-300',
+   157→  FAILED: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   158→}
+   159→
+   160→const DOMAIN_STATUS_BADGE: Record<string, string> = {
+   161→  ACTIVE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   162→  PENDING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   163→  VERIFYING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   164→  FAILED: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   165→  EXPIRED: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-300',
+   166→}
+   167→
+   168→const SSL_STATUS_BADGE: Record<string, string> = {
+   169→  ACTIVE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   170→  PENDING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   171→  ISSUING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   172→  FAILED: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   173→}
+   174→
+   175→const DOMAIN_TYPE_BADGE: Record<string, string> = {
+   176→  subdomain: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   177→  apex: 'bg-accent text-accent-foreground',
+   178→  wildcard: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   179→}
+   180→
+   181→// --- New palette maps (Logs / Alerts / Costs / Load Test + DR) -------------
+   182→
+   183→const LOG_LEVEL_BADGE: Record<string, string> = {
+   184→  debug: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   185→  info: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   186→  warn: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   187→  error: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   188→  fatal: 'bg-red-600 text-white font-bold dark:bg-red-700 dark:text-red-50',
+   189→}
+   190→
+   191→const LOG_LEVEL_DOT: Record<string, string> = {
+   192→  debug: 'bg-zinc-400',
+   193→  info: 'bg-emerald-500',
+   194→  warn: 'bg-amber-500',
+   195→  error: 'bg-red-500',
+   196→  fatal: 'bg-red-600',
+   197→}
+   198→
+   199→const LOG_CATEGORY_BADGE: Record<string, string> = {
+   200→  application: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   201→  audit: 'bg-accent text-accent-foreground',
+   202→  security: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   203→  infrastructure: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   204→  api: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   205→  deployment: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   206→}
+   207→
+   208→const LOG_SERVICE_BADGE: Record<string, string> = {
+   209→  app: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   210→  worker: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   211→  scheduler: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   212→  notification: 'bg-accent text-accent-foreground',
+   213→  'fraud-engine': 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+   214→  'analytics-engine': 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 ring-1 ring-amber-300/40 dark:ring-amber-700/40',
+   215→  'results-service': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   216→}
+   217→
+   218→const ALERT_SEVERITY_BADGE: Record<string, string> = {
+   219→  info: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   220→  warning: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   221→  critical: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 ring-1 ring-red-400/40 dark:ring-red-700/40',
+   222→}
+   223→
+   224→const ALERT_SEVERITY_DOT: Record<string, string> = {
+   225→  info: 'bg-zinc-400',
+   226→  warning: 'bg-amber-500',
+   227→  critical: 'bg-red-500',
+   228→}
+   229→
+   230→const ALERT_SEVERITY_RING: Record<string, string> = {
+   231→  info: 'border-zinc-300/50 dark:border-zinc-700/50',
+   232→  warning: 'border-amber-300/60 dark:border-amber-800/60',
+   233→  critical: 'border-red-300/60 dark:border-red-900/60',
+   234→}
+   235→
+   236→// Map channel name → { icon, label, badge }
+   237→const ALERT_CHANNEL_META: Record<string, { icon: any; label: string; badge: string }> = {
+   238→  email: {
+   239→    icon: Mail,
+   240→    label: 'Email',
+   241→    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   242→  },
+   243→  sms: {
+   244→    icon: Smartphone,
+   245→    label: 'SMS',
+   246→    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   247→  },
+   248→  whatsapp: {
+   249→    icon: MessageSquare,
+   250→    label: 'WhatsApp',
+   251→    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300',
+   252→  },
+   253→  slack: {
+   254→    icon: Hash,
+   255→    label: 'Slack',
+   256→    badge: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   257→  },
+   258→  teams: {
+   259→    icon: Megaphone,
+   260→    label: 'Teams',
+   261→    badge: 'bg-accent text-accent-foreground',
+   262→  },
+   263→}
+   264→
+   265→const COST_CATEGORY_COLOR: Record<string, string> = {
+   266→  infrastructure: '#10b981', // emerald-500
+   267→  compute: '#34d399',         // emerald-400
+   268→  database: '#f59e0b',        // amber-500
+   269→  storage: '#a1a1aa',         // zinc-400
+   270→  sms: '#d4a02a',             // warm gold
+   271→  email: '#059669',           // emerald-600
+   272→  whatsapp: '#6ee7b7',        // emerald-300
+   273→  cdn: '#fbbf24',             // amber-400
+   274→  other: '#71717a',           // zinc-500
+   275→}
+   276→
+   277→const COST_CATEGORY_BADGE: Record<string, string> = {
+   278→  infrastructure: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   279→  compute: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   280→  database: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   281→  storage: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   282→  sms: 'bg-accent text-accent-foreground',
+   283→  email: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   284→  whatsapp: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   285→  cdn: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   286→  other: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
+   287→}
+   288→
+   289→const LOAD_TEST_VERDICT_BADGE: Record<string, string> = {
+   290→  PASS: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   291→  DEGRADED: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 ring-1 ring-amber-300/40 dark:ring-amber-700/40',
+   292→  FAIL: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 ring-1 ring-red-400/40 dark:ring-red-700/40',
+   293→}
+   294→
+   295→const LOAD_TEST_PRESET_BADGE: Record<string, string> = {
+   296→  '10k': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+   297→  '50k': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 ring-1 ring-emerald-300/40 dark:ring-emerald-700/40',
+   298→  '100k': 'bg-accent text-accent-foreground',
+   299→  '500k': 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+   300→  '1m': 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 ring-1 ring-red-400/40 dark:ring-red-700/40',
+   301→}
+   302→
+   303→// ---------------------------------------------------------------------------
+   304→// Helpers
+   305→// ---------------------------------------------------------------------------
+   306→
+   307→function formatDateTime(iso: string | null | undefined): string {
+   308→  if (!iso) return '—'
+   309→  try {
+   310→    return new Date(iso).toLocaleString(undefined, {
+   311→      year: 'numeric', month: 'short', day: '2-digit',
+   312→      hour: '2-digit', minute: '2-digit',
+   313→    })
+   314→  } catch {
+   315→    return iso
+   316→  }
+   317→}
+   318→
+   319→function timeAgo(iso: string | null | undefined): string {
+   320→  if (!iso) return 'Never'
+   321→  try {
+   322→    const diff = Date.now() - new Date(iso).getTime()
+   323→    const sec = Math.floor(diff / 1000)
+   324→    if (sec < 60) return `${sec}s ago`
+   325→    const min = Math.floor(sec / 60)
+   326→    if (min < 60) return `${min}m ago`
+   327→    const hr = Math.floor(min / 60)
+   328→    if (hr < 24) return `${hr}h ago`
+   329→    const day = Math.floor(hr / 24)
+   330→    if (day < 30) return `${day}d ago`
+   331→    return formatDateTime(iso)
+   332→  } catch {
+   333→    return iso
+   334→  }
+   335→}
+   336→
+   337→function formatUptime(sec: number): string {
+   338→  if (!Number.isFinite(sec) || sec <= 0) return '—'
+   339→  const d = Math.floor(sec / 86400)
+   340→  const h = Math.floor((sec % 86400) / 3600)
+   341→  const m = Math.floor((sec % 3600) / 60)
+   342→  return `${d}d ${h}h ${m}m`
+   343→}
+   344→
+   345→function formatNumber(n: number): string {
+   346→  if (!Number.isFinite(n)) return '0'
+   347→  return n.toLocaleString('en-NG')
+   348→}
+   349→
+   350→function formatBytes(bytes: number): string {
+   351→  if (!bytes) return '0 MB'
+   352→  const mb = bytes / 1024 / 1024
+   353→  if (mb < 1024) return `${mb.toFixed(1)} MB`
+   354→  return `${(mb / 1024).toFixed(2)} GB`
+   355→}
+   356→
+   357→function formatDuration(ms: number | null | undefined): string {
+   358→  if (!ms) return '—'
+   359→  if (ms < 1000) return `${ms}ms`
+   360→  const s = ms / 1000
+   361→  if (s < 60) return `${s.toFixed(1)}s`
+   362→  const m = Math.floor(s / 60)
+   363→  const rs = Math.floor(s % 60)
+   364→  return `${m}m ${rs}s`
+   365→}
+   366→
+   367→async function copyToClipboard(text: string): Promise<boolean> {
+   368→  try {
+   369→    if (navigator.clipboard && window.isSecureContext) {
+   370→      await navigator.clipboard.writeText(text)
+   371→    } else {
+   372→      const ta = document.createElement('textarea')
+   373→      ta.value = text
+   374→      ta.style.position = 'fixed'
+   375→      ta.style.opacity = '0'
+   376→      document.body.appendChild(ta)
+   377→      ta.select()
+   378→      document.execCommand('copy')
+   379→      document.body.removeChild(ta)
+   380→    }
+   381→    return true
+   382→  } catch {
+   383→    return false
+   384→  }
+   385→}
+   386→
+   387→// ---------------------------------------------------------------------------
+   388→// Types — mirror PIHED backend
+   389→// ---------------------------------------------------------------------------
+   390→
+   391→type HealthStatus = 'HEALTHY' | 'DEGRADED' | 'UNHEALTHY' | 'UNKNOWN'
+   392→
+   393→interface HealthCheck {
+   394→  name: string
+   395→  category: 'core' | 'messaging' | 'storage' | 'security' | 'ops' | 'capacity'
+   396→  status: HealthStatus
+   397→  message: string
+   398→  latencyMs?: number
+   399→  critical: boolean
+   400→  detail?: string
+   401→}
+   402→
+   403→interface CapacityResult {
+   404→  expectedVoters: number
+   405→  safeConcurrency: number
+   406→  estimatedThroughputPerMin: number
+   407→  sufficient: boolean
+   408→  recommendation: string
+   409→  replicas?: number
+   410→  votingWindowHours?: number
+   411→}
+   412→
+   413→interface ReadinessResult {
+   414→  ready: boolean
+   415→  checks: HealthCheck[]
+   416→  criticalFailures: number
+   417→  warnings: number
+   418→  capacity: CapacityResult
+   419→  timestamp: string
+   420→  runId?: string
+   421→}
+   422→
+   423→interface ReadinessRun {
+   424→  id: string
+   425→  organizationId: string | null
+   426→  electionId: string | null
+   427→  expectedVoters: number
+   428→  ready: boolean
+   429→  criticalFailures: number
+   430→  warnings: number
+   431→  triggeredByName: string | null
+   432→  notes: string | null
+   433→  createdAt: string
+   434→}
+   435→
+   436→interface PlatformService {
+   437→  name: string
+   438→  status: HealthStatus
+   439→  uptime: number
+   440→  message: string
+   441→  category: string
+   442→}
+   443→
+   444→interface PlatformIncident {
+   445→  title: string
+   446→  status: string
+   447→  severity: string
+   448→  createdAt: string
+   449→}
+   450→
+   451→interface PlatformMaintenance {
+   452→  reason: string
+   453→  startedAt: string
+   454→  isActive: boolean
+   455→  level: string
+   456→}
+   457→
+   458→interface PlatformStatus {
+   459→  status: 'OPERATIONAL' | 'DEGRADED' | 'PARTIAL_OUTAGE' | 'MAJOR_OUTAGE' | 'UNKNOWN'
+   460→  services: PlatformService[]
+   461→  incidents: PlatformIncident[]
+   462→  maintenance: PlatformMaintenance[]
+   463→  uptime: number
+   464→  lastUpdated: string
+   465→  error?: string
+   466→}
+   467→
+   468→interface LiveMetrics {
+   469→  memoryMb: number
+   470→  heapUsedMb: number
+   471→  heapTotalMb: number
+   472→  dbSizeMb: number
+   473→  queueDepth: number
+   474→  rps: number
+   475→  errorRate: number
+   476→  avgLatencyMs: number
+   477→  uptimeSec: number
+   478→}
+   479→
+   480→interface MetricPoint { value: number; createdAt: string }
+   481→
+   482→interface MetricsResponse {
+   483→  live: LiveMetrics
+   484→  series: Record<string, MetricPoint[]>
+   485→  capturedAt: string
+   486→}
+   487→
+   488→interface BackupRecord {
+   489→  id: string
+   490→  type: string
+   491→  status: string
+   492→  sizeBytes: number | null
+   493→  location: string | null
+   494→  checksum: string | null
+   495→  encrypted: boolean
+   496→  durationMs: number | null
+   497→  error: string | null
+   498→  triggeredBy: string | null
+   499→  createdAt: string
+   500→  completedAt: string | null
+   501→}
+   502→
+   503→interface BackupStats {
+   504→  total: number
+   505→  completed: number
+   506→  failed: number
+   507→  lastSuccessAt: string | null
+   508→  totalSizeBytes: number
+   509→}
+   510→
+   511→interface DeploymentRecord {
+   512→  id: string
+   513→  version: string
+   514→  environment: string
+   515→  strategy: string
+   516→  status: string
+   517→  canaryPct: number
+   518→  commitMessage: string | null
+   519→  deployedBy: string | null
+   520→  healthCheckPassed: boolean
+   521→  rollbackOf: string | null
+   522→  notes: string | null
+   523→  startedAt: string
+   524→  completedAt: string | null
+   525→}
+   526→
+   527→interface CustomDomain {
+   528→  id: string
+   529→  organizationId: string
+   530→  domain: string
+   531→  type: string
+   532→  status: string
+   533→  verificationToken: string | null
+   534→  sslStatus: string
+   535→  sslExpiresAt: string | null
+   536→  dnsVerifiedAt: string | null
+   537→  lastCheckedAt: string | null
+   538→  primary: boolean
+   539→  createdAt: string
+   540→  organization?: { id: string; name: string; subdomain: string | null } | null
+   541→}
+   542→
+   543→interface DomainStats {
+   544→  total: number
+   545→  active: number
+   546→  pending: number
+   547→  failed: number
+   548→  expiringSoon: number
+   549→}
+   550→
+   551→interface Organization {
+   552→  id: string
+   553→  name: string
+   554→  slug: string
+   555→  subdomain: string | null
+   556→  category: string | null
+   557→}
+   558→
+   559→// --- New types (Logs / Alerts / Costs / Load Test) -------------------------
+   560→
+   561→interface LogEntry {
+   562→  id: string
+   563→  category: string
+   564→  level: string
+   565→  service: string
+   566→  message: string
+   567→  metadata: string | null
+   568→  requestId: string | null
+   569→  organizationId: string | null
+   570→  ipAddress: string | null
+   571→  createdAt: string
+   572→}
+   573→
+   574→interface LogStats {
+   575→  total24h: number
+   576→  errors24h: number
+   577→  warnings24h: number
+   578→  byCategory: Record<string, number>
+   579→  byService: Record<string, number>
+   580→}
+   581→
+   582→interface AlertEvent {
+   583→  id: string
+   584→  ruleId: string | null
+   585→  ruleName: string
+   586→  metric: string
+   587→  severity: string
+   588→  message: string
+   589→  value: number
+   590→  threshold: number
+   591→  channels: string          // JSON array
+   592→  delivered: string         // JSON array of { channel, status, at }
+   593→  acknowledged: boolean
+   594→  acknowledgedBy: string | null
+   595→  acknowledgedAt: string | null
+   596→  resolvedAt: string | null
+   597→  createdAt: string
+   598→}
+   599→
+   600→interface AlertRule {
+   601→  id: string
+   602→  name: string
+   603→  description: string | null
+   604→  metric: string
+   605→  condition: string
+   606→  threshold: number
+   607→  windowMinutes: number
+   608→  severity: string
+   609→  channels: string          // JSON array
+   610→  enabled: boolean
+   611→  cooldownMin: number
+   612→  lastFiredAt: string | null
+   613→  createdAt: string
+   614→  updatedAt: string
+   615→}
+   616→
+   617→interface AlertStats {
+   618→  total24h: number
+   619→  critical24h: number
+   620→  unacknowledged: number
+   621→  bySeverity: Record<string, number>
+   622→}
+   623→
+   624→interface CostSummary {
+   625→  totalUsd: number
+   626→  totalNgn: number
+   627→  byCategory: Record<string, number>
+   628→  byService: Record<string, number>
+   629→}
+   630→
+   631→interface CostTrendPoint {
+   632→  date: string
+   633→  costs: Record<string, number>
+   634→  total: number
+   635→}
+   636→
+   637→interface LoadTestConfig {
+   638→  concurrentVoters: number
+   639→  durationMinutes: number
+   640→  rampUpSeconds: number
+   641→  targetEndpoint: string
+   642→}
+   643→
+   644→interface LoadTestPreset extends LoadTestConfig {
+   645→  key: string
+   646→  label: string
+   647→}
+   648→
+   649→interface LoadTestResult {
+   650→  config: LoadTestConfig
+   651→  totalRequests: number
+   652→  successfulRequests: number
+   653→  failedRequests: number
+   654→  errorRatePct: number
+   655→  avgLatencyMs: number
+   656→  p50LatencyMs: number
+   657→  p95LatencyMs: number
+   658→  p99LatencyMs: number
+   659→  maxLatencyMs: number
+   660→  requestsPerSecond: number
+   661→  resourceUsage: {
+   662→    peakMemoryMb: number
+   663→    avgCpuPct: number
+   664→    peakConnections: number
+   665→  }
+   666→  verdict: 'PASS' | 'DEGRADED' | 'FAIL'
+   667→  notes: string
+   668→  startedAt: string
+   669→  completedAt: string
+   670→}
+   671→
+   672→interface LoadTestHistoryItem extends LoadTestResult {
+   673→  id: string
+   674→  preset: string
+   675→}
+   676→
+   677→// ===========================================================================
+   678→// MAIN COMPONENT
+   679→// ===========================================================================
+   680→
+   681→export function InfrastructureConsole() {
+   682→  return (
+   683→    <Suspense fallback={<BootLoader />}>
+   684→      <InfrastructureConsoleInner />
+   685→    </Suspense>
+   686→  )
+   687→}
+   688→
+   689→function BootLoader() {
+   690→  return (
+   691→    <div className="grid min-h-[60vh] place-items-center">
+   692→      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   693→    </div>
+   694→  )
+   695→}
+   696→
+   697→function InfrastructureConsoleInner() {
+   698→  const [authed, setAuthed] = useState(false)
+   699→  const [loading, setLoading] = useState(true)
+   700→  const [official, setOfficial] = useState<any>(null)
+   701→  const [tab, setTab] = useState<string>('readiness')
+   702→
+   703→  useEffect(() => {
+   704→    api
+   705→      .me()
+   706→      .then((d) => {
+   707→        if (d.valid && (d.official.role === 'SUPER_ADMIN' || d.official.role === 'PLATFORM_SUPER_ADMIN')) {
+   708→          setOfficial(d.official)
+   709→          setAuthed(true)
+   710→        }
+   711→      })
+   712→      .catch(() => {})
+   713→      .finally(() => setLoading(false))
+   714→  }, [])
+   715→
+   716→  if (loading) {
+   717→    return (
+   718→      <div className="grid min-h-[60vh] place-items-center">
+   719→        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+   720→      </div>
+   721→    )
+   722→  }
+   723→
+   724→  if (!authed) {
+   725→    return <InfrastructureLogin onSuccess={(o) => { setOfficial(o); setAuthed(true) }} />
+   726→  }
+   727→
+   728→  return (
+   729→    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+   730→      {/* ---- Header card ---- */}
+   731→      <motion.div
+   732→        initial={{ opacity: 0, y: -8 }}
+   733→        animate={{ opacity: 1, y: 0 }}
+   734→        transition={{ duration: 0.3 }}
+   735→        className="mb-6"
+   736→      >
+   737→        <Card className="votewise-card-glow overflow-hidden">
+   738→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+   739→            <div className="flex items-center gap-4">
+   740→              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+   741→                <Server className="h-6 w-6" />
+   742→              </div>
+   743→              <div>
+   744→                <div className="flex flex-wrap items-center gap-2">
+   745→                  <h1 className="font-display text-2xl font-bold sm:text-3xl">Infrastructure Console</h1>
+   746→                  <Badge variant="outline" className="gap-1 text-[10px] uppercase tracking-wider">
+   747→                    <Cpu className="h-3 w-3" /> PIHED · Ch. 17
+   748→                  </Badge>
+   749→                </div>
+   750→                <p className="text-sm text-muted-foreground">
+   751→                  Production infrastructure, hosting &amp; deployment control room for VoteWise platform admins.
+   752→                </p>
+   753→              </div>
+   754→            </div>
+   755→            <div className="flex flex-col items-start gap-2 sm:items-end">
+   756→              <div className="flex items-center gap-2">
+   757→                <Button asChild variant="outline" size="sm" className="gap-1.5">
+   758→                  <Link href="/admin/operations">
+   759→                    <ArrowLeft className="h-4 w-4" /> Operations
+   760→                  </Link>
+   761→                </Button>
+   762→                <Button asChild variant="outline" size="sm" className="gap-1.5">
+   763→                  <Link href="/admin">
+   764→                    <ArrowLeft className="h-4 w-4" /> Admin
+   765→                  </Link>
+   766→                </Button>
+   767→              </div>
+   768→              <Badge variant="outline" className="gap-1.5">
+   769→                <Shield className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+   770→                {official?.name || 'Platform Admin'}
+   771→              </Badge>
+   772→            </div>
+   773→          </CardContent>
+   774→        </Card>
+   775→      </motion.div>
+   776→
+   777→      {/* ---- Tabs ---- */}
+   778→      <Tabs value={tab} onValueChange={setTab}>
+   779→        <div className="votewise-scroll mb-6 overflow-x-auto">
+   780→          <TabsList className="flex w-max gap-1">
+   781→            <TabsTrigger value="readiness" className="gap-1.5">
+   782→              <ListChecks className="h-4 w-4" /> Pre-Flight
+   783→            </TabsTrigger>
+   784→            <TabsTrigger value="services" className="gap-1.5">
+   785→              <Activity className="h-4 w-4" /> Live Services
+   786→            </TabsTrigger>
+   787→            <TabsTrigger value="metrics" className="gap-1.5">
+   788→              <Gauge className="h-4 w-4" /> Metrics
+   789→            </TabsTrigger>
+   790→            <TabsTrigger value="backups" className="gap-1.5">
+   791→              <Database className="h-4 w-4" /> Backups
+   792→            </TabsTrigger>
+   793→            <TabsTrigger value="deployments" className="gap-1.5">
+   794→              <Rocket className="h-4 w-4" /> Deployments
+   795→            </TabsTrigger>
+   796→            <TabsTrigger value="domains" className="gap-1.5">
+   797→              <Globe className="h-4 w-4" /> Domains
+   798→            </TabsTrigger>
+   799→            <TabsTrigger value="logs" className="gap-1.5">
+   800→              <ScrollText className="h-4 w-4" /> Logs
+   801→            </TabsTrigger>
+   802→            <TabsTrigger value="alerts" className="gap-1.5">
+   803→              <BellRing className="h-4 w-4" /> Alerts
+   804→            </TabsTrigger>
+   805→            <TabsTrigger value="costs" className="gap-1.5">
+   806→              <DollarSign className="h-4 w-4" /> Costs
+   807→            </TabsTrigger>
+   808→            <TabsTrigger value="loadtest" className="gap-1.5">
+   809→              <Gauge className="h-4 w-4" /> Load Test
+   810→            </TabsTrigger>
+   811→          </TabsList>
+   812→        </div>
+   813→
+   814→        <TabsContent value="readiness" className="mt-0">
+   815→          <ReadinessTab />
+   816→        </TabsContent>
+   817→        <TabsContent value="services" className="mt-0">
+   818→          <LiveServicesTab />
+   819→        </TabsContent>
+   820→        <TabsContent value="metrics" className="mt-0">
+   821→          <SystemMetricsTab />
+   822→        </TabsContent>
+   823→        <TabsContent value="backups" className="mt-0">
+   824→          <BackupsTab />
+   825→        </TabsContent>
+   826→        <TabsContent value="deployments" className="mt-0">
+   827→          <DeploymentsTab />
+   828→        </TabsContent>
+   829→        <TabsContent value="domains" className="mt-0">
+   830→          <DomainsTab />
+   831→        </TabsContent>
+   832→        <TabsContent value="logs" className="mt-0">
+   833→          <LogsTab />
+   834→        </TabsContent>
+   835→        <TabsContent value="alerts" className="mt-0">
+   836→          <AlertsTab />
+   837→        </TabsContent>
+   838→        <TabsContent value="costs" className="mt-0">
+   839→          <CostsTab />
+   840→        </TabsContent>
+   841→        <TabsContent value="loadtest" className="mt-0">
+   842→          <LoadTestingTab />
+   843→        </TabsContent>
+   844→      </Tabs>
+   845→    </div>
+   846→  )
+   847→}
+   848→
+   849→// ---------------------------------------------------------------------------
+   850→// Login gate
+   851→// ---------------------------------------------------------------------------
+   852→
+   853→function InfrastructureLogin({ onSuccess }: { onSuccess: (o: any) => void }) {
+   854→  const [form, setForm] = useState({ email: 'admin@votewise.com.ng', password: 'admin123' })
+   855→  const [busy, setBusy] = useState(false)
+   856→  const [err, setErr] = useState<string | null>(null)
+   857→
+   858→  async function submit() {
+   859→    setErr(null)
+   860→    setBusy(true)
+   861→    try {
+   862→      const d = await api.login(form.email, form.password)
+   863→      const role = d.official?.role
+   864→      if (role !== 'SUPER_ADMIN' && role !== 'PLATFORM_SUPER_ADMIN') {
+   865→        setErr('This console is for VoteWise platform administrators only.')
+   866→        return
+   867→      }
+   868→      onSuccess(d.official)
+   869→    } catch (e: any) {
+   870→      setErr(e?.message || 'Login failed. Please check your credentials.')
+   871→    } finally {
+   872→      setBusy(false)
+   873→    }
+   874→  }
+   875→
+   876→  return (
+   877→    <div className="grid min-h-[60vh] place-items-center p-4">
+   878→      <Card className="w-full max-w-md votewise-card-glow">
+   879→        <CardHeader className="text-center">
+   880→          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground">
+   881→            <Lock className="h-7 w-7" />
+   882→          </div>
+   883→          <CardTitle className="mt-3 font-display">Infrastructure Console</CardTitle>
+   884→          <p className="text-sm text-muted-foreground">
+   885→            Platform admin access required to manage production infrastructure.
+   886→          </p>
+   887→        </CardHeader>
+   888→        <CardContent className="space-y-4">
+   889→          <div className="space-y-1.5">
+   890→            <Label>Email</Label>
+   891→            <Input
+   892→              type="email"
+   893→              value={form.email}
+   894→              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+   895→              placeholder="admin@votewise.com.ng"
+   896→            />
+   897→          </div>
+   898→          <div className="space-y-1.5">
+   899→            <Label>Password</Label>
+   900→            <Input
+   901→              type="password"
+   902→              value={form.password}
+   903→              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+   904→              onKeyDown={(e) => e.key === 'Enter' && !busy && submit()}
+   905→            />
+   906→          </div>
+   907→          {err && (
+   908→            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+   909→              {err}
+   910→            </div>
+   911→          )}
+   912→          <Button onClick={submit} disabled={busy} className="w-full gap-2">
+   913→            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Sign In
+   914→          </Button>
+   915→          <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+   916→            <p className="font-semibold text-foreground">Demo credentials</p>
+   917→            <p className="mt-1 font-mono">admin@votewise.com.ng / admin123</p>
+   918→          </div>
+   919→          <div className="text-center">
+   920→            <Button asChild variant="ghost" size="sm" className="text-xs">
+   921→              <Link href="/">← Back to VoteWise</Link>
+   922→            </Button>
+   923→          </div>
+   924→        </CardContent>
+   925→      </Card>
+   926→    </div>
+   927→  )
+   928→}
+   929→
+   930→// ---------------------------------------------------------------------------
+   931→// Shared sub-components
+   932→// ---------------------------------------------------------------------------
+   933→
+   934→function EmptyState({ icon: Icon, title, hint }: { icon: any; title: string; hint: string }) {
+   935→  return (
+   936→    <div className="py-12 text-center">
+   937→      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-muted/60 text-muted-foreground">
+   938→        <Icon className="h-7 w-7" />
+   939→      </div>
+   940→      <p className="mt-3 font-medium">{title}</p>
+   941→      <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+   942→    </div>
+   943→  )
+   944→}
+   945→
+   946→function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+   947→  return (
+   948→    <div className="py-10 text-center">
+   949→      <AlertCircle className="mx-auto h-10 w-10 text-destructive/50" />
+   950→      <p className="mt-3 font-medium">Something went wrong</p>
+   951→      <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+   952→      {onRetry && (
+   953→        <Button onClick={onRetry} size="sm" variant="outline" className="mt-3 gap-1.5">
+   954→          <RefreshCw className="h-3.5 w-3.5" /> Retry
+   955→        </Button>
+   956→      )}
+   957→    </div>
+   958→  )
+   959→}
+   960→
+   961→function LoadingRow({ label = 'Loading…' }: { label?: string }) {
+   962→  return (
+   963→    <div className="flex items-center justify-center py-12">
+   964→      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+   965→      <span className="ml-2 text-sm text-muted-foreground">{label}</span>
+   966→    </div>
+   967→  )
+   968→}
+   969→
+   970→function CopyButton({ text, size = 'sm' }: { text: string; size?: 'sm' | 'default' }) {
+   971→  const [copied, setCopied] = useState(false)
+   972→  async function handleCopy() {
+   973→    const ok = await copyToClipboard(text)
+   974→    if (ok) {
+   975→      setCopied(true)
+   976→      toast.success('Copied to clipboard')
+   977→      setTimeout(() => setCopied(false), 1800)
+   978→    } else {
+   979→      toast.error('Copy failed — please copy manually')
+   980→    }
+   981→  }
+   982→  return (
+   983→    <Button size={size} variant="outline" onClick={handleCopy} className="shrink-0 gap-1.5">
+   984→      {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+   985→      {copied ? 'Copied' : 'Copy'}
+   986→    </Button>
+   987→  )
+   988→}
+   989→
+   990→// Inline SVG sparkline (normalised polyline) for metric cards.
+   991→function Sparkline({ data, colour }: { data: number[]; colour: string }) {
+   992→  const W = 120
+   993→  const H = 36
+   994→  if (!data || data.length < 2) {
+   995→    return (
+   996→      <svg width={W} height={H} className="opacity-40">
+   997→        <line x1="0" y1={H - 1} x2={W} y2={H - 1} stroke="currentColor" strokeWidth="1" />
+   998→      </svg>
+   999→    )
+  1000→  }
+  1001→  const min = Math.min(...data)
+  1002→  const max = Math.max(...data)
+  1003→  const range = max - min || 1
+  1004→  const stepX = W / (data.length - 1)
+  1005→  const points = data
+  1006→    .map((v, i) => {
+  1007→      const x = i * stepX
+  1008→      const y = H - 2 - ((v - min) / range) * (H - 4)
+  1009→      return `${x.toFixed(1)},${y.toFixed(1)}`
+  1010→    })
+  1011→    .join(' ')
+  1012→  return (
+  1013→    <svg width={W} height={H} className="overflow-visible">
+  1014→      <polyline
+  1015→        points={points}
+  1016→        fill="none"
+  1017→        stroke={colour}
+  1018→        strokeWidth="1.75"
+  1019→        strokeLinecap="round"
+  1020→        strokeLinejoin="round"
+  1021→      />
+  1022→      <circle
+  1023→        cx={(data.length - 1) * stepX}
+  1024→        cy={H - 2 - ((data[data.length - 1] - min) / range) * (H - 4)}
+  1025→        r="2.5"
+  1026→        fill={colour}
+  1027→      />
+  1028→    </svg>
+  1029→  )
+  1030→}
+  1031→
+  1032→function HealthStatusIcon({ status }: { status: HealthStatus }) {
+  1033→  if (status === 'HEALTHY') return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+  1034→  if (status === 'DEGRADED') return <AlertCircle className="h-4 w-4 text-amber-500" />
+  1035→  if (status === 'UNHEALTHY') return <XCircle className="h-4 w-4 text-red-500" />
+  1036→  return <AlertCircle className="h-4 w-4 text-zinc-400" />
+  1037→}
+  1038→
+  1039→// ===========================================================================
+  1040→// TAB 1 — Pre-Flight Checklist (Election Readiness Checker)
+  1041→// ===========================================================================
+  1042→
+  1043→function ReadinessTab() {
+  1044→  const [expectedVoters, setExpectedVoters] = useState<number>(0)
+  1045→  const [running, setRunning] = useState(false)
+  1046→  const [result, setResult] = useState<ReadinessResult | null>(null)
+  1047→  const [runs, setRuns] = useState<ReadinessRun[]>([])
+  1048→  const [loadingRuns, setLoadingRuns] = useState(true)
+  1049→  const [error, setError] = useState<string | null>(null)
+  1050→
+  1051→  const loadRuns = useCallback(async () => {
+  1052→    try {
+  1053→      const res = await api.pihedReadinessRuns(5) as { runs: ReadinessRun[] }
+  1054→      setRuns(res.runs || [])
+  1055→    } catch {
+  1056→      /* silent */
+  1057→    } finally {
+  1058→      setLoadingRuns(false)
+  1059→    }
+  1060→  }, [])
+  1061→
+  1062→  useEffect(() => {
+  1063→    loadRuns()
+  1064→  }, [loadRuns])
+  1065→
+  1066→  async function runCheck() {
+  1067→    setRunning(true)
+  1068→    setError(null)
+  1069→    try {
+  1070→      const res = await api.pihedRunReadiness({ expectedVoters }) as ReadinessResult
+  1071→      setResult(res)
+  1072→      toast.success(
+  1073→        res.ready
+  1074→          ? 'Pre-flight check passed — election is ready for launch'
+  1075→          : `Launch blocked — ${res.criticalFailures} critical failure(s)`,
+  1076→      )
+  1077→      await loadRuns()
+  1078→    } catch (e: any) {
+  1079→      setError(e?.message || 'Failed to run readiness check')
+  1080→      toast.error(e?.message || 'Failed to run readiness check')
+  1081→    } finally {
+  1082→      setRunning(false)
+  1083→    }
+  1084→  }
+  1085→
+  1086→  const peakDemand = result ? Math.ceil(result.capacity.expectedVoters * 0.35) : 0
+  1087→  const peakPct = result && result.capacity.safeConcurrency > 0
+  1088→    ? Math.min(100, (peakDemand / result.capacity.safeConcurrency) * 100)
+  1089→    : 0
+  1090→
+  1091→  return (
+  1092→    <div className="space-y-6">
+  1093→      {/* ---- Hero header card ---- */}
+  1094→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  1095→        <Card className="votewise-card-glow">
+  1096→          <CardContent className="p-6">
+  1097→            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+  1098→              <div className="flex items-start gap-4">
+  1099→                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+  1100→                  <ListChecks className="h-6 w-6" />
+  1101→                </div>
+  1102→                <div>
+  1103→                  <h2 className="font-display text-xl font-bold">Pre-Flight Checklist</h2>
+  1104→                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+  1105→                    Before any election goes live, run this 13-point infrastructure readiness assessment.
+  1106→                    The system blocks <strong>Go Live</strong> if any critical check fails. Critical checks
+  1107→                    are marked with a red badge and must all be <span className="text-emerald-600 dark:text-emerald-400">HEALTHY</span>.
+  1108→                  </p>
+  1109→                </div>
+  1110→              </div>
+  1111→              <Badge className="gap-1.5 bg-accent text-accent-foreground">
+  1112→                <Sparkles className="h-3.5 w-3.5" /> Hero Feature
+  1113→              </Badge>
+  1114→            </div>
+  1115→          </CardContent>
+  1116→        </Card>
+  1117→      </motion.div>
+  1118→
+  1119→      {/* ---- Runner card ---- */}
+  1120→      <Card>
+  1121→        <CardHeader className="pb-3">
+  1122→          <CardTitle className="flex items-center gap-2 font-display text-base">
+  1123→            <Rocket className="h-4 w-4 text-primary" /> Run Pre-Flight Check
+  1124→          </CardTitle>
+  1125→        </CardHeader>
+  1126→        <CardContent className="space-y-4">
+  1127→          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+  1128→            <div className="flex-1 space-y-1.5">
+  1129→              <Label htmlFor="expected-voters">Expected Voters</Label>
+  1130→              <Input
+  1131→                id="expected-voters"
+  1132→                type="number"
+  1133→                min={0}
+  1134→                value={expectedVoters}
+  1135→                onChange={(e) => setExpectedVoters(Math.max(0, Number(e.target.value) || 0))}
+  1136→                placeholder="0"
+  1137→              />
+  1138→              <p className="text-[11px] text-muted-foreground">
+  1139→                Used by the capacity check to verify peak concurrency headroom over an 8-hour voting window.
+  1140→              </p>
+  1141→            </div>
+  1142→            <Button onClick={runCheck} disabled={running} size="lg" className="gap-2 sm:w-auto">
+  1143→              {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+  1144→              {running ? 'Running 13 checks…' : 'Run Pre-Flight Check'}
+  1145→            </Button>
+  1146→          </div>
+  1147→
+  1148→          {error && (
+  1149→            <Alert className="border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+  1150→              <AlertCircle className="h-4 w-4" />
+  1151→              <AlertTitle>Readiness check failed</AlertTitle>
+  1152→              <AlertDescription className="text-xs">{error}</AlertDescription>
+  1153→            </Alert>
+  1154→          )}
+  1155→        </CardContent>
+  1156→      </Card>
+  1157→
+  1158→      {/* ---- Result summary banner ---- */}
+  1159→      {result && (
+  1160→        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  1161→          {result.ready ? (
+  1162→            <Card className="border-emerald-300/50 bg-emerald-50 dark:border-emerald-800/60 dark:bg-emerald-950/30">
+  1163→              <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+  1164→                <div className="flex items-center gap-3">
+  1165→                  <div className="grid h-11 w-11 place-items-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+  1166→                    <CheckCircle2 className="h-6 w-6" />
+  1167→                  </div>
+  1168→                  <div>
+  1169→                    <p className="font-display text-lg font-bold text-emerald-700 dark:text-emerald-300">
+  1170→                      ✓ READY FOR LAUNCH
+  1171→                    </p>
+  1172→                    <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80">
+  1173→                      All {result.checks.filter(c => c.critical).length} critical checks passed.
+  1174→                      {result.warnings > 0 && ` ${result.warnings} non-critical warning(s).`}
+  1175→                    </p>
+  1176→                  </div>
+  1177→                </div>
+  1178→                <Button
+  1179→                  size="lg"
+  1180→                  className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+  1181→                  onClick={() => toast.success('Election cleared for launch', {
+  1182→                    description: 'Pre-flight checks passed — you may now schedule Go Live.',
+  1183→                  })}
+  1184→                >
+  1185→                  <Zap className="h-4 w-4" /> Go Live
+  1186→                </Button>
+  1187→              </CardContent>
+  1188→            </Card>
+  1189→          ) : (
+  1190→            <Card className="border-red-300/60 bg-red-50 dark:border-red-900/60 dark:bg-red-950/30">
+  1191→              <CardContent className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+  1192→                <div className="flex items-center gap-3">
+  1193→                  <div className="grid h-11 w-11 place-items-center rounded-full bg-red-500/15 text-red-600 dark:text-red-400">
+  1194→                    <XCircle className="h-6 w-6" />
+  1195→                  </div>
+  1196→                  <div>
+  1197→                    <p className="font-display text-lg font-bold text-red-700 dark:text-red-300">
+  1198→                      ✗ LAUNCH BLOCKED
+  1199→                    </p>
+  1200→                    <p className="text-xs text-red-700/80 dark:text-red-300/80">
+  1201→                      {result.criticalFailures} critical failure(s) must be resolved before this election can go live.
+  1202→                    </p>
+  1203→                  </div>
+  1204→                </div>
+  1205→                <Button size="lg" disabled className="gap-2">
+  1206→                  <Lock className="h-4 w-4" /> Go Live Locked
+  1207→                </Button>
+  1208→              </CardContent>
+  1209→            </Card>
+  1210→          )}
+  1211→        </motion.div>
+  1212→      )}
+  1213→
+  1214→      {/* ---- Capacity card ---- */}
+  1215→      {result && (
+  1216→        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
+  1217→          <Card className="votewise-card-glow">
+  1218→            <CardHeader className="pb-3">
+  1219→              <CardTitle className="flex items-center gap-2 font-display text-base">
+  1220→                <Gauge className="h-4 w-4 text-primary" /> Capacity Planning
+  1221→              </CardTitle>
+  1222→            </CardHeader>
+  1223→            <CardContent className="space-y-4">
+  1224→              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  1225→                <StatCell label="Expected Voters" value={formatNumber(result.capacity.expectedVoters)} icon={Hash} />
+  1226→                <StatCell label="Safe Concurrency" value={formatNumber(result.capacity.safeConcurrency)} icon={Shield} />
+  1227→                <StatCell label="Throughput / min" value={formatNumber(result.capacity.estimatedThroughputPerMin)} icon={TrendingUp} />
+  1228→                <StatCell label="Replicas" value={String(result.capacity.replicas ?? '—')} icon={Server} />
+  1229→              </div>
+  1230→              <div className="space-y-2">
+  1231→                <div className="flex items-center justify-between text-xs">
+  1232→                  <span className="text-muted-foreground">Peak demand vs safe ceiling (1 peak hour)</span>
+  1233→                  <span className={cn(
+  1234→                    'font-mono font-semibold',
+  1235→                    result.capacity.sufficient ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+  1236→                  )}>
+  1237→                    {formatNumber(peakDemand)} / {formatNumber(result.capacity.safeConcurrency)} /hr
+  1238→                  </span>
+  1239→                </div>
+  1240→                <Progress
+  1241→                  value={peakPct}
+  1242→                  className={cn(
+  1243→                    'h-2',
+  1244→                    result.capacity.sufficient ? '[&>div]:bg-emerald-500' : '[&>div]:bg-red-500',
+  1245→                  )}
+  1246→                />
+  1247→              </div>
+  1248→              <div className={cn(
+  1249→                'rounded-lg border p-3 text-xs',
+  1250→                result.capacity.sufficient
+  1251→                  ? 'border-emerald-300/40 bg-emerald-50 text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/30 dark:text-emerald-200'
+  1252→                  : 'border-red-300/50 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200',
+  1253→              )}>
+  1254→                <p className="flex items-center gap-1.5 font-semibold">
+  1255→                  {result.capacity.sufficient
+  1256→                    ? <CheckCircle2 className="h-3.5 w-3.5" />
+  1257→                    : <AlertTriangle className="h-3.5 w-3.5" />}
+  1258→                  Recommendation
+  1259→                </p>
+  1260→                <p className="mt-1">{result.capacity.recommendation}</p>
+  1261→              </div>
+  1262→            </CardContent>
+  1263→          </Card>
+  1264→        </motion.div>
+  1265→      )}
+  1266→
+  1267→      {/* ---- 13 checks grid ---- */}
+  1268→      {result && (
+  1269→        <div>
+  1270→          <div className="mb-3 flex items-center justify-between">
+  1271→            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+  1272→              13-Point Checklist
+  1273→            </h3>
+  1274→            <Badge variant="outline" className="text-[10px]">
+  1275→              {result.checks.filter(c => c.status === 'HEALTHY').length}/{result.checks.length} healthy
+  1276→            </Badge>
+  1277→          </div>
+  1278→          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+  1279→            {result.checks.map((c, i) => {
+  1280→              const Icon = CATEGORY_ICON[c.category] || Activity
+  1281→              return (
+  1282→                <motion.div
+  1283→                  key={c.name}
+  1284→                  initial={{ opacity: 0, y: 8 }}
+  1285→                  animate={{ opacity: 1, y: 0 }}
+  1286→                  transition={{ duration: 0.25, delay: i * 0.03 }}
+  1287→                >
+  1288→                  <Card className={cn(
+  1289→                    'h-full transition-colors',
+  1290→                    c.status === 'UNHEALTHY' && 'border-red-300/60 dark:border-red-900/60',
+  1291→                    c.status === 'DEGRADED' && 'border-amber-300/50 dark:border-amber-800/50',
+  1292→                  )}>
+  1293→                    <CardContent className="p-4">
+  1294→                      <div className="flex items-start justify-between gap-2">
+  1295→                        <div className="flex items-center gap-2.5">
+  1296→                          <div className={cn('grid h-9 w-9 place-items-center rounded-lg', CATEGORY_STYLE[c.category])}>
+  1297→                            <Icon className="h-5 w-5" />
+  1298→                          </div>
+  1299→                          <div>
+  1300→                            <p className="font-medium leading-tight">{c.name}</p>
+  1301→                            <Badge variant="outline" className="mt-1 text-[9px] uppercase tracking-wider">
+  1302→                              {c.category}
+  1303→                            </Badge>
+  1304→                          </div>
+  1305→                        </div>
+  1306→                        <div className="flex flex-col items-end gap-1">
+  1307→                          <HealthStatusIcon status={c.status} />
+  1308→                          {c.critical && (
+  1309→                            <Badge className="bg-red-100 text-red-700 text-[9px] dark:bg-red-500/15 dark:text-red-300">
+  1310→                              CRITICAL
+  1311→                            </Badge>
+  1312→                          )}
+  1313→                        </div>
+  1314→                      </div>
+  1315→                      <p className="mt-3 text-sm text-foreground">{c.message}</p>
+  1316→                      {c.detail && (
+  1317→                        <p className="mt-1 text-xs text-muted-foreground">{c.detail}</p>
+  1318→                      )}
+  1319→                      {typeof c.latencyMs === 'number' && (
+  1320→                        <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+  1321→                          {c.latencyMs}ms latency
+  1322→                        </p>
+  1323→                      )}
+  1324→                    </CardContent>
+  1325→                  </Card>
+  1326→                </motion.div>
+  1327→              )
+  1328→            })}
+  1329→          </div>
+  1330→        </div>
+  1331→      )}
+  1332→
+  1333→      {/* ---- Run history ---- */}
+  1334→      <Card>
+  1335→        <CardHeader className="pb-3">
+  1336→          <div className="flex flex-wrap items-center justify-between gap-2">
+  1337→            <CardTitle className="flex items-center gap-2 font-display text-base">
+  1338→              <History className="h-4 w-4 text-primary" /> Recent Pre-Flight Runs
+  1339→            </CardTitle>
+  1340→            <Button variant="ghost" size="sm" onClick={loadRuns} disabled={loadingRuns} className="gap-1.5">
+  1341→              <RefreshCw className={cn('h-3.5 w-3.5', loadingRuns && 'animate-spin')} /> Refresh
+  1342→            </Button>
+  1343→          </div>
+  1344→        </CardHeader>
+  1345→        <CardContent className="p-0">
+  1346→          {loadingRuns ? (
+  1347→            <LoadingRow label="Loading run history…" />
+  1348→          ) : runs.length === 0 ? (
+  1349→            <EmptyState icon={History} title="No runs yet" hint="Run your first pre-flight check to see the audit trail here." />
+  1350→          ) : (
+  1351→            <div className="votewise-scroll max-h-96 overflow-y-auto">
+  1352→              <table className="w-full text-sm">
+  1353→                <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+  1354→                  <tr className="text-left">
+  1355→                    <th className="p-3 font-semibold">Timestamp</th>
+  1356→                    <th className="p-3 font-semibold">Expected Voters</th>
+  1357→                    <th className="p-3 font-semibold">Ready</th>
+  1358→                    <th className="hidden p-3 font-semibold sm:table-cell">Critical Failures</th>
+  1359→                    <th className="hidden p-3 font-semibold md:table-cell">Triggered By</th>
+  1360→                  </tr>
+  1361→                </thead>
+  1362→                <tbody>
+  1363→                  {runs.map((r) => (
+  1364→                    <tr key={r.id} className="border-t border-border hover:bg-muted/30">
+  1365→                      <td className="p-3 text-xs text-muted-foreground">{timeAgo(r.createdAt)}</td>
+  1366→                      <td className="p-3 font-mono">{formatNumber(r.expectedVoters)}</td>
+  1367→                      <td className="p-3">
+  1368→                        {r.ready ? (
+  1369→                          <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+  1370→                            <CheckCircle2 className="mr-1 h-3 w-3" /> Ready
+  1371→                          </Badge>
+  1372→                        ) : (
+  1373→                          <Badge className="bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+  1374→                            <XCircle className="mr-1 h-3 w-3" /> Blocked
+  1375→                          </Badge>
+  1376→                        )}
+  1377→                      </td>
+  1378→                      <td className="hidden p-3 font-mono sm:table-cell">
+  1379→                        {r.criticalFailures > 0 ? (
+  1380→                          <span className="text-red-600 dark:text-red-400">{r.criticalFailures}</span>
+  1381→                        ) : (
+  1382→                          <span className="text-emerald-600 dark:text-emerald-400">0</span>
+  1383→                        )}
+  1384→                      </td>
+  1385→                      <td className="hidden p-3 text-xs text-muted-foreground md:table-cell">
+  1386→                        {r.triggeredByName || '—'}
+  1387→                      </td>
+  1388→                    </tr>
+  1389→                  ))}
+  1390→                </tbody>
+  1391→              </table>
+  1392→            </div>
+  1393→          )}
+  1394→        </CardContent>
+  1395→      </Card>
+  1396→    </div>
+  1397→  )
+  1398→}
+  1399→
+  1400→function StatCell({ label, value, icon: Icon }: { label: string; value: string; icon: any }) {
+  1401→  return (
+  1402→    <div className="rounded-lg border border-border/60 bg-card p-3">
+  1403→      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+  1404→        <Icon className="h-3 w-3" /> {label}
+  1405→      </div>
+  1406→      <div className="mt-1 font-display text-lg font-bold tabular-nums">{value}</div>
+  1407→    </div>
+  1408→  )
+  1409→}
+  1410→
+  1411→// ===========================================================================
+  1412→// TAB 2 — Live Services
+  1413→// ===========================================================================
+  1414→
+  1415→function LiveServicesTab() {
+  1416→  const [status, setStatus] = useState<PlatformStatus | null>(null)
+  1417→  const [loading, setLoading] = useState(true)
+  1418→  const [refreshing, setRefreshing] = useState(false)
+  1419→  const [error, setError] = useState<string | null>(null)
+  1420→  const [, force] = useState(0)
+  1421→  const firstLoadRef = useRef(true)
+  1422→
+  1423→  const load = useCallback(async () => {
+  1424→    try {
+  1425→      setRefreshing(true)
+  1426→      setError(null)
+  1427→      const res = await api.pihedStatus() as PlatformStatus
+  1428→      setStatus(res)
+  1429→    } catch (e: any) {
+  1430→      if (firstLoadRef.current) {
+  1431→        setError(e?.message || 'Failed to load platform status')
+  1432→      }
+  1433→    } finally {
+  1434→      setLoading(false)
+  1435→      setRefreshing(false)
+  1436→      firstLoadRef.current = false
+  1437→    }
+  1438→  }, [])
+  1439→
+  1440→  useEffect(() => {
+  1441→    load()
+  1442→    const id = setInterval(load, 30000)
+  1443→    return () => clearInterval(id)
+  1444→  }, [load])
+  1445→
+  1446→  // 1s tick for "Xs ago" countdown
+  1447→  useEffect(() => {
+  1448→    const id = setInterval(() => force((n) => n + 1), 1000)
+  1449→    return () => clearInterval(id)
+  1450→  }, [])
+  1451→
+  1452→  if (loading) return <LoadingRow label="Loading platform status…" />
+  1453→  if (error && !status) {
+  1454→    return (
+  1455→      <Card>
+  1456→        <CardContent>
+  1457→          <ErrorState message={error} onRetry={load} />
+  1458→        </CardContent>
+  1459→      </Card>
+  1460→    )
+  1461→  }
+  1462→  if (!status) return null
+  1463→
+  1464→  const ps = PLATFORM_STATUS_STYLE[status.status] || PLATFORM_STATUS_STYLE.OPERATIONAL
+  1465→  const lastUpdatedSec = status.lastUpdated
+  1466→    ? Math.max(0, Math.floor((Date.now() - new Date(status.lastUpdated).getTime()) / 1000))
+  1467→    : 0
+  1468→
+  1469→  return (
+  1470→    <div className="space-y-6">
+  1471→      {/* ---- Overall status banner ---- */}
+  1472→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  1473→        <Card className={cn('votewise-card-glow ring-1', ps.ring)}>
+  1474→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+  1475→            <div className="flex items-center gap-4">
+  1476→              <div className={cn(
+  1477→                'grid h-14 w-14 place-items-center rounded-2xl',
+  1478→                status.status === 'OPERATIONAL' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+  1479→                status.status === 'DEGRADED' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+  1480→                status.status === 'PARTIAL_OUTAGE' && 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+  1481→                status.status === 'MAJOR_OUTAGE' && 'bg-red-500/15 text-red-600 dark:text-red-400',
+  1482→              )}>
+  1483→                {status.status === 'OPERATIONAL' ? <CheckCircle2 className="h-7 w-7" /> :
+  1484→                 status.status === 'MAJOR_OUTAGE' ? <XCircle className="h-7 w-7" /> :
+  1485→                 <AlertTriangle className="h-7 w-7" />}
+  1486→              </div>
+  1487→              <div>
+  1488→                <div className="flex items-center gap-2">
+  1489→                  <h2 className="font-display text-2xl font-bold">{ps.label}</h2>
+  1490→                  <Badge className={ps.badge}>{status.status}</Badge>
+  1491→                </div>
+  1492→                <p className="mt-1 text-sm text-muted-foreground">
+  1493→                  90-day uptime: <span className="font-mono font-semibold text-foreground">{status.uptime.toFixed(2)}%</span>
+  1494→                  {' · '}Last updated <span className="text-foreground">{lastUpdatedSec}s ago</span>
+  1495→                </p>
+  1496→              </div>
+  1497→            </div>
+  1498→            <div className="flex items-center gap-2">
+  1499→              <Button onClick={load} variant="outline" size="sm" disabled={refreshing} className="gap-1.5">
+  1500→                {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+  1501→                Refresh
+  1502→              </Button>
+  1503→              <Badge variant="secondary" className="gap-1.5 text-xs text-muted-foreground">
+  1504→                <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+  1505→                Auto · 30s
+  1506→              </Badge>
+  1507→            </div>
+  1508→          </CardContent>
+  1509→        </Card>
+  1510→      </motion.div>
+  1511→
+  1512→      {/* ---- Active incidents + maintenance ---- */}
+  1513→      {status.incidents && status.incidents.length > 0 && (
+  1514→        <Alert className="border-red-300 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
+  1515→          <Siren className="h-4 w-4" />
+  1516→          <AlertTitle>{status.incidents.length} active incident(s)</AlertTitle>
+  1517→          <AlertDescription className="space-y-1 text-xs">
+  1518→            {status.incidents.map((inc, i) => (
+  1519→              <div key={i} className="flex items-center gap-2">
+  1520→                <Badge className="bg-red-100 text-red-700 text-[9px] dark:bg-red-500/15 dark:text-red-300">{inc.severity}</Badge>
+  1521→                <span className="font-medium">{inc.title}</span>
+  1522→                <span className="text-red-700/70 dark:text-red-300/70">· {timeAgo(inc.createdAt)}</span>
+  1523→              </div>
+  1524→            ))}
+  1525→          </AlertDescription>
+  1526→        </Alert>
+  1527→      )}
+  1528→      {status.maintenance && status.maintenance.length > 0 && (
+  1529→        <Alert className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+  1530→          <Wrench className="h-4 w-4" />
+  1531→          <AlertTitle>Active maintenance</AlertTitle>
+  1532→          <AlertDescription className="space-y-1 text-xs">
+  1533→            {status.maintenance.map((m, i) => (
+  1534→              <div key={i} className="flex items-center gap-2">
+  1535→                <Badge className="bg-amber-100 text-amber-700 text-[9px] dark:bg-amber-500/15 dark:text-amber-300">{m.level}</Badge>
+  1536→                <span className="font-medium">{m.reason}</span>
+  1537→                <span className="text-amber-700/70 dark:text-amber-300/70">· started {timeAgo(m.startedAt)}</span>
+  1538→              </div>
+  1539→            ))}
+  1540→          </AlertDescription>
+  1541→        </Alert>
+  1542→      )}
+  1543→
+  1544→      {/* ---- Service grid ---- */}
+  1545→      <div>
+  1546→        <h3 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+  1547→          Service Map · {status.services.length} services
+  1548→        </h3>
+  1549→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  1550→          {status.services.map((svc, i) => {
+  1551→            const Icon = CATEGORY_ICON[svc.category] || Activity
+  1552→            return (
+  1553→              <motion.div
+  1554→                key={svc.name}
+  1555→                initial={{ opacity: 0, y: 10 }}
+  1556→                animate={{ opacity: 1, y: 0 }}
+  1557→                transition={{ duration: 0.25, delay: i * 0.03 }}
+  1558→              >
+  1559→                <Card className={cn(
+  1560→                  'h-full transition-colors',
+  1561→                  svc.status === 'UNHEALTHY' && 'ring-1 ring-red-400/50 dark:ring-red-800/50',
+  1562→                )}>
+  1563→                  <CardContent className="p-4">
+  1564→                    <div className="flex items-start justify-between gap-2">
+  1565→                      <div className="flex items-center gap-2.5">
+  1566→                        <div className={cn('grid h-9 w-9 place-items-center rounded-lg', CATEGORY_STYLE[svc.category] || CATEGORY_STYLE.ops)}>
+  1567→                          <Icon className="h-5 w-5" />
+  1568→                        </div>
+  1569→                        <div>
+  1570→                          <p className="font-medium leading-tight">{svc.name}</p>
+  1571→                          <Badge variant="outline" className="mt-1 text-[9px] uppercase tracking-wider">
+  1572→                            {svc.category}
+  1573→                          </Badge>
+  1574→                        </div>
+  1575→                      </div>
+  1576→                      <HealthStatusIcon status={svc.status as HealthStatus} />
+  1577→                    </div>
+  1578→                    <p className="mt-3 text-sm text-foreground">{svc.message}</p>
+  1579→                    <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+  1580→                      <span className="font-mono">uptime {svc.uptime.toFixed(2)}%</span>
+  1581→                      <Badge className={cn('text-[9px]', HEALTH_BADGE[svc.status] || HEALTH_BADGE.UNKNOWN)}>
+  1582→                        {svc.status}
+  1583→                      </Badge>
+  1584→                    </div>
+  1585→                  </CardContent>
+  1586→                </Card>
+  1587→              </motion.div>
+  1588→            )
+  1589→          })}
+  1590→        </div>
+  1591→      </div>
+  1592→
+  1593→      {/* ---- SLO Status card ---- */}
+  1594→      <SloStatusCard />
+  1595→    </div>
+  1596→  )
+  1597→}
+  1598→
+  1599→// ---------------------------------------------------------------------------
+  1600→// SLO Status Card (Service Level Objectives)
+  1601→// ---------------------------------------------------------------------------
+  1602→function SloStatusCard() {
+  1603→  const [data, setData] = useState<{ statuses: any[]; summary: any } | null>(null)
+  1604→  const [loading, setLoading] = useState(true)
+  1605→  const [refreshing, setRefreshing] = useState(false)
+  1606→  const [error, setError] = useState<string | null>(null)
+  1607→
+  1608→  const load = useCallback(async () => {
+  1609→    try {
+  1610→      setRefreshing(true)
+  1611→      setError(null)
+  1612→      const res = await api.pihedSlos() as any
+  1613→      setData(res)
+  1614→    } catch (e: any) {
+  1615→      if (loading) setError(e?.message || 'Failed to load SLO data')
+  1616→    } finally {
+  1617→      setLoading(false)
+  1618→      setRefreshing(false)
+  1619→    }
+  1620→  }, [loading])
+  1621→
+  1622→  useEffect(() => {
+  1623→    load()
+  1624→    const id = setInterval(load, 60_000)
+  1625→    return () => clearInterval(id)
+  1626→  }, [load])
+  1627→
+  1628→  if (loading && !data) return <LoadingRow label="Loading SLO data…" />
+  1629→  if (error && !data) {
+  1630→    return (
+  1631→      <Card>
+  1632→        <CardContent>
+  1633→          <ErrorState message={error} onRetry={load} />
+  1634→        </CardContent>
+  1635→      </Card>
+  1636→    )
+  1637→  }
+  1638→  if (!data) return null
+  1639→
+  1640→  const s = data.summary || {}
+  1641→  const statuses = data.statuses || []
+  1642→  const allHealthy = s.allHealthy
+  1643→  const avgBudget = s.avgBudgetRemaining || 0
+  1644→
+  1645→  const SLO_STATUS_STYLE: Record<string, { color: string; bg: string; label: string }> = {
+  1646→    healthy: { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/15', label: 'Healthy' },
+  1647→    warning: { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/15', label: 'Warning' },
+  1648→    critical: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/15', label: 'Critical' },
+  1649→    breached: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/20', label: 'Breached' },
+  1650→  }
+  1651→
+  1652→  function budgetColor(pct: number) {
+  1653→    if (pct > 50) return 'bg-emerald-500'
+  1654→    if (pct > 25) return 'bg-amber-500'
+  1655→    return 'bg-red-500'
+  1656→  }
+  1657→
+  1658→  function miniSparkline(trend: any[]) {
+  1659→    if (!trend || trend.length < 2) return null
+  1660→    const vals = trend.map((t) => t.sliValue)
+  1661→    const min = Math.min(...vals)
+  1662→    const max = Math.max(...vals)
+  1663→    const range = max - min || 1
+  1664→    const w = 60
+  1665→    const h = 20
+  1666→    const points = vals.map((v, i) => {
+  1667→      const x = (i / (vals.length - 1)) * w
+  1668→      const y = h - ((v - min) / range) * h
+  1669→      return `${x.toFixed(1)},${y.toFixed(1)}`
+  1670→    }).join(' ')
+  1671→    return (
+  1672→      <svg width={w} height={h} className="opacity-70">
+  1673→        <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-emerald-500" />
+  1674→      </svg>
+  1675→    )
+  1676→  }
+  1677→
+  1678→  return (
+  1679→    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  1680→      <Card className="votewise-card-glow">
+  1681→        <CardHeader>
+  1682→          <div className="flex items-center justify-between">
+  1683→            <CardTitle className="flex items-center gap-2 font-display text-base">
+  1684→              <Target className="h-4 w-4 text-primary" />
+  1685→              Service Level Objectives
+  1686→              <Badge variant="outline" className="text-[9px]">SLO</Badge>
+  1687→            </CardTitle>
+  1688→            <div className="flex items-center gap-2">
+  1689→              <Badge className={cn(
+  1690→                'gap-1.5 text-xs',
+  1691→                allHealthy
+  1692→                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+  1693→                  : s.critical > 0 || s.breached > 0
+  1694→                    ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+  1695→                    : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  1696→              )}>
+  1697→                <span className={cn(
+  1698→                  'inline-block h-2 w-2 rounded-full',
+  1699→                  allHealthy ? 'bg-emerald-500 votewise-live-dot' : s.critical > 0 || s.breached > 0 ? 'bg-red-500' : 'bg-amber-500',
+  1700→                )} />
+  1701→                {allHealthy ? 'All SLOs healthy' : s.breached > 0 ? `${s.breached} breached` : s.critical > 0 ? `${s.critical} critical` : `${s.warning} warning`}
+  1702→              </Badge>
+  1703→              <Button onClick={load} variant="ghost" size="sm" disabled={refreshing} className="h-7 gap-1 text-xs">
+  1704→                {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+  1705→              </Button>
+  1706→            </div>
+  1707→          </div>
+  1708→        </CardHeader>
+  1709→        <CardContent className="space-y-4">
+  1710→          {/* Summary stats */}
+  1711→          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+  1712→            <div className="rounded-lg border border-border/60 p-3 text-center">
+  1713→              <div className="font-display text-xl font-bold">{s.total || 0}</div>
+  1714→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Total SLOs</div>
+  1715→            </div>
+  1716→            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-center">
+  1717→              <div className="font-display text-xl font-bold text-emerald-600 dark:text-emerald-400">{s.healthy || 0}</div>
+  1718→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Healthy</div>
+  1719→            </div>
+  1720→            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+  1721→              <div className="font-display text-xl font-bold text-amber-600 dark:text-amber-400">{s.warning || 0}</div>
+  1722→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Warning</div>
+  1723→            </div>
+  1724→            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-center">
+  1725→              <div className="font-display text-xl font-bold text-red-600 dark:text-red-400">{(s.critical || 0) + (s.breached || 0)}</div>
+  1726→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Critical+</div>
+  1727→            </div>
+  1728→            <div className="rounded-lg border border-border/60 p-3 text-center">
+  1729→              <div className={cn('font-display text-xl font-bold', budgetColor(avgBudget).replace('bg-', 'text-'))}>
+  1730→                {avgBudget.toFixed(1)}%
+  1731→              </div>
+  1732→              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg Budget</div>
+  1733→            </div>
+  1734→          </div>
+  1735→
+  1736→          {/* SLO rows */}
+  1737→          <div className="space-y-2">
+  1738→            {statuses.map((slo: any, i: number) => {
+  1739→              const style = SLO_STATUS_STYLE[slo.status] || SLO_STATUS_STYLE.healthy
+  1740→              const budget = slo.budgetRemaining || 0
+  1741→              const targetLabel = slo.targetUnit === 'percent'
+  1742→                ? `${slo.target}% ${slo.metric === 'uptime' ? 'uptime' : slo.metric}`
+  1743→                : `${slo.target}${slo.targetUnit} ${slo.metric}`
+  1744→              return (
+  1745→                <motion.div
+  1746→                  key={slo.id}
+  1747→                  initial={{ opacity: 0, x: -10 }}
+  1748→                  animate={{ opacity: 1, x: 0 }}
+  1749→                  transition={{ duration: 0.2, delay: i * 0.05 }}
+  1750→                  className="flex flex-col gap-2 rounded-lg border border-border/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+  1751→                >
+  1752→                  <div className="flex items-center gap-3">
+  1753→                    <div className={cn('grid h-8 w-8 place-items-center rounded-lg', style.bg)}>
+  1754→                      <Gauge className={cn('h-4 w-4', style.color)} />
+  1755→                    </div>
+  1756→                    <div>
+  1757→                      <div className="flex items-center gap-2">
+  1758→                        <span className="text-sm font-medium">{slo.name}</span>
+  1759→                        <Badge variant="outline" className="text-[9px]">{slo.service}</Badge>
+  1760→                      </div>
+  1761→                      <div className="text-[11px] text-muted-foreground">Target: {targetLabel} · {slo.window}</div>
+  1762→                    </div>
+  1763→                  </div>
+  1764→                  <div className="flex items-center gap-4">
+  1765→                    {miniSparkline(slo.trend)}
+  1766→                    <div className="text-right">
+  1767→                      <div className={cn('font-mono text-sm font-bold', style.color)}>
+  1768→                        {slo.targetUnit === 'percent' ? `${slo.currentSli.toFixed(2)}%` : `${slo.currentSli.toFixed(0)}${slo.targetUnit}`}
+  1769→                      </div>
+  1770→                      <div className="text-[10px] text-muted-foreground">current SLI</div>
+  1771→                    </div>
+  1772→                    <div className="w-24">
+  1773→                      <div className="mb-1 flex items-center justify-between text-[9px] text-muted-foreground">
+  1774→                        <span>Error budget</span>
+  1775→                        <span className={cn('font-mono font-semibold', budget > 50 ? 'text-emerald-600 dark:text-emerald-400' : budget > 25 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400')}>
+  1776→                          {budget.toFixed(0)}%
+  1777→                        </span>
+  1778→                      </div>
+  1779→                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+  1780→                        <div className={cn('h-full transition-all', budgetColor(budget))} style={{ width: `${Math.max(0, Math.min(100, budget))}%` }} />
+  1781→                      </div>
+  1782→                    </div>
+  1783→                    <Badge className={cn('text-[9px]', style.bg, style.color)}>
+  1784→                      {slo.status === 'healthy' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+  1785→                      {slo.status === 'breached' && <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-red-500 votewise-live-dot" />}
+  1786→                      {style.label}
+  1787→                    </Badge>
+  1788→                  </div>
+  1789→                </motion.div>
+  1790→              )
+  1791→            })}
+  1792→          </div>
+  1793→        </CardContent>
+  1794→      </Card>
+  1795→    </motion.div>
+  1796→  )
+  1797→}
+  1798→
+  1799→// ===========================================================================
+  1800→// TAB 3 — System Metrics
+  1801→// ===========================================================================
+  1802→
+  1803→function SystemMetricsTab() {
+  1804→  const [data, setData] = useState<MetricsResponse | null>(null)
+  1805→  const [loading, setLoading] = useState(true)
+  1806→  const [refreshing, setRefreshing] = useState(false)
+  1807→  const [error, setError] = useState<string | null>(null)
+  1808→  const [, force] = useState(0)
+  1809→  const firstLoadRef = useRef(true)
+  1810→
+  1811→  const SERIES_KEY = 'memory,heapUsed,queueDepth,dbSizeMb,rps,errorRate'
+  1812→
+  1813→  const load = useCallback(async () => {
+  1814→    try {
+  1815→      setRefreshing(true)
+  1816→      setError(null)
+  1817→      const res = await api.pihedMetrics(SERIES_KEY, 30) as MetricsResponse
+  1818→      setData(res)
+  1819→    } catch (e: any) {
+  1820→      if (firstLoadRef.current) {
+  1821→        setError(e?.message || 'Failed to load system metrics')
+  1822→      }
+  1823→    } finally {
+  1824→      setLoading(false)
+  1825→      setRefreshing(false)
+  1826→      firstLoadRef.current = false
+  1827→    }
+  1828→  }, [])
+  1829→
+  1830→  useEffect(() => {
+  1831→    load()
+  1832→    const id = setInterval(load, 15000)
+  1833→    return () => clearInterval(id)
+  1834→  }, [load])
+  1835→
+  1836→  useEffect(() => {
+  1837→    const id = setInterval(() => force((n) => n + 1), 1000)
+  1838→    return () => clearInterval(id)
+  1839→  }, [])
+  1840→
+  1841→  if (loading) return <LoadingRow label="Loading live metrics…" />
+  1842→  if (error && !data) {
+  1843→    return (
+  1844→      <Card>
+  1845→        <CardContent>
+  1846→          <ErrorState message={error} onRetry={load} />
+  1847→        </CardContent>
+  1848→      </Card>
+  1849→    )
+  1850→  }
+  1851→  if (!data) return null
+  1852→
+  1853→  const { live, series, capturedAt } = data
+  1854→  const capturedSec = capturedAt
+  1855→    ? Math.max(0, Math.floor((Date.now() - new Date(capturedAt).getTime()) / 1000))
+  1856→    : 0
+  1857→
+  1858→  const errorRateColour = live.errorRate < 1 ? 'text-emerald-500'
+  1859→    : live.errorRate < 5 ? 'text-amber-500' : 'text-red-500'
+  1860→
+  1861→  const cards = [
+  1862→    {
+  1863→      label: 'Memory', value: live.memoryMb.toFixed(0), unit: 'MB', icon: Cpu,
+  1864→      colour: 'text-emerald-500',
+  1865→      data: (series.memory || []).map(p => p.value),
+  1866→    },
+  1867→    {
+  1868→      label: 'Heap Used', value: live.heapUsedMb.toFixed(0), unit: 'MB', icon: HardDrive,
+  1869→      colour: 'text-emerald-500',
+  1870→      data: (series.heapUsed || []).map(p => p.value),
+  1871→    },
+  1872→    {
+  1873→      label: 'Queue Depth', value: formatNumber(live.queueDepth), unit: 'jobs', icon: ListChecks,
+  1874→      colour: live.queueDepth > 100 ? 'text-amber-500' : 'text-emerald-500',
+  1875→      data: (series.queueDepth || []).map(p => p.value),
+  1876→    },
+  1877→    {
+  1878→      label: 'DB Size', value: live.dbSizeMb.toFixed(2), unit: 'MB', icon: Database,
+  1879→      colour: 'text-emerald-500',
+  1880→      data: (series.dbSizeMb || []).map(p => p.value),
+  1881→    },
+  1882→    {
+  1883→      label: 'Requests / sec', value: live.rps.toFixed(2), unit: 'req/s', icon: TrendingUp,
+  1884→      colour: 'text-emerald-500',
+  1885→      data: (series.rps || []).map(p => p.value),
+  1886→    },
+  1887→    {
+  1888→      label: 'Error Rate', value: live.errorRate.toFixed(2), unit: '%', icon: AlertCircle,
+  1889→      colour: errorRateColour,
+  1890→      data: (series.errorRate || []).map(p => p.value),
+  1891→    },
+  1892→  ]
+  1893→
+  1894→  return (
+  1895→    <div className="space-y-6">
+  1896→      {/* ---- Header ---- */}
+  1897→      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+  1898→        <Card className="votewise-card-glow">
+  1899→          <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+  1900→            <div className="flex items-center gap-4">
+  1901→              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+  1902→                <Gauge className="h-6 w-6" />
+  1903→              </div>
+  1904→              <div>
+  1905→                <h2 className="font-display text-xl font-bold">Live System Metrics</h2>
+  1906→                <p className="text-sm text-muted-foreground">
+  1907→                  Real-time process + DB metrics. Sparklines show the last 30 samples.
+  1908→                </p>
+  1909→              </div>
+  1910→            </div>
+  1911→            <div className="flex flex-col items-start gap-1.5 sm:items-end">
+  1912→              <div className="flex items-center gap-2">
+  1913→                <Button onClick={load} variant="outline" size="sm" disabled={refreshing} className="gap-1.5">
+  1914→                  {refreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+  1915→                  Refresh
+  1916→                </Button>
+  1917→                <Badge variant="secondary" className="gap-1.5 text-xs text-muted-foreground">
+  1918→                  <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+  1919→                  Live · 15s
+  1920→                </Badge>
+  1921→              </div>
+  1922→              <span className="text-[10px] text-muted-foreground">Updated {capturedSec}s ago</span>
+  1923→            </div>
+  1924→          </CardContent>
+  1925→        </Card>
+  1926→      </motion.div>
+  1927→
+  1928→      {/* ---- 6 metric cards ---- */}
+  1929→      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+  1930→        {cards.map((c, i) => (
+  1931→          <motion.div
+  1932→            key={c.label}
+  1933→            initial={{ opacity: 0, y: 10 }}
+  1934→            animate={{ opacity: 1, y: 0 }}
+  1935→            transition={{ duration: 0.25, delay: i * 0.04 }}
+  1936→          >
+  1937→            <Card className="h-full">
+  1938→              <CardContent className="p-4">
+  1939→                <div className="flex items-start justify-between">
+  1940→                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-muted/60 text-muted-foreground">
+  1941→                    <c.icon className="h-4 w-4" />
+  1942→                  </div>
+  1943→                  <span className={cn('h-1.5 w-1.5 rounded-full', c.colour.replace('text-', 'bg-'))} />
+  1944→                </div>
+  1945→                <div className="mt-3">
+  1946→                  <div className={cn('font-display text-2xl font-bold tabular-nums', c.colour)}>
+  1947→                    {c.value}
+  1948→                    <span className="ml-1 text-xs font-normal text-muted-foreground">{c.unit}</span>
+  1949→                  </div>
+  1950→                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{c.label}</div>
+  1951→                </div>
+  1952→                <div className={cn('mt-2', c.colour)}>
+  1953→                  <Sparkline data={c.data} colour="currentColor" />
+  1954→                </div>
+  1955→              </CardContent>
+  1956→            </Card>
+  1957→          </motion.div>
+  1958→        ))}
+  1959→      </div>
+  1960→
+  1961→      {/* ---- Process uptime card ---- */}
+  1962→      <div className="grid gap-3 sm:grid-cols-3">
+  1963→        <Card>
+  1964→          <CardContent className="p-4">
+  1965→            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+  1966→              <Clock className="h-3 w-3" /> Process Uptime
+  1967→            </div>
+  1968→            <div className="mt-2 font-display text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+  1969→              {formatUptime(live.uptimeSec)}
+  1970→            </div>
+  1971→            <div className="mt-1 text-[10px] text-muted-foreground">since last restart</div>
+  1972→          </CardContent>
+  1973→        </Card>
+  1974→        <Card>
+  1975→          <CardContent className="p-4">
+  1976→            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+  1977→              <Activity className="h-3 w-3" /> Avg API Latency
+  1978→            </div>
+  1979→            <div className="mt-2 font-display text-xl font-bold tabular-nums">
+  1980→              {live.avgLatencyMs.toFixed(0)}<span className="ml-1 text-xs font-normal text-muted-foreground">ms</span>
+  1981→            </div>
+  1982→            <div className="mt-1 text-[10px] text-muted-foreground">over last 5 min</div>
+  1983→          </CardContent>
+  1984→        </Card>
+  1985→        <Card>
+  1986→          <CardContent className="p-4">
+  1987→            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+  1988→              <HardDrive className="h-3 w-3" /> Heap Total
+  1989→            </div>
+  1990→            <div className="mt-2 font-display text-xl font-bold tabular-nums">
+  1991→              {live.heapTotalMb.toFixed(0)}<span className="ml-1 text-xs font-normal text-muted-foreground">MB</span>
+  1992→            </div>
+  1993→            <div className="mt-1 text-[10px] text-muted-foreground">allocated V8 heap</div>
+  1994→          </CardContent>
+  1995→        </Card>
+  1996→      </div>
+  1997→    </div>
+  1998→  )
+  1999→}
+  2000→
+
+[showing lines 1-2000 of 4746; use offset=2001 with limit to continue reading]

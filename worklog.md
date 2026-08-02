@@ -9964,3 +9964,94 @@ Stage Summary:
 - The platform continues to strengthen: monitoring → alerting → SLOs →
   public confidence badges. The 15-min webDevReview cron will continue
   autonomous refinement.
+
+---
+Task ID: PM-MAINT
+Agent: Postmortem + Maintenance Tabs Agent
+Task: Add Postmortems and Scheduled Maintenance tabs to admin infra console
+
+Work Log:
+- Read worklog tail for palette discipline (emerald/gold/amber/zinc/red ONLY — NO indigo, NO blue),
+  the votewise-card-glow utility, and the dark-default theme convention.
+- Read the existing 4,746-line infrastructure-console.tsx to study: imports, palette maps,
+  helpers (timeAgo, formatDateTime, formatNumber), shared sub-components (StatCard, EmptyState,
+  ErrorState, LoadingRow, CopyButton), Tabs structure (TabsList/TabsTrigger/TabsContent), and
+  the pattern for tab content + dialogs (AlertsTab, LoadTestingTab as references).
+- Read the backend modules src/lib/infra/postmortem.ts and src/lib/infra/scheduled-maintenance.ts
+  to learn the exact data shapes (PostmortemInput, ScheduledMaintenanceInput, stats fields).
+- Read src/lib/api.ts lines 231-238 for the client functions: pihedPostmortems, pihedPostmortem,
+  pihedCreatePostmortem, pihedUpdatePostmortem, pihedDeletePostmortem, pihedMaintenanceSchedule,
+  pihedScheduleMaintenance, pihedCancelMaintenance. Also confirmed listOrganizations for the
+  maintenance org-select.
+- Read the 4 API route files (postmortems/route.ts, postmortems/[id]/route.ts,
+  maintenance-schedule/route.ts, maintenance-schedule/[id]/cancel/route.ts) to confirm response
+  shapes ({ postmortems, stats }, { postmortem: parsedDetail }, { windows, stats },
+  { maintenance: sm, message }).
+- Added 3 new lucide icons to the import block: Lightbulb (lessons learned), CalendarClock
+  (scheduled windows), Ban (cancel).
+- Added 2 new TabsTrigger entries after the Load Test trigger: "Postmortems" (FileText icon)
+  and "Maintenance" (Wrench icon). The existing 10 tabs remain untouched.
+- Added 2 new TabsContent entries wiring the new tabs to PostmortemsTab() and MaintenanceTab().
+- Tab 11 — PostmortemsTab (~1,400 lines added):
+  • Header card with votewise-card-glow + the exact "detect → alert → respond → postmortem →
+    improve" lifecycle copy.
+  • 4 stat cards (Total / Published / Drafts / Open Action Items). The Open Action Items card
+    turns red with a ping dot when >0. Header + Published cards use votewise-card-glow.
+  • Postmortem list: scrollable (max-h-[600px] votewise-scroll) cards showing severity badge
+    (critical=red, warning=amber, info=zinc), status badge (published=emerald, draft=zinc,
+    archived=zinc), authoredByName, timeAgo, summary (line-clamp-2). Click opens detail dialog.
+  • PostmortemDetailDialog (max-w-4xl): severity + status + incident badges, summary, vertical
+    timeline with primary dots, Root Cause (red-tinted) + Impact (amber-tinted) 2-col, What Went
+    Well (green checks) + What Went Wrong (red x) 2-col, Action Items table with checkbox to
+    toggle done/in-progress/todo (PATCHes via pihedUpdatePostmortem), Lessons Learned (lightbulbs
+    in amber tint), footer with authoredBy/reviewedBy/publishedAt, and action buttons Publish
+    (visible only when draft) + Delete (AlertDialog confirm, red bg).
+  • PostmortemCreateDialog: title, severity select, summary, rootCause, impact — calls
+    pihedCreatePostmortem. Timeline/action items/lessons deferred to the detail view per spec.
+  • 60s auto-refresh (silent polling, first-load error card with retry, subsequent failures
+    don't clobber the UI).
+- Tab 12 — MaintenanceTab:
+  • Header card with votewise-card-glow + the "auto-activate when the window starts" copy.
+  • 5 stat cards (Total / Scheduled / In Progress / Completed / Cancelled). The In Progress card
+    pulses amber + ring when >0.
+  • MaintenanceCreateDialog: title, description, level select (PLATFORM/ORGANIZATION/MODULE).
+    Selecting ORGANIZATION reveals an org combobox (fetched from /api/organizations via
+    api.listOrganizations). Selecting MODULE reveals a module-name text input. Two
+    datetime-local inputs (scheduledStart, scheduledEnd) + a "Suggest: tomorrow 02:00 → 04:00"
+    helper button. Validates end > start. Calls pihedScheduleMaintenance.
+  • Maintenance list grouped by status: Active (IN_PROGRESS, amber border), Upcoming (SCHEDULED),
+    Past (COMPLETED + CANCELLED). Each card shows level badge (PLATFORM=red, ORGANIZATION=amber,
+    MODULE=zinc), status badge (SCHEDULED=zinc, IN_PROGRESS=amber+ring+pulse, COMPLETED=emerald,
+    CANCELLED=zinc+strikethrough), description (line-clamp-2), scheduled window with duration
+    "(2h)" and a countdown badge ("in 3d" / "active now" / "completed 2d ago" / "cancelled"),
+    createdBy + timeAgo. Cancel button only on SCHEDULED windows — opens AlertDialog confirm,
+    calls pihedCancelMaintenance.
+  • 30s auto-refresh so countdowns update.
+- Design rules respected: palette strictly emerald/gold/amber/zinc/red with explicit dark:
+  variants on every badge; votewise-card-glow on the header cards and prominent stat cards;
+  mobile-first responsive (grid-cols-2 → sm:grid-cols-3/4/5, tables hide columns on small
+  screens); Framer Motion entrance animations on cards and timeline; LoadingRow/EmptyState/
+  ErrorState shared helpers; sonner toast for all action feedback; shadcn Dialog/AlertDialog/
+  Textarea/Select/Input/Label/Checkbox components throughout; max-h-[600px] + votewise-scroll
+  on every long list; no test code added; the existing 10 tabs are byte-for-byte intact.
+- Lint: bun run lint → 0 errors, 0 warnings (exit 0).
+- agent-browser QA: logged in as admin@votewise.com.ng, confirmed both new tabs appear in the
+  tablist ("Postmortems", "Maintenance"). Postmortems tab renders the seeded "API latency spike
+  during SUG election peak" card with warning/published badges; clicking it opens the detail
+  dialog with the action items table (4 rows, one already checked "done"). Maintenance tab
+  renders the 3 seeded windows (2 upcoming with Cancel buttons, 1 completed without). The
+  create-maintenance dialog correctly swaps between org-combobox and module-input as the level
+  changes.
+- File grew from 4,746 → 5,969 lines (+1,223 lines for the 2 new tabs and their dialogs).
+
+Stage Summary:
+- ✅ Tab 11 "Postmortems" added: blameless incident lifecycle UI with stat cards, scrollable
+  list, full detail dialog (timeline / root cause / impact / what-went-well / what-went-wrong /
+  action items with toggle checkboxes / lessons learned / publish / delete), create dialog,
+  60s auto-refresh.
+- ✅ Tab 12 "Maintenance" added: scheduled-window planner with 5 stat cards, status-grouped
+  list (Active / Upcoming / Past), per-window countdown, level-conditional create form
+  (org-combobox or module-input), AlertDialog cancel confirm, 30s auto-refresh.
+- ✅ Existing 10 tabs untouched. Lint clean. Browser-verified.
+- The infrastructure console now has 12 tabs covering the full Ch.17 PIHED lifecycle:
+  detect → alert → respond → postmortem → improve, plus planned-maintenance scheduling.

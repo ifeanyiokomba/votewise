@@ -85,8 +85,12 @@ export function startPeriodicJobs() {
     if (tick % 10 === 0) {
       enqueue('slo.sample', {})
     }
+    // Every 2 minutes (4th tick): activate due maintenance windows
+    if (tick % 4 === 0) {
+      enqueue('maintenance.activate', {})
+    }
   }, 30_000)
-  console.log('[jobs] periodic scheduler started (30s interval, SLO sampling every 5min)')
+  console.log('[jobs] periodic scheduler started (30s interval, SLO 5min, maintenance 2min)')
 }
 
 export function stopPeriodicJobs() {
