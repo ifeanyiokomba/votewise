@@ -9100,3 +9100,195 @@ Stage Summary:
     after the Pricing section).
   - `src/components/votewise/workspace.tsx` (added Billing nav item between
     Intelligence and Audit Logs in the WorkspaceNav items array).
+
+---
+Task ID: PAOEM-UI
+Agent: Platform Operations Center UI Agent (sub-agent)
+Task: Build the Platform Operations Center UI and the Digital Command Center
+(War Room mode) — Chapter 15 (PAOEM — Platform Administration & Operations
+Management) frontend for the VoteWise platform.
+
+Work Log:
+1. Read `/home/z/my-project/worklog.md` to absorb project context — VoteWise
+   Next.js 16 + Prisma/SQLite + Turbopack, emerald/gold/amber palette
+   (NO indigo/blue), DARK default theme, `votewise-card-glow` header style,
+   existing patterns in `intelligence-dashboard.tsx` and `billing-center.tsx`.
+2. Inspected the PAOEM backend library (`src/lib/paoem/index.ts`) and every
+   PAOEM API route handler under `src/app/api/paoem/*` to confirm the request/
+   response contracts (RBAC enforced — SUPER_ADMIN or PLATFORM_SUPER_ADMIN
+   only; `verifyAccessToken` via HttpOnly cookies). Confirmed the `api.paoem*`
+   client methods in `src/lib/api.ts`.
+3. Studied existing similar components for pattern fidelity:
+   - `intelligence-dashboard.tsx` (~1671 lines) — reference for header style,
+     `votewise-card-glow`, KPI grid, Framer Motion entrance animations.
+   - `billing-center.tsx` (~1914 lines) — reference for stat cards, dialogs,
+     suspend/activate actions, palette discipline.
+   - `intelligence/page.tsx` — page wrapper pattern (Suspense + Loader2).
+   - `admin/page.tsx` — existing admin login gate pattern (`api.me()` + role
+     check + login card with demo credentials).
+4. **Created `src/app/admin/operations/page.tsx`** — minimal `'use client'`
+   Suspense wrapper around `<PlatformOperationsCenter />` with a Loader2
+   fallback, exactly per spec.
+5. **Created `src/components/votewise/platform-operations-center.tsx`**
+   (~2200 lines) — the main 6-tab operations center:
+   - **Auth gate**: `api.me()` check on mount; if not SUPER_ADMIN /
+     PLATFORM_SUPER_ADMIN, shows a `votewise-card-glow` login card (same look
+     as `/admin` login — demo credentials `admin@votewise.ng / admin123`).
+     Sign-out button calls `api.logout()`.
+   - **Header**: sticky top, logo + "VoteWise Operations" title, admin-name
+     badge, buttons to /admin (Admin), / (Site), and Sign-out.
+   - **Tabs** (shadcn/ui): Dashboard · Organizations · Feature Flags ·
+     Maintenance · Broadcasts · Command Center — horizontally scrollable on
+     mobile (`votewise-scroll`).
+   - **Tab 1 — Dashboard**: `votewise-card-glow` header card with PAOEM
+     Engine badge + Refresh + "Auto · 15s" live indicator + last-updated
+     timestamp. 8 stat cards in a responsive grid (Organizations, Live
+     Elections, Total Voters, Votes Today, Support Tickets, Revenue in ₦,
+     Platform Health %, Security Status — each with palette-correct coloured
+     icon tile). Live Elections table (shared `LiveElectionsTable`
+     component): name, org, votes/eligible, turnout % with progress bar +
+     colour coding (emerald ≥50% else amber), incidents badge, time-remaining
+     countdown (auto-ticks every 1s). Auto-refresh every 15s. Uses
+     `firstLoadRef` so only the first failure shows a toast.
+   - **Tab 2 — Organizations**: `votewise-card-glow` header + total-orgs
+     badge. Filter card: Search input (name/subdomain/owner email) + Status
+     select (ALL/ACTIVE/TRIAL/SUSPENDED) + Plan select (ALL/FREE/PAYG/
+     ENTERPRISE). Organization table: name + owner email, subdomain,
+     status badge (palette-coded), plan badge (palette-coded), elections
+     count, voters count, created date. Click "View" → detail dialog with
+     4-tile stats (Plan/Elections/Voters/Quota) + **Health Score** panel
+     (overall % in palette-correct colour, 4 `HealthBar` sub-scores:
+     Configuration/Security/Support/Compliance, each with colour-coded
+     progress bar, details grid) + Suspend (`AlertDialog` captures reason)
+     or Activate action button. Pagination: 20/page with First/Prev/Next/
+     Last + page indicator. Calls `api.paoemGetOrganizations(params)`,
+     `api.paoemGetOrgHealth(id)`, `api.paoemUpdateOrganization({action,reason})`.
+   - **Tab 3 — Feature Flags**: `votewise-card-glow` header + "Create
+     Feature Flag" button. List of flags: each row has enabled/disabled icon
+     tile (emerald CheckCircle2 if ON, zinc XCircle if OFF), name, category
+     badge (palette-coded by SECURITY/VOTING/ANALYTICS/COMMUNICATION/BILLING/
+     INTEGRATION/EXPERIMENT), code-styled key, description, rollout %,
+     created-by. Switch on the right toggles the flag — ON = emerald,
+     OFF = zinc — calling `api.paoemSetFeatureFlag(key, enabled)` with
+     optimistic UI + busy state on the toggled flag. **Create dialog**: key
+     (auto-normalised to UPPER_SNAKE), name, description, category select.
+     Calls `api.paoemCreateFeatureFlag`.
+   - **Tab 4 — Maintenance**: `votewise-card-glow` header + "Start
+     Maintenance" button. Active maintenance list: each row has a coloured
+     dot (PLATFORM=red, ORGANIZATION=amber, MODULE=zinc), level badge,
+     optional module badge, reason, started-at timestamp, started-by. "End"
+     button calls `api.paoemEndMaintenance(id)`. Auto-refresh every 20s.
+     **Start dialog**: Level select (PLATFORM/ORGANIZATION/MODULE). When
+     ORGANIZATION chosen, shows an organization selector (fetched from
+     `paoemGetOrganizations`). When MODULE chosen, shows a free-text module
+     input. Always requires a reason. Calls `api.paoemStartMaintenance`.
+   - **Tab 5 — Broadcasts**: `votewise-card-glow` header + "Create Broadcast"
+     button. Broadcast list: type-coloured icon tile (INFO=zinc,
+     SUCCESS=emerald, WARNING=amber, CRITICAL=red, ANNOUNCEMENT=emerald),
+     title, type badge, target badge, message, published-at timestamp,
+     expires-at if set, created-by. Auto-refresh every 30s. **Create dialog**:
+     title, message textarea, type select, target select (ALL/ACTIVE/TRIAL/
+     ENTERPRISE). Calls `api.paoemCreateBroadcast`.
+   - **Tab 6 — Command Center (War Room)** — the showpiece: large
+     `votewise-card-glow` header with bigger padding (p-6 → p-8 on sm),
+     Radio icon with animated ping ring, "Digital Command Center" title
+     (3xl → 4xl), War Room badge, Refresh + "Auto · 10s" live indicator,
+     last-updated timestamp.
+     - **Active Maintenance alert banner** (AnimatePresence): if any
+       maintenance is active, shows a red-tinted alert card at the top with
+       count + first reason + "View details" link.
+     - **7 Big stat cards** in a responsive grid (1 → 2 → 3 → 4 cols):
+       1. 🟢 Live Elections (count-up)
+       2. 🟢 Active Voters (count-up)
+       3. 🟢 Turnout % (count-up + animated progress bar)
+       4. 🟢 Integrity Score % (count-up + animated progress bar)
+       5. 🟡 Open Support Tickets (count-up)
+       6. 🔴 Security Incidents (count-up, red ring + ping dot if > 0)
+       7. 🟢 Infrastructure Health (text)
+       Each card has a coloured dot indicator, larger fonts (3xl → 4xl),
+       bigger padding (p-6), and `votewise-card-glow`. The 8th cell is a
+       "Platform Pulse" mini-card showing Votes Cast / Flags ON / Broadcasts /
+       Maintenance counts.
+     - **AnimatedNumber component**: uses Framer Motion's `useMotionValue`
+       + `animate()` to count up from 0 to the target value on every data
+       refresh. Tabular-nums for stable width. Smart formatting (numbers
+       ≥1000 use `toLocaleString`, decimals for non-integer values).
+     - **Live Elections table** (with Tickets column): name, org, votes,
+       turnout %, incidents, tickets, time-remaining.
+     - Bottom row (lg:grid-cols-2): Active Maintenance card (with "all
+       systems operational" empty state) + Active Broadcasts card.
+     - Footer status strip: "All systems operational" + "PAOEM Engine v1"
+       + Integrity % + current timestamp.
+     - Auto-refresh every 10s + 1s countdown ticks.
+   - **Palette discipline**: emerald / gold / amber / zinc / red ONLY — NO
+     indigo, NO blue. Status/Plan/Maintenance/Broadcast/Category badges all
+     use typed style maps with both light and dark variants. `votewise-card-glow`
+     on every tab header card + all Command Center stat cards.
+   - **Mobile-first responsive**: every grid uses `grid-cols-2` →
+     `sm:grid-cols-3` → `lg:grid-cols-4` → `xl:grid-cols-6` patterns; tables
+     hide columns on small screens; long lists use `votewise-scroll max-h-*
+     overflow-y-auto`. Consistent `p-4` / `p-6` padding, `gap-4` / `gap-6`
+     spacing.
+   - **Helpers**: `formatNaira` (₦X,XXX,XXX), `formatNumber`, `timeRemaining`
+     (returns {label, ms, expired}), `scoreColour` and `scoreBarColour` for
+     health scores (emerald ≥80, amber ≥60, red otherwise).
+6. Ran `cd /home/z/my-project && bun run lint` — initial run flagged 1
+   warning (unused `eslint-disable` directive in `CommandCenterTab.load`).
+   `npx tsc --noEmit` flagged 2 errors (`Badge variant="ghost"` is invalid —
+   only `default`/`secondary`/`destructive`/`outline` are supported). Fixed
+   all three:
+   - Refactored `DashboardTab.load` and `CommandCenterTab.load` to use a
+     `firstLoadRef` (`useRef(true)`) instead of relying on stale `data`
+     closure — this let me drop both `eslint-disable` comments and the
+     `[data]` deps, making `load` truly stable so `setInterval` is only
+     created once.
+   - Replaced both `<Badge variant="ghost">` instances with
+     `<Badge variant="secondary">` (Dashboard "Auto · 15s" indicator and
+     Command Center "Auto · 10s" indicator).
+7. Re-ran `bun run lint` → **0 errors, 0 warnings** (exit 0). Re-ran
+   `npx tsc --noEmit` → no errors in the new files.
+8. **Runtime verification**: attempted to curl `/admin/operations` — the
+   Next.js dev server (port 3000) was not running in this sandbox session
+   (Caddy on port 81 returns 502; `dev.log` shows a previous
+   `EADDRINUSE: address already in use :::3000` crash from before my changes
+   were written). Per project rules I did NOT restart `bun run dev` manually
+   (it is system-managed). The user can preview the page via the Preview
+   Panel once the dev server is back up — the wrapper page renders the same
+   Suspense + Loader2 fallback that `intelligence/page.tsx` and
+   `billing/page.tsx` use, so it will compile and load identically.
+
+Stage Summary:
+- ✅ Operations page at `/admin/operations` — Suspense + Loader2 fallback
+  wrapper, exactly per spec.
+- ✅ `PlatformOperationsCenter` component with auth gate (login card if not
+  SUPER_ADMIN / PLATFORM_SUPER_ADMIN) + 6 fully-functional tabs:
+  - **Dashboard** — `votewise-card-glow` header + 8 stat cards + Live
+    Elections table + 15s auto-refresh + 1s countdown ticks.
+  - **Organizations** — search + status/plan filters + table + paginated
+    (20/page) + detail dialog with health scores (Configuration/Security/
+    Support/Compliance + overall) + Suspend (AlertDialog with reason) /
+    Activate actions.
+  - **Feature Flags** — list with ON=emerald / OFF=zinc switches + create
+    dialog (key/name/description/category) + busy state on the toggled flag.
+  - **Maintenance** — active list with level-coded badges (PLATFORM=red,
+    ORGANIZATION=amber, MODULE=zinc) + Start dialog (level + org selector
+    for ORGANIZATION + module input for MODULE + reason) + End button +
+    20s auto-refresh.
+  - **Broadcasts** — list with type-coded badges + Create dialog (title /
+    message / type / target) + 30s auto-refresh.
+  - **Command Center (War Room)** — large-screen showpiece: 7 big stat
+    cards with Framer Motion count-up animations + coloured dot indicators
+    + animated progress bars (Turnout, Integrity) + red ring + ping dot
+    for Security Incidents when > 0 + active-maintenance alert banner
+    (AnimatePresence) + Live Elections table with tickets column + bottom
+    row of Active Maintenance + Active Broadcasts cards + footer status
+    strip + 10s auto-refresh + 1s countdown ticks.
+- ✅ Palette discipline: emerald / gold / amber / zinc / red ONLY — NO
+  indigo, NO blue. `votewise-card-glow` on every tab header card + all
+  Command Center stat cards. Mobile-first responsive. Framer Motion
+  animations throughout (entrance, count-up, ping rings, progress bars).
+- ✅ Lint: 0 errors, 0 warnings. TypeScript: no errors in my new files.
+- **Files created:**
+  - `src/app/admin/operations/page.tsx`
+  - `src/components/votewise/platform-operations-center.tsx`
+- **Files modified:** none.

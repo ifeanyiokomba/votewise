@@ -10,7 +10,7 @@ import { PrismaClient } from '@prisma/client'
 //
 // If you add or remove a Prisma model field, bump SCHEMA_SIG below to force
 // every dev server to pick up the new client on the next request.
-const SCHEMA_SIG = 'v14-bspcm-fix'
+const SCHEMA_SIG = 'v15-paoem'
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient

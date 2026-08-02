@@ -2163,3 +2163,69 @@ model AddOnPurchase {
   @@index([feature])
   @@index([status])
 }
+
+// ===========================================================================
+// CHAPTER 15 — PLATFORM ADMINISTRATION, OPERATIONS & ECOSYSTEM MANAGEMENT (PAOEM)
+// ===========================================================================
+
+/// FeatureFlag — enable/disable features without deployment. Perfect for
+/// gradual rollouts, beta testing, and emergency disabling.
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique  // e.g. "ai_reports", "white_label", "blockchain_verification"
+  name        String
+  description String?
+  enabled     Boolean  @default(false)
+  // Rollout: percentage of orgs that get the feature (0-100)
+  rolloutPercent Int   @default(0)
+  // Specific orgs that have access (JSON array of org IDs)
+  whitelistedOrgs String? // JSON array
+  // Metadata
+  category    String   @default("GENERAL") // GENERAL | BETA | EXPERIMENTAL | SECURITY | BILLING
+  createdById String?
+  createdByName String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([category])
+}
+
+/// MaintenanceMode — platform/org/module-level maintenance. Never interrupts
+/// unrelated customers.
+model MaintenanceMode {
+  id              String   @id @default(cuid())
+  level           String   // PLATFORM | ORGANIZATION | MODULE
+  organizationId  String?  // for ORGANIZATION level
+  module          String?  // for MODULE level (e.g. "voting", "billing", "api")
+  reason          String
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+  startedById     String?
+  startedByName   String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([level])
+  @@index([organizationId])
+  @@index([isActive])
+}
+
+/// PlatformBroadcast — platform-wide announcements targeting all or specific orgs.
+model PlatformBroadcast {
+  id              String   @id @default(cuid())
+  title           String
+  message         String
+  type            String   @default("INFO") // INFO | MAINTENANCE | SECURITY | FEATURE | INCIDENT
+  target          String   @default("ALL") // ALL | PLAN:ENTERPRISE | REGION:NG | ORG:specific_id
+  isPublished     Boolean  @default(true)
+  isDismissible   Boolean  @default(true)
+  publishedAt     DateTime @default(now())
+  expiresAt       DateTime?
+  createdById     String?
+  createdByName   String?
+  createdAt       DateTime @default(now())
+
+  @@index([isPublished])
+  @@index([type])
+}

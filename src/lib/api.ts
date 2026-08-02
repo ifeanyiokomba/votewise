@@ -199,6 +199,22 @@ export const api = {
   getVoterPortal: (subdomain?: string) => req(`/api/workspace/voter-portal${subdomain ? `?x-vw-org=${encodeURIComponent(subdomain)}` : ''}`, {}, getVoterToken()),
   // Public receipt verification (no org context needed)
   publicVerifyReceipt: (receiptCode: string) => req('/api/receipt/verify', { method: 'POST', body: JSON.stringify({ receiptCode }) }),
+  // Chapter 15: PAOEM — Platform Administration, Operations & Ecosystem Management
+  paoemGetDashboard: () => req('/api/paoem/dashboard'),
+  paoemGetOrganizations: (params: string) => req(`/api/paoem/organizations${params ? '?' + params : ''}`),
+  paoemUpdateOrganization: (orgId: string, data: any) => req(`/api/paoem/organizations/${orgId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  paoemGetOrgHealth: (orgId: string) => req(`/api/paoem/organizations/${orgId}/health`),
+  paoemGetFeatureFlags: () => req('/api/paoem/feature-flags'),
+  paoemCreateFeatureFlag: (data: any) => req('/api/paoem/feature-flags', { method: 'POST', body: JSON.stringify(data) }),
+  paoemSetFeatureFlag: (key: string, enabled: boolean) => req(`/api/paoem/feature-flags/${key}`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+  paoemGetMaintenance: () => req('/api/paoem/maintenance'),
+  paoemStartMaintenance: (data: any) => req('/api/paoem/maintenance', { method: 'POST', body: JSON.stringify(data) }),
+  paoemEndMaintenance: (maintenanceId: string) => req('/api/paoem/maintenance', { method: 'PATCH', body: JSON.stringify({ maintenanceId }) }),
+  paoemGetBroadcasts: () => req('/api/paoem/broadcasts'),
+  paoemCreateBroadcast: (data: any) => req('/api/paoem/broadcasts', { method: 'POST', body: JSON.stringify(data) }),
+  paoemSearch: (q: string) => req(`/api/paoem/search?q=${encodeURIComponent(q)}`),
+  paoemGetCommandCenter: () => req('/api/paoem/command-center'),
+
   // Chapter 14: BSPCM — Billing, Subscriptions, Payments & Commercial Management
   bspmGetPricing: () => req('/api/bspcm/pricing'),
   bspmEstimate: (data: any) => req('/api/bspcm/estimate', { method: 'POST', body: JSON.stringify(data) }),
