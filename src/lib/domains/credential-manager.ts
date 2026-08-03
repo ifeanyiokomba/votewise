@@ -74,23 +74,20 @@ export interface CredentialDefinition {
 }
 
 export const CREDENTIAL_CATALOG: CredentialDefinition[] = [
-  // Email
-  { key: 'RESEND_API_KEY', displayName: 'Resend API Key', category: 'EMAIL', provider: 'resend', description: 'Used for sending OTVP codes and notifications via email', isRequired: false, placeholder: 're_abc123...', verifyUrl: 'https://api.resend.com/domains' },
-  // SMS
-  { key: 'TERMII_API_KEY', displayName: 'Termii API Key', category: 'SMS', provider: 'termii', description: 'Used for sending OTVP codes via SMS to Nigerian phone numbers', isRequired: false, placeholder: 'TLxxxxx...', verifyUrl: 'https://api.termii.com/sender-id' },
-  { key: 'TERMII_SENDER_ID', displayName: 'Termii Sender ID', category: 'SMS', provider: 'termii', description: 'The sender name that appears on SMS messages', isRequired: false, placeholder: 'VoteWise' },
-  // WhatsApp
-  { key: 'TERMII_WHATSAPP_KEY', displayName: 'Termii WhatsApp Key', category: 'WHATSAPP', provider: 'termii', description: 'Separate key for WhatsApp message delivery (if different from SMS)', isRequired: false, placeholder: 'TLxxxxx...' },
-  // Payment
-  { key: 'PAYSTACK_SECRET_KEY', displayName: 'Paystack Secret Key', category: 'PAYMENT', provider: 'paystack', description: 'Server-side key for verifying payments. Must start with sk_live_ for production.', isRequired: false, placeholder: 'sk_live_...', verifyUrl: 'https://api.paystack.co/transaction' },
-  { key: 'PAYSTACK_PUBLIC_KEY', displayName: 'Paystack Public Key', category: 'PAYMENT', provider: 'paystack', description: 'Client-side key for initiating payments', isRequired: false, placeholder: 'pk_live_...' },
-  { key: 'FLUTTERWAVE_SECRET_KEY', displayName: 'Flutterwave Secret Key', category: 'PAYMENT', provider: 'flutterwave', description: 'Server-side key for verifying Flutterwave payments', isRequired: false, placeholder: 'FLWSECK-...', verifyUrl: 'https://api.flutterwave.com/v3/transactions' },
-  { key: 'FLUTTERWAVE_PUBLIC_KEY', displayName: 'Flutterwave Public Key', category: 'PAYMENT', provider: 'flutterwave', description: 'Client-side key for initiating Flutterwave payments', isRequired: false, placeholder: 'FLWPUBK-...' },
-  { key: 'STRIPE_SECRET_KEY', displayName: 'Stripe Secret Key', category: 'PAYMENT', provider: 'stripe', description: 'Server-side key for international payments. Must start with sk_.', isRequired: false, placeholder: 'sk_live_...', verifyUrl: 'https://api.stripe.com/v1/balance' },
+  // Email — Resend (cheapest email API, 3K free/month)
+  { key: 'RESEND_API_KEY', displayName: 'Resend API Key', category: 'EMAIL', provider: 'resend', description: 'Used for sending OTVP codes and notifications via email. Free tier: 3,000 emails/month.', isRequired: false, placeholder: 're_abc123...', verifyUrl: 'https://api.resend.com/domains' },
+  // SMS — Termii (cheapest Nigerian SMS gateway, supports SMS + WhatsApp)
+  { key: 'TERMII_API_KEY', displayName: 'Termii API Key', category: 'SMS', provider: 'termii', description: 'Used for sending OTVP codes via SMS to Nigerian phone numbers (MTN, Glo, Airtel, 9mobile). ~₦2-4 per SMS.', isRequired: false, placeholder: 'TLxxxxx...', verifyUrl: 'https://api.termii.com/sender-id' },
+  { key: 'TERMII_SENDER_ID', displayName: 'Termii Sender ID', category: 'SMS', provider: 'termii', description: 'The sender name that appears on SMS messages (max 11 chars)', isRequired: false, placeholder: 'VoteWise' },
+  // WhatsApp — Termii (same provider, cheapest for Nigeria)
+  { key: 'TERMII_WHATSAPP_KEY', displayName: 'Termii WhatsApp Key', category: 'WHATSAPP', provider: 'termii', description: 'Key for WhatsApp message delivery via Termii. Usually same as SMS key. ~₦5 per message.', isRequired: false, placeholder: 'TLxxxxx...' },
+  // Payment — Paystack only (Nigerian payment gateway)
+  { key: 'PAYSTACK_SECRET_KEY', displayName: 'Paystack Secret Key', category: 'PAYMENT', provider: 'paystack', description: 'Server-side key for verifying payments. Get from dashboard.paystack.com. Must start with sk_live_ for production.', isRequired: false, placeholder: 'sk_live_...', verifyUrl: 'https://api.paystack.co/transaction' },
+  { key: 'PAYSTACK_PUBLIC_KEY', displayName: 'Paystack Public Key', category: 'PAYMENT', provider: 'paystack', description: 'Client-side key for initiating payments. Get from dashboard.paystack.com.', isRequired: false, placeholder: 'pk_live_...' },
   // Monitoring
-  { key: 'SENTRY_DSN', displayName: 'Sentry DSN', category: 'MONITORING', provider: 'sentry', description: 'Error tracking and performance monitoring', isRequired: false, placeholder: 'https://xxx@sentry.io/xxx' },
+  { key: 'SENTRY_DSN', displayName: 'Sentry DSN', category: 'MONITORING', provider: 'sentry', description: 'Error tracking and performance monitoring. Free tier: 5,000 errors/month.', isRequired: false, placeholder: 'https://xxx@sentry.io/xxx' },
   // Storage
-  { key: 'S3_BUCKET', displayName: 'S3/R2 Bucket Name', category: 'STORAGE', provider: 's3', description: 'Object storage bucket for logos, reports, evidence', isRequired: false, placeholder: 'votewise-production-storage' },
+  { key: 'S3_BUCKET', displayName: 'S3/R2 Bucket Name', category: 'STORAGE', provider: 's3', description: 'Object storage bucket for logos, reports, evidence. Cloudflare R2 recommended (10GB free, 0 egress).', isRequired: false, placeholder: 'votewise-production-storage' },
   { key: 'S3_REGION', displayName: 'S3/R2 Region', category: 'STORAGE', provider: 's3', description: 'AWS region or Cloudflare R2 region', isRequired: false, placeholder: 'eu-west-1' },
   { key: 'S3_ACCESS_KEY', displayName: 'S3/R2 Access Key', category: 'STORAGE', provider: 's3', description: 'Access key ID for S3/R2 storage', isRequired: false, placeholder: 'AKIA...' },
   { key: 'S3_SECRET_KEY', displayName: 'S3/R2 Secret Key', category: 'STORAGE', provider: 's3', description: 'Secret access key for S3/R2 storage', isRequired: false, placeholder: 'xxxx...' },
@@ -246,9 +243,7 @@ export async function verifyCredential(key: string): Promise<{ valid: boolean; m
       res = await fetch(def.verifyUrl, { headers: { Authorization: `Bearer ${value}` } })
     } else if (key === 'PAYSTACK_SECRET_KEY') {
       res = await fetch(def.verifyUrl, { headers: { Authorization: `Bearer ${value}` } })
-    } else if (key === 'FLUTTERWAVE_SECRET_KEY') {
-      res = await fetch(def.verifyUrl, { headers: { Authorization: `Bearer ${value}` } })
-    } else if (key === 'STRIPE_SECRET_KEY') {
+    } else if (key === 'TERMII_API_KEY') {
       res = await fetch(def.verifyUrl, { headers: { Authorization: `Bearer ${value}` } })
     } else {
       return { valid: true, message: 'Verification not implemented for this provider — key is stored' }

@@ -1,11 +1,11 @@
-// VoteWise — Chapter 14 Payment Abstraction Layer
+// VoteWise — Payment Provider (Paystack only)
 //
-// Provider-agnostic payment system. Each gateway (Paystack, Flutterwave,
-// Stripe) implements the PaymentProvider interface. New gateways can be
-// added without modifying existing code.
+// Paystack is the only payment provider for VoteWise.
+// It's the leading Nigerian payment gateway — supports cards, bank transfers,
+// USSD, and mobile money. Perfect for Nigerian elections.
 //
 // Payment flow:
-//   Initiate → Gateway → Verify → Activate
+//   Initiate → Paystack → Verify → Activate
 //
 // Never activate a workspace until payment is VERIFIED.
 
@@ -25,7 +25,7 @@ export interface PaymentRequest {
 export interface PaymentResult {
   success: boolean
   reference: string
-  authorizationUrl?: string // gateway redirect URL
+  authorizationUrl?: string
   status: PaymentStatus
   message: string
 }
@@ -37,30 +37,66 @@ export interface PaymentProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Paystack Provider (primary for Nigeria)
+// Paystack Provider (the only payment provider for VoteWise)
 // ---------------------------------------------------------------------------
 
 class PaystackProvider implements PaymentProvider {
   gateway: PaymentGateway = 'PAYSTACK'
 
   async initiate(req: PaymentRequest): Promise<PaymentResult> {
-    try {
-      // In production: call Paystack API
-      // const response = await fetch('https://api.paystack.co/transaction/initialize', {
-      //   method: 'POST',
-      //   headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email: req.email, amount: req.amount * 100, currency: req.currency, reference, metadata }),
-      // })
+    const secretKey = process.env.PAYSTACK_SECRET_KEY
+    if (!secretKey || secretKey.length < 10) {
+      return {
+        success: false,
+        reference: '',
+        status: 'FAILED',
+        message: 'Paystack is not configured. Set PAYSTACK_SECRET_KEY in the credential manager.',
+      }
+    }
 
+    try {
       const reference = `VW-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-      console.log(`[PAYSTACK] Initiate: ${reference} for ${req.amount} ${req.currency} (${req.email})`)
+      const response = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: req.email,
+          amount: req.amount * 100, // Paystack expects kobo
+          currency: req.currency || 'NGN',
+          reference,
+          metadata: {
+            custom_fields: [
+              { display_name: 'Organization', variable_name: 'organization', value: req.name },
+              { display_name: 'Invoice ID', variable_name: 'invoice_id', value: req.invoiceId || '' },
+              ...Object.entries(req.metadata || {}).map(([k, v]) => ({
+                display_name: k,
+                variable_name: k,
+                value: String(v),
+              })),
+            ],
+          },
+        }),
+      })
+
+      const data = await response.json() as any
+      if (data.status && data.data?.authorization_url) {
+        return {
+          success: true,
+          reference: data.data.reference || reference,
+          authorizationUrl: data.data.authorization_url,
+          status: 'INITIATED',
+          message: 'Payment initiated. Redirect to Paystack to complete.',
+        }
+      }
 
       return {
-        success: true,
+        success: false,
         reference,
-        authorizationUrl: `https://checkout.paystack.com/${reference}`,
-        status: 'INITIATED',
-        message: 'Payment initiated. Redirect to authorization URL.',
+        status: 'FAILED',
+        message: data.message || 'Paystack initialization failed.',
       }
     } catch (e: any) {
       return { success: false, reference: '', status: 'FAILED', message: e.message }
@@ -69,15 +105,13 @@ class PaystackProvider implements PaymentProvider {
 
   async verify(reference: string): Promise<PaymentResult> {
     const secretKey = process.env.PAYSTACK_SECRET_KEY
-    if (!secretKey || secretKey.startsWith('sk_test_') === false && secretKey.length < 10) {
-      // Billing is NOT configured with real credentials — reject all verifications.
-      // This prevents the mock-verify vulnerability where any reference returns 'VERIFIED'.
-      console.warn('[PAYSTACK] Verify REJECTED: PAYSTACK_SECRET_KEY not configured with real credentials.')
+    if (!secretKey || secretKey.length < 10) {
+      console.warn('[PAYSTACK] Verify REJECTED: PAYSTACK_SECRET_KEY not configured.')
       return {
         success: false,
         reference,
         status: 'FAILED',
-        message: 'Payment verification is not available. Billing is not configured.',
+        message: 'Payment verification is not available. Paystack is not configured.',
       }
     }
 
@@ -86,10 +120,22 @@ class PaystackProvider implements PaymentProvider {
         headers: { Authorization: `Bearer ${secretKey}` },
       })
       const data = await response.json() as any
-      if (data.status && data.data.status === 'success') {
-        return { success: true, reference, status: 'VERIFIED', message: 'Payment verified successfully.' }
+
+      if (data.status && data.data?.status === 'success') {
+        return {
+          success: true,
+          reference,
+          status: 'VERIFIED',
+          message: 'Payment verified successfully.',
+        }
       }
-      return { success: false, reference, status: 'FAILED', message: `Paystack returned: ${data.data?.status || 'unknown'}` }
+
+      return {
+        success: false,
+        reference,
+        status: 'FAILED',
+        message: `Paystack returned: ${data.data?.status || data.message || 'unknown'}`,
+      }
     } catch (e: any) {
       return { success: false, reference, status: 'FAILED', message: e.message }
     }
@@ -97,93 +143,13 @@ class PaystackProvider implements PaymentProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Flutterwave Provider
+// Provider Registry — Paystack only
 // ---------------------------------------------------------------------------
 
-class FlutterwaveProvider implements PaymentProvider {
-  gateway: PaymentGateway = 'FLUTTERWAVE'
-
-  async initiate(req: PaymentRequest): Promise<PaymentResult> {
-    const reference = `VW-FLW-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-    console.log(`[FLUTTERWAVE] Initiate: ${reference} for ${req.amount} ${req.currency}`)
-    return {
-      success: true,
-      reference,
-      authorizationUrl: `https://checkout.flutterwave.com/v3/hosted/pay/${reference}`,
-      status: 'INITIATED',
-      message: 'Payment initiated via Flutterwave.',
-    }
-  }
-
-  async verify(reference: string): Promise<PaymentResult> {
-    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY
-    if (!secretKey || secretKey.length < 10) {
-      console.warn('[FLUTTERWAVE] Verify REJECTED: FLUTTERWAVE_SECRET_KEY not configured.')
-      return { success: false, reference, status: 'FAILED', message: 'Payment verification is not available. Billing is not configured.' }
-    }
-    try {
-      const response = await fetch(`https://api.flutterwave.com/v3/transactions/${reference}/verify`, {
-        headers: { Authorization: `Bearer ${secretKey}` },
-      })
-      const data = await response.json() as any
-      if (data.status === 'success' && data.data?.status === 'successful') {
-        return { success: true, reference, status: 'VERIFIED', message: 'Payment verified.' }
-      }
-      return { success: false, reference, status: 'FAILED', message: `Flutterwave returned: ${data.data?.status || 'unknown'}` }
-    } catch (e: any) {
-      return { success: false, reference, status: 'FAILED', message: e.message }
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Stripe Provider (international)
-// ---------------------------------------------------------------------------
-
-class StripeProvider implements PaymentProvider {
-  gateway: PaymentGateway = 'STRIPE'
-
-  async initiate(req: PaymentRequest): Promise<PaymentResult> {
-    const reference = `VW-STR-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-    console.log(`[STRIPE] Initiate: ${reference} for ${req.amount} ${req.currency}`)
-    return {
-      success: true,
-      reference,
-      authorizationUrl: `https://checkout.stripe.com/pay/${reference}`,
-      status: 'INITIATED',
-      message: 'Payment initiated via Stripe.',
-    }
-  }
-
-  async verify(reference: string): Promise<PaymentResult> {
-    const secretKey = process.env.STRIPE_SECRET_KEY
-    if (!secretKey || !secretKey.startsWith('sk_')) {
-      console.warn('[STRIPE] Verify REJECTED: STRIPE_SECRET_KEY not configured.')
-      return { success: false, reference, status: 'FAILED', message: 'Payment verification is not available. Billing is not configured.' }
-    }
-    try {
-      const response = await fetch(`https://api.stripe.com/v1/payment_intents/${reference}`, {
-        headers: { Authorization: `Bearer ${secretKey}` },
-      })
-      const data = await response.json() as any
-      if (data.status === 'succeeded') {
-        return { success: true, reference, status: 'VERIFIED', message: 'Payment verified.' }
-      }
-      return { success: false, reference, status: 'FAILED', message: `Stripe returned: ${data.status || 'unknown'}` }
-    } catch (e: any) {
-      return { success: false, reference, status: 'FAILED', message: e.message }
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Provider Registry
-// ---------------------------------------------------------------------------
+const paystackProvider = new PaystackProvider()
 
 const providers = new Map<PaymentGateway, PaymentProvider>([
-  ['PAYSTACK', new PaystackProvider()],
-  ['FLUTTERWAVE', new FlutterwaveProvider()],
-  ['STRIPE', new StripeProvider()],
+  ['PAYSTACK', paystackProvider],
 ])
 
 export function getProvider(gateway: PaymentGateway): PaymentProvider | undefined {
@@ -203,7 +169,7 @@ export function getAvailableGateways(): PaymentGateway[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Initiate a payment for an invoice.
+ * Initiate a payment for an invoice via Paystack.
  */
 export async function initiatePayment(opts: {
   invoiceId: string
@@ -217,7 +183,7 @@ export async function initiatePayment(opts: {
   if (invoice.status === 'PAID') throw new Error('Invoice already paid')
 
   const provider = getProvider(opts.gateway)
-  if (!provider) throw new Error(`Gateway ${opts.gateway} not available`)
+  if (!provider) throw new Error(`Gateway ${opts.gateway} not available. Only Paystack is supported.`)
 
   const result = await provider.initiate({
     amount: invoice.grandTotal - invoice.amountPaid,
@@ -230,7 +196,6 @@ export async function initiatePayment(opts: {
   })
 
   if (result.success) {
-    // Create payment record
     await db.payment.create({
       data: {
         paymentReference: result.reference,
@@ -250,7 +215,7 @@ export async function initiatePayment(opts: {
 }
 
 /**
- * Verify a payment and activate the subscription if successful.
+ * Verify a Paystack payment and activate the subscription if successful.
  */
 export async function verifyPayment(reference: string, gateway: PaymentGateway): Promise<{
   verified: boolean
@@ -261,12 +226,11 @@ export async function verifyPayment(reference: string, gateway: PaymentGateway):
   if (!payment) return { verified: false, message: 'Payment not found' }
 
   const provider = getProvider(gateway)
-  if (!provider) return { verified: false, message: 'Gateway not available' }
+  if (!provider) return { verified: false, message: 'Gateway not available. Only Paystack is supported.' }
 
   const result = await provider.verify(reference)
 
   if (result.success && result.status === 'VERIFIED') {
-    // Update payment
     await db.payment.update({
       where: { id: payment.id },
       data: {
@@ -276,7 +240,6 @@ export async function verifyPayment(reference: string, gateway: PaymentGateway):
       },
     })
 
-    // Update invoice
     if (payment.invoiceId) {
       const invoice = await db.invoice.findUnique({ where: { id: payment.invoiceId } })
       if (invoice) {
@@ -294,7 +257,6 @@ export async function verifyPayment(reference: string, gateway: PaymentGateway):
           },
         })
 
-        // If fully paid, activate the subscription
         if (isFullyPaid) {
           await activateSubscription(invoice.organizationId)
         }
@@ -306,7 +268,6 @@ export async function verifyPayment(reference: string, gateway: PaymentGateway):
     return { verified: true, message: 'Payment verified.' }
   }
 
-  // Payment failed
   await db.payment.update({
     where: { id: payment.id },
     data: { status: 'FAILED', failedAt: new Date(), failureReason: result.message },
@@ -326,7 +287,7 @@ async function activateSubscription(organizationId: string): Promise<void> {
       data: {
         status: 'ACTIVE',
         currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       },
     })
   } else {
