@@ -75,15 +75,15 @@ function statusBadge(status: string, isLive: boolean) {
   const key = (status || '').toLowerCase()
   if (isLive || key === 'live' || key === 'voting') {
     return (
-      <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-        <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+      <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
+        <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
         Live
       </Badge>
     )
   }
   if (key === 'completed' || key === 'certified') {
     return (
-      <Badge className="gap-1 bg-amber-100 text-amber-800 hover:bg-amber-100">
+      <Badge className="gap-1 bg-accent/15 text-accent-foreground hover:bg-accent/15">
         <Trophy className="h-3 w-3" /> {key === 'certified' ? 'Certified' : 'Completed'}
       </Badge>
     )
@@ -212,7 +212,10 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
     return (
       <div className="grid min-h-[60vh] place-items-center px-4">
         <div className="flex flex-col items-center gap-3 text-center">
-          <Loader2 className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="relative">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+          </div>
           <p className="text-sm text-muted-foreground">{t('publicResults.loadingResults')}</p>
         </div>
       </div>
@@ -236,16 +239,16 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
   if (!data) return null
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-      {/* HEADER */}
-      <Card className={cn('votewise-card-glow overflow-hidden transition-all', pulse && 'ring-2 ring-emerald-500/30')}>
+    <div className="mx-auto w-full max-w-[1152px] px-4 py-6 sm:px-6 sm:py-10">
+      {/* HEADER — premium analytics hero */}
+      <Card className={cn('vw-lift overflow-hidden transition-all', pulse && 'ring-2 ring-emerald-500/25')}>
         <CardContent className="p-5 sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 {statusBadge(data.status, data.isLive)}
                 {data.status && data.status.toUpperCase() === 'CERTIFIED' && (
-                  <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
                     <ShieldCheck className="h-3 w-3" /> {t('publicResults.verified')}
                   </Badge>
                 )}
@@ -258,8 +261,8 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                   <Radio className="h-3 w-3" /> {t('publicResults.publicResults')}
                 </Badge>
               </div>
-              <h1 className="mt-3 font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                {data.electionName}
+              <h1 className="mt-3 font-display text-2xl font-medium tracking-[-0.025em] sm:text-3xl">
+                {data.electionName}<span className="vw-dot">.</span>
               </h1>
               {data.description && (
                 <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -284,23 +287,23 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
               </div>
             </div>
 
-            {/* Live countdown */}
+            {/* Live countdown — refined */}
             <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
               <div className={cn(
                 'rounded-xl border px-4 py-2.5 text-center transition-all',
                 data.isLive
-                  ? 'border-emerald-200 bg-emerald-50'
-                  : 'border-border bg-muted/40'
+                  ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+                  : 'border-border bg-muted/30'
               )}>
-                <div className="flex items-center justify-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                   {data.isLive && (
-                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   )}
                   {data.isLive ? t('publicResults.timeRemaining') : t('publicResults.votingClosed')}
                 </div>
                 <div className={cn(
-                  'mt-0.5 font-mono text-xl font-bold tabular-nums',
-                  data.isLive ? 'text-emerald-700' : 'text-muted-foreground'
+                  'mt-0.5 font-mono text-xl font-medium tabular-nums',
+                  data.isLive ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'
                 )}>
                   {formatDuration(remainingMs)}
                 </div>
@@ -309,7 +312,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                 {data.status && data.status.toUpperCase() === 'CERTIFIED' && (
                   <Link
                     href={`/verify/${data.electionId}`}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
                   >
                     <ShieldCheck className="h-4 w-4" /> {t('publicResults.viewFullVerification')}
                   </Link>
@@ -319,7 +322,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                 </Button>
                 <a
                   href="/"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                   <BadgeCheck className="h-4 w-4" /> {t('publicResults.verifyYourVote')}
                 </a>
@@ -329,40 +332,40 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
         </CardContent>
       </Card>
 
-      {/* STAT GRID */}
+      {/* STAT GRID — refined with ring borders */}
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           icon={Users}
           label={t('publicResults.eligibleVoters')}
           value={data.eligibleVoters.toLocaleString()}
-          tint="bg-emerald-50 text-emerald-700"
+          tint="bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40"
         />
         <StatCard
           icon={Vote}
           label={t('publicResults.votesCast')}
           value={data.votesCast.toLocaleString()}
-          tint="bg-primary/10 text-primary"
+          tint="bg-primary/8 text-primary ring-primary/10"
           pulse={pulse}
         />
         <StatCard
           icon={TrendingUp}
           label={t('publicResults.turnout')}
           value={`${data.turnoutPct.toFixed(1)}%`}
-          tint="bg-amber-50 text-amber-700"
+          tint="bg-accent/12 text-accent-foreground ring-accent/15"
         />
         <StatCard
           icon={Clock}
           label={t('publicResults.timeRemaining')}
           value={data.isLive ? formatDuration(remainingMs) : t('publicResults.votingClosed')}
-          tint="bg-secondary text-secondary-foreground"
+          tint="bg-muted text-muted-foreground ring-border"
           mono
         />
       </div>
 
-      {/* TURNOUT PROGRESS */}
-      <Card className="mt-4">
+      {/* TURNOUT PROGRESS — refined */}
+      <Card className="vw-lift mt-4">
         <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <TrendingUp className="h-4 w-4 text-primary" /> {t('publicResults.turnoutProgress')}
           </CardTitle>
         </CardHeader>
@@ -399,15 +402,15 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
         <div className="mt-4 space-y-4">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4 text-primary" />
-            <h2 className="font-display text-lg font-semibold">{t('publicResults.liveCandidateResults')}</h2>
+            <h2 className="font-display text-lg font-medium">{t('publicResults.liveCandidateResults')}</h2>
             <Badge variant="secondary" className="ml-auto gap-1">
-              <span className="votewise-live-dot inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
               {data.isLive ? t('publicResults.updatingLive') : t('publicResults.final')}
             </Badge>
           </div>
 
           {data.positions.length === 0 ? (
-            <Card>
+            <Card className="vw-lift">
               <CardContent className="py-8 text-center text-sm text-muted-foreground">
                 {t('publicResults.noPositions')}
               </CardContent>
@@ -421,16 +424,16 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
           )}
         </div>
       ) : (
-        <Card className="mt-4 border-amber-200 bg-amber-50/40">
+        <Card className="vw-lift mt-4 border-amber-200 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/10">
           <CardContent className="flex items-start gap-3 p-5">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:ring-amber-900/40">
               <Lock className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-display text-sm font-semibold text-amber-900">
+              <h3 className="font-display text-sm font-medium text-amber-900 dark:text-amber-200">
                 {t('publicResults.resultsHidden')}
               </h3>
-              <p className="mt-1 text-sm text-amber-800/80">
+              <p className="mt-1 text-sm text-amber-800/80 dark:text-amber-300/70">
                 {t('publicResults.resultsHiddenDesc')}
               </p>
             </div>
@@ -440,12 +443,12 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
 
       {/* CRYPTOGRAPHIC VERIFICATION (collapsible) */}
       {data.verification && (
-        <Card className="mt-4">
+        <Card className="vw-lift mt-4">
           <Collapsible open={verifOpen} onOpenChange={setVerifOpen}>
             <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/40">
+              <CardHeader className="cursor-pointer hover:bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
                     <Shield className="h-4 w-4 text-primary" /> {t('publicResults.cryptographicVerification')}
                   </CardTitle>
                   <ChevronDown
@@ -477,7 +480,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                 <Separator />
                 <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-3">
                   <div>
-                    <div className="font-display text-2xl font-bold text-primary">
+                    <div className="vw-stat text-2xl text-primary">
                       {data.verification.totalVotes.toLocaleString()}
                     </div>
                     <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -485,7 +488,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                     </div>
                   </div>
                   <div>
-                    <div className="font-display text-2xl font-bold text-primary">
+                    <div className="vw-stat text-2xl text-primary">
                       {data.verification.turnoutPct.toFixed(1)}%
                     </div>
                     <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -493,7 +496,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
                     </div>
                   </div>
                   <div className="col-span-2 sm:col-span-1">
-                    <div className="flex h-full items-center justify-center gap-1.5 text-sm font-medium text-emerald-700">
+                    <div className="flex h-full items-center justify-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
                       <CheckCircle2 className="h-5 w-5" /> {t('publicResults.signatureValid')}
                     </div>
                   </div>
@@ -504,8 +507,8 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
         </Card>
       )}
 
-      {/* FOOTER ACTIONS */}
-      <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/30 p-4 sm:flex-row">
+      {/* FOOTER ACTIONS — refined */}
+      <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-xl border border-border bg-secondary/20 p-4 sm:flex-row">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Shield className="h-4 w-4 shrink-0 text-primary" />
           <span>
@@ -518,7 +521,7 @@ export function PublicResultsView({ electionId }: { electionId: string }) {
           </Button>
           <a
             href="/"
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground hover:bg-accent/90"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground hover:bg-accent/90"
           >
             <BadgeCheck className="h-4 w-4" /> {t('publicResults.verifyReceipt')}
           </a>
@@ -548,10 +551,10 @@ function PositionCard({ position }: { position: PositionResult }) {
     position.candidates.find((c) => c.id === id)
 
   return (
-    <Card>
+    <Card className="vw-lift">
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 font-display text-base">
+          <CardTitle className="flex items-center gap-2 font-display text-base font-medium">
             <Vote className="h-4 w-4 text-primary" />
             {position.title}
           </CardTitle>
@@ -562,7 +565,7 @@ function PositionCard({ position }: { position: PositionResult }) {
               </Badge>
             )}
             {hasResults && (
-              <Badge variant="outline" className="gap-1">
+              <Badge variant="outline" className="gap-1 tabular-nums">
                 <Hash className="h-3 w-3" /> {totalVotes.toLocaleString()} votes
               </Badge>
             )}
@@ -571,7 +574,7 @@ function PositionCard({ position }: { position: PositionResult }) {
       </CardHeader>
       <CardContent className="space-y-3 pt-2">
         {!hasResults ? (
-          <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
             {t('publicResults.noVotesRecorded')}
           </div>
         ) : (
@@ -589,8 +592,8 @@ function PositionCard({ position }: { position: PositionResult }) {
                 className={cn(
                   'rounded-xl border p-3 transition-colors',
                   isWinner
-                    ? 'border-emerald-300 bg-emerald-50'
-                    : 'border-border/60 bg-card'
+                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/15'
+                    : 'border-border bg-card'
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -605,7 +608,7 @@ function PositionCard({ position }: { position: PositionResult }) {
                         className="object-cover"
                       />
                     ) : (
-                      <div className="grid h-full w-full place-items-center text-xs font-semibold text-muted-foreground">
+                      <div className="grid h-full w-full place-items-center text-xs font-medium text-muted-foreground">
                         {r.candidateName.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -614,8 +617,8 @@ function PositionCard({ position }: { position: PositionResult }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className={cn(
-                        'truncate text-sm font-semibold',
-                        isWinner ? 'text-emerald-800' : 'text-foreground'
+                        'truncate text-sm font-medium',
+                        isWinner ? 'text-emerald-800 dark:text-emerald-200' : 'text-foreground'
                       )}>
                         {r.candidateName}
                       </span>
@@ -634,12 +637,12 @@ function PositionCard({ position }: { position: PositionResult }) {
                   {/* Vote count + percentage */}
                   <div className="shrink-0 text-right">
                     <div className={cn(
-                      'font-mono text-sm font-bold tabular-nums',
-                      isWinner ? 'text-emerald-700' : 'text-foreground'
+                      'vw-stat text-sm tabular-nums',
+                      isWinner ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'
                     )}>
                       {r.votes.toLocaleString()}
                     </div>
-                    <div className="text-[11px] text-muted-foreground">
+                    <div className="text-[11px] text-muted-foreground tabular-nums">
                       {r.percentage.toFixed(1)}%
                     </div>
                   </div>
@@ -681,13 +684,13 @@ function StatCard({
   mono?: boolean
 }) {
   return (
-    <Card className={cn('transition-all', pulse && 'ring-2 ring-emerald-500/30')}>
+    <Card className={cn('vw-lift transition-all', pulse && 'ring-2 ring-emerald-500/25')}>
       <CardContent className="p-4">
-        <div className={cn('grid h-9 w-9 place-items-center rounded-lg', tint)}>
+        <div className={cn('grid h-9 w-9 place-items-center rounded-lg ring-1', tint)}>
           <Icon className="h-4 w-4" />
         </div>
         <div className={cn(
-          'mt-2 text-xl font-bold tabular-nums sm:text-2xl',
+          'vw-stat mt-2 text-xl tabular-nums sm:text-2xl',
           mono && 'font-mono'
         )}>
           {value}
@@ -716,8 +719,8 @@ function VerificationField({
     toast.success(t('common.copied'))
   }
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-lg border border-border bg-muted/20 p-3">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         <Icon className="h-3.5 w-3.5 text-primary" /> {label}
       </div>
       <div className="flex items-start gap-2">

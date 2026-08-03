@@ -79,21 +79,21 @@ interface VerifyResult {
   message: string
 }
 
-// Timeline icon map — emerald / amber palette only.
+// Timeline icon map — refined palette with ring borders.
 const TIMELINE_ICONS: Record<string, { icon: any; cls: string }> = {
-  IMPORTED:                { icon: User, cls: 'bg-muted text-muted-foreground' },
-  EMAIL_VERIFIED:          { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700' },
-  PHONE_VERIFIED:          { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700' },
-  ACCREDITED:              { icon: ShieldCheck, cls: 'bg-emerald-100 text-emerald-700' },
-  OTVP_ISSUED:             { icon: ShieldCheck, cls: 'bg-amber-100 text-amber-700' },
-  OTVP_VERIFIED:           { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700' },
-  VOTE_CAST:               { icon: Vote, cls: 'bg-emerald-100 text-emerald-700' },
-  VOTING_SESSION_STARTED:  { icon: Clock, cls: 'bg-amber-100 text-amber-700' },
-  RESULT_PUBLISHED:        { icon: Award, cls: 'bg-accent text-accent-foreground' },
-  SUSPENDED:               { icon: ShieldAlert, cls: 'bg-red-100 text-red-700' },
-  REACTIVATED:             { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700' },
-  GROUP_ASSIGNED:          { icon: ListChecks, cls: 'bg-muted text-muted-foreground' },
-  PROFILE_UPDATED:         { icon: User, cls: 'bg-muted text-muted-foreground' },
+  IMPORTED:                { icon: User, cls: 'bg-muted text-muted-foreground ring-border' },
+  EMAIL_VERIFIED:          { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40' },
+  PHONE_VERIFIED:          { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40' },
+  ACCREDITED:              { icon: ShieldCheck, cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40' },
+  OTVP_ISSUED:             { icon: ShieldCheck, cls: 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/40' },
+  OTVP_VERIFIED:           { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40' },
+  VOTE_CAST:               { icon: Vote, cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40' },
+  VOTING_SESSION_STARTED:  { icon: Clock, cls: 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/40' },
+  RESULT_PUBLISHED:        { icon: Award, cls: 'bg-accent/15 text-accent-foreground ring-accent/20' },
+  SUSPENDED:               { icon: ShieldAlert, cls: 'bg-red-100 text-red-700 ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900/40' },
+  REACTIVATED:             { icon: BadgeCheck, cls: 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/40' },
+  GROUP_ASSIGNED:          { icon: ListChecks, cls: 'bg-muted text-muted-foreground ring-border' },
+  PROFILE_UPDATED:         { icon: User, cls: 'bg-muted text-muted-foreground ring-border' },
 }
 
 // ---------------------------------------------------------------------------
@@ -161,41 +161,44 @@ function VoterPortalInner({ subdomain: subdomainProp }: { subdomain?: string }) 
   const votedAt = data?.voter?.votedAt || voterProfile?.votedAt
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
-      <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 gap-1.5">
+    <div className="mx-auto w-full max-w-[1152px] px-4 py-8 sm:px-6">
+      <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-6 gap-1.5">
         <ArrowLeft className="h-4 w-4" /> Back to Home
       </Button>
 
-      {/* Header */}
-      <div className="mb-6 flex items-center gap-4">
-        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary/10 text-2xl font-bold text-primary">
+      {/* Header — refined with eyebrow + accent dot */}
+      <div className="mb-8 flex items-center gap-4">
+        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-primary/8 text-2xl font-medium text-primary ring-1 ring-primary/10">
           {displayName.charAt(0).toUpperCase()}
         </div>
         <div>
-          <h1 className="font-display text-2xl font-bold">{displayName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
+          <div className="vw-eyebrow mb-1.5">Voter Portal</div>
+          <h1 className="font-display text-2xl font-medium tracking-[-0.025em] sm:text-3xl">
+            {displayName}<span className="vw-dot">.</span>
+          </h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="font-mono text-[10px]">{displayId}</Badge>
             {hasVoted ? (
-              <Badge className="gap-1 bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-3 w-3" /> Voted</Badge>
+              <Badge className="gap-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"><CheckCircle2 className="h-3 w-3" /> Voted</Badge>
             ) : (
               <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> Not Voted</Badge>
             )}
             {data?.voter?.verificationStatus === 'VERIFIED' && (
-              <Badge variant="outline" className="gap-1 bg-emerald-50 text-emerald-700"><BadgeCheck className="h-3 w-3" /> Verified</Badge>
+              <Badge variant="outline" className="gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"><BadgeCheck className="h-3 w-3" /> Verified</Badge>
             )}
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4 flex gap-1 overflow-x-auto">
+      {/* Tabs — refined pill style */}
+      <div className="votewise-scroll mb-6 flex gap-1 overflow-x-auto pb-1">
         {TABS.map((t) => (
           <button
             key={t.label}
             onClick={() => setTab(t.label)}
             className={cn(
-              'flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-              tab === t.label ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              'vw-lift flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              tab === t.label ? 'bg-primary/8 text-primary ring-1 ring-primary/10' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
             )}
           >
             <t.icon className="h-3.5 w-3.5" /> {t.label}
@@ -213,27 +216,29 @@ function VoterPortalInner({ subdomain: subdomainProp }: { subdomain?: string }) 
           transition={{ duration: 0.18 }}
         >
           {tab === 'My Profile' && (
-            <Card>
-              <CardHeader><CardTitle className="font-display text-base">My Profile</CardTitle></CardHeader>
+            <Card className="vw-lift">
+              <CardHeader className="pb-3"><CardTitle className="font-display text-sm font-medium">My Profile</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Name</div><div className="font-medium">{displayName}</div></div>
-                  <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Voter ID</div><div className="font-mono text-xs">{displayId}</div></div>
-                  <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Email</div><div className="font-medium">{data?.voter?.email || voterProfile?.institutionEmail || voterProfile?.personalEmail || '—'}</div></div>
-                  <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Verification</div><div className="font-medium">{data?.voter?.verificationStatus || voterProfile?.verificationStatus || 'PENDING'}</div></div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3"><div className="text-xs text-muted-foreground">Name</div><div className="font-medium">{displayName}</div></div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3"><div className="text-xs text-muted-foreground">Voter ID</div><div className="font-mono text-xs">{displayId}</div></div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3"><div className="text-xs text-muted-foreground">Email</div><div className="font-medium">{data?.voter?.email || voterProfile?.institutionEmail || voterProfile?.personalEmail || '—'}</div></div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-3"><div className="text-xs text-muted-foreground">Verification</div><div className="font-medium">{data?.voter?.verificationStatus || voterProfile?.verificationStatus || 'PENDING'}</div></div>
                 </div>
-                {voterProfile?.faculty && <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Organization Unit</div><div className="font-medium">{voterProfile.faculty?.name || voterProfile.faculty}</div></div>}
-                {voterProfile?.department && <div className="rounded-lg bg-muted/50 p-3"><div className="text-xs text-muted-foreground">Voter Group</div><div className="font-medium">{voterProfile.department?.name || voterProfile.department}</div></div>}
+                {voterProfile?.faculty && <div className="rounded-lg border border-border bg-muted/20 p-3"><div className="text-xs text-muted-foreground">Organization Unit</div><div className="font-medium">{voterProfile.faculty?.name || voterProfile.faculty}</div></div>}
+                {voterProfile?.department && <div className="rounded-lg border border-border bg-muted/20 p-3"><div className="text-xs text-muted-foreground">Voter Group</div><div className="font-medium">{voterProfile.department?.name || voterProfile.department}</div></div>}
               </CardContent>
             </Card>
           )}
 
           {tab === 'My Elections' && (
-            <Card><CardContent className="py-8 text-center">
-              <Vote className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-2 text-sm font-medium">Available Elections</p>
+            <Card className="vw-lift"><CardContent className="py-8 text-center">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary/8 text-primary ring-1 ring-primary/10">
+                <Vote className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-medium">Available Elections</p>
               <p className="mt-1 text-xs text-muted-foreground">Elections you are eligible for will appear in the Voting Status tab.</p>
-              <Button size="sm" className="mt-3 gap-2" onClick={() => setTab('Voting Status')}><Vote className="h-4 w-4" /> View Voting Status</Button>
+              <Button size="sm" className="mt-4 gap-2" onClick={() => setTab('Voting Status')}><Vote className="h-4 w-4" /> View Voting Status</Button>
             </CardContent></Card>
           )}
 
@@ -258,18 +263,22 @@ function VoterPortalInner({ subdomain: subdomainProp }: { subdomain?: string }) 
           )}
 
           {tab === 'Support' && (
-            <Card><CardContent className="py-8 text-center">
-              <Headphones className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-2 text-sm font-medium">Need Help?</p>
+            <Card className="vw-lift"><CardContent className="py-8 text-center">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary/8 text-primary ring-1 ring-primary/10">
+                <Headphones className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-medium">Need Help?</p>
               <p className="mt-1 text-xs text-muted-foreground">Open a support ticket or chat with our AI assistant.</p>
-              <Button size="sm" variant="outline" className="mt-3 gap-2"><Headphones className="h-4 w-4" /> Open Ticket</Button>
+              <Button size="sm" variant="outline" className="mt-4 gap-2"><Headphones className="h-4 w-4" /> Open Ticket</Button>
             </CardContent></Card>
           )}
 
           {tab === 'Notifications' && (
-            <Card><CardContent className="py-8 text-center">
-              <Bell className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <p className="mt-2 text-sm text-muted-foreground">No notifications yet.</p>
+            <Card className="vw-lift"><CardContent className="py-8 text-center">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
+                <Bell className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">No notifications yet.</p>
             </CardContent></Card>
           )}
         </motion.div>
@@ -640,18 +649,18 @@ function TimelineTab({
 // Shared small components
 // ---------------------------------------------------------------------------
 function VotingStatusBadge({ status, votingOpen }: { status: 'voted' | 'eligible' | 'pending'; votingOpen: boolean }) {
-  if (status === 'voted') return <Badge className="bg-emerald-100 text-emerald-700 gap-1"><CheckCircle2 className="h-3 w-3" /> Voted</Badge>
-  if (status === 'eligible' && votingOpen) return <Badge className="bg-emerald-100 text-emerald-700 gap-1"><Vote className="h-3 w-3" /> Voting Open</Badge>
-  if (status === 'eligible') return <Badge className="bg-primary/10 text-primary gap-1"><Clock className="h-3 w-3" /> Eligible</Badge>
-  return <Badge className="bg-amber-100 text-amber-700 gap-1"><Hourglass className="h-3 w-3" /> Pending</Badge>
+  if (status === 'voted') return <Badge className="bg-emerald-100 text-emerald-700 gap-1 dark:bg-emerald-950/40 dark:text-emerald-300"><CheckCircle2 className="h-3 w-3" /> Voted</Badge>
+  if (status === 'eligible' && votingOpen) return <Badge className="bg-emerald-100 text-emerald-700 gap-1 dark:bg-emerald-950/40 dark:text-emerald-300"><Vote className="h-3 w-3" /> Voting Open</Badge>
+  if (status === 'eligible') return <Badge className="bg-primary/8 text-primary gap-1 ring-1 ring-primary/10"><Clock className="h-3 w-3" /> Eligible</Badge>
+  return <Badge className="bg-amber-100 text-amber-700 gap-1 dark:bg-amber-950/40 dark:text-amber-300"><Hourglass className="h-3 w-3" /> Pending</Badge>
 }
 
 function SummaryStat({ icon: Icon, label, value, cls }: { icon: any; label: string; value: number; cls: string }) {
   return (
-    <Card>
+    <Card className="vw-lift">
       <CardContent className="p-3 text-center">
-        <div className={cn('mx-auto grid h-8 w-8 place-items-center rounded-lg', cls)}><Icon className="h-4 w-4" /></div>
-        <div className="mt-1 font-display text-xl font-bold tabular-nums">{value.toLocaleString()}</div>
+        <div className={cn('mx-auto grid h-8 w-8 place-items-center rounded-lg ring-1', cls)}><Icon className="h-4 w-4" /></div>
+        <div className="vw-stat mt-1.5 text-xl tabular-nums">{value.toLocaleString()}</div>
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       </CardContent>
     </Card>
@@ -660,9 +669,12 @@ function SummaryStat({ icon: Icon, label, value, cls }: { icon: any; label: stri
 
 function LoadingCard({ label }: { label: string }) {
   return (
-    <Card>
+    <Card className="vw-lift">
       <CardContent className="grid place-items-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="relative">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+        </div>
         <p className="mt-2 text-xs text-muted-foreground">{label}</p>
       </CardContent>
     </Card>

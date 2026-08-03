@@ -179,7 +179,7 @@ export function LogoLoader({ onDone }: { onDone?: () => void }) {
                 {'VoteWise'.split('').map((ch, i) => (
                   <motion.span
                     key={i}
-                    className={`font-display text-xl font-bold tracking-tight ${i < 4 ? 'text-foreground' : 'text-primary'}`}
+                    className={`font-display text-xl font-medium tracking-tight ${i < 4 ? 'text-foreground' : 'text-primary'}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, ease: EASE_OUT_EXPO, delay: 1.65 + i * 0.035 }}
@@ -187,6 +187,14 @@ export function LogoLoader({ onDone }: { onDone?: () => void }) {
                     {ch}
                   </motion.span>
                 ))}
+                <motion.span
+                  className="vw-dot font-display text-xl font-medium"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: EASE_OUT_EXPO, delay: 2.05 }}
+                >
+                  .
+                </motion.span>
               </div>
               <motion.p
                 className="mt-1 text-[9px] font-medium uppercase tracking-[0.32em] text-muted-foreground"

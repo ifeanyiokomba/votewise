@@ -32,7 +32,7 @@ export function ChatbotWidget() {
   const [open, setOpen] = useState(false)
   const [ticketOpen, setTicketOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { sender: 'BOT', content: "Hello! I'm VoteWise Bot 🤖, your voting assistant. Ask me how to vote, eligibility, OTP issues, or anything about the election. You can also send photos or files, or tap 'Talk to an Officer' to speak with a human." },
+    { sender: 'BOT', content: "Hi! I'm VoteWise Assistant. Ask me how to vote, eligibility, OTP issues, or anything about the election. You can also send photos or files, or tap 'Talk to an Officer' to speak with a human." },
   ])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -187,44 +187,58 @@ export function ChatbotWidget() {
 
   return (
     <>
-      {/* Floating button — always visible, follows scroll, on all pages */}
+      {/* Floating button — premium pill design, follows scroll, on all pages */}
       <div className="fixed bottom-5 right-5 z-[100] flex flex-col items-end gap-2 print:hidden">
         {!open && (
-          <Button onClick={() => setOpen(true)} size="lg" className="h-14 w-14 rounded-full shadow-2xl gap-0 p-0 ring-2 ring-background">
-            <MessageCircle className="h-6 w-6" />
-            <span className="absolute -right-0.5 -top-0.5 grid h-5 w-5 place-items-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground ring-2 ring-background">AI</span>
-          </Button>
+          <button
+            onClick={() => setOpen(true)}
+            className="group relative flex items-center gap-2 rounded-full bg-primary py-2.5 pl-3 pr-4 text-primary-foreground shadow-lg ring-1 ring-primary/20 transition-all hover:scale-[1.02] hover:shadow-xl"
+            aria-label="Open VoteWise Support chat"
+          >
+            <span className="votewise-live-dot absolute -left-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground ring-2 ring-background">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-foreground" />
+            </span>
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-primary-foreground/12">
+              <MessageCircle className="h-4 w-4" />
+            </span>
+            <span className="hidden text-sm font-medium sm:inline">Ask VoteWise</span>
+          </button>
         )}
       </div>
 
-      {/* Chat panel */}
+      {/* Chat panel — premium floating card */}
       {open && (
         <div className="fixed bottom-5 right-5 z-[100] w-[calc(100vw-2.5rem)] max-w-sm sm:max-w-md print:hidden">
-          <Card className="votewise-card-glow flex h-[34rem] flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between bg-primary p-3 text-primary-foreground">
-              <div className="flex items-center gap-2">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-primary-foreground/15"><Bot className="h-5 w-5" /></div>
-                <div>
-                  <div className="text-sm font-semibold">VoteWise Support</div>
-                  <div className="flex items-center gap-1 text-[10px] text-primary-foreground/80">
-                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                    {escalated ? 'Connected to an officer' : 'Online · AI assistant'}
+          <Card className="vw-mockup flex h-[34rem] flex-col overflow-hidden p-0">
+            {/* Header — refined with subtle gradient + status */}
+            <div className="relative overflow-hidden bg-primary p-3.5 text-primary-foreground">
+              <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                <div className="votewise-orb absolute -right-8 -top-8 h-24 w-24 rounded-full bg-accent/15 blur-2xl" />
+              </div>
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-primary-foreground/12 ring-1 ring-primary-foreground/15"><Bot className="h-5 w-5" /></div>
+                  <div>
+                    <div className="text-sm font-medium">VoteWise Support</div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-primary-foreground/75">
+                      <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                      {escalated ? 'Connected to an officer' : 'Online · AI assistant'}
+                    </div>
                   </div>
                 </div>
+                <button onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-primary-foreground/12" aria-label="Close chat"><X className="h-4 w-4" /></button>
               </div>
-              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-primary-foreground/15"><X className="h-5 w-5" /></button>
             </div>
 
             {/* Messages */}
-            <div ref={scrollRef} className="votewise-scroll flex-1 space-y-3 overflow-y-auto bg-secondary/30 p-3">
+            <div ref={scrollRef} className="votewise-scroll flex-1 space-y-3 overflow-y-auto bg-secondary/20 p-3">
               {messages.map((m, i) => (
                 <div key={m.id || i} className={cn('flex gap-2', m.sender === 'VOTER' && 'flex-row-reverse')}>
-                  <div className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full', m.sender === 'VOTER' ? 'bg-accent text-accent-foreground' : m.sender === 'OFFICIAL' ? 'bg-blue-600 text-white' : 'bg-primary text-primary-foreground')}>
+                  <div className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-full ring-1', m.sender === 'VOTER' ? 'bg-accent/15 text-accent-foreground ring-accent/20' : m.sender === 'OFFICIAL' ? 'bg-sky-100 text-sky-700 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-900/40' : 'bg-primary/8 text-primary ring-primary/10')}>
                     {senderIcon(m.sender)}
                   </div>
-                  <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', m.sender === 'VOTER' ? 'rounded-tr-sm bg-primary text-primary-foreground' : m.sender === 'OFFICIAL' ? 'rounded-tl-sm bg-blue-50 dark:bg-blue-950/40' : 'rounded-tl-sm bg-card')}>
-                    <div className="mb-0.5 text-[10px] font-semibold opacity-70">{senderLabel(m.sender)}</div>
+                  <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', m.sender === 'VOTER' ? 'rounded-tr-sm bg-primary text-primary-foreground' : m.sender === 'OFFICIAL' ? 'rounded-tl-sm bg-sky-50 dark:bg-sky-950/30' : 'rounded-tl-sm border border-border bg-card')}>
+                    <div className="mb-0.5 text-[10px] font-medium opacity-60">{senderLabel(m.sender)}</div>
                     {m.content}
                     {/* Attachments */}
                     {m.attachments && m.attachments.length > 0 && (
@@ -232,9 +246,9 @@ export function ChatbotWidget() {
                         {m.attachments.map((a, j) => (
                           <div key={j}>
                             {a.type === 'image' ? (
-                              <img src={a.dataUrl} alt={a.name} className="h-20 w-20 rounded-lg object-cover" />
+                              <img src={a.dataUrl} alt={a.name} className="h-20 w-20 rounded-lg object-cover ring-1 ring-border" />
                             ) : (
-                              <div className="flex items-center gap-1 rounded-lg bg-black/10 px-2 py-1 text-xs">
+                              <div className="flex items-center gap-1 rounded-lg bg-black/5 px-2 py-1 text-xs dark:bg-white/5">
                                 <Paperclip className="h-3 w-3" /> {a.name}
                               </div>
                             )}
@@ -247,16 +261,20 @@ export function ChatbotWidget() {
               ))}
               {busy && (
                 <div className="flex gap-2">
-                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground"><Bot className="h-4 w-4" /></div>
-                  <div className="rounded-2xl rounded-tl-sm bg-card px-3 py-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/8 text-primary ring-1 ring-primary/10"><Bot className="h-4 w-4" /></div>
+                  <div className="flex items-center gap-1 rounded-2xl rounded-tl-sm border border-border bg-card px-3 py-2.5">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60 [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground/60" />
+                  </div>
                 </div>
               )}
               {messages.length <= 1 && !escalated && (
                 <div className="space-y-1.5 pt-2">
-                  <p className="px-1 text-[10px] uppercase tracking-wider text-muted-foreground">Suggested questions</p>
+                  <p className="vw-eyebrow px-1 text-[10px]">Suggested questions</p>
                   {SUGGESTIONS.map((s) => (
-                    <button key={s} onClick={() => send(s)} className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-xs hover:bg-muted/50">
-                      <Sparkles className="h-3.5 w-3.5 text-accent" /> {s}
+                    <button key={s} onClick={() => send(s)} className="vw-lift flex w-full items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-xs">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" /> {s}
                     </button>
                   ))}
                 </div>
@@ -265,15 +283,15 @@ export function ChatbotWidget() {
 
             {/* Attachment preview */}
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-1 border-t border-border bg-card p-2">
+              <div className="flex flex-wrap gap-1.5 border-t border-border bg-card p-2">
                 {attachments.map((a, i) => (
                   <div key={i} className="relative">
                     {a.type === 'image' ? (
-                      <img src={a.dataUrl} alt={a.name} className="h-12 w-12 rounded-lg object-cover" />
+                      <img src={a.dataUrl} alt={a.name} className="h-12 w-12 rounded-lg object-cover ring-1 ring-border" />
                     ) : (
                       <div className="flex h-12 items-center gap-1 rounded-lg bg-muted px-2 text-xs">{a.name}</div>
                     )}
-                    <button onClick={() => removeAttachment(i)} className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-white">
+                    <button onClick={() => removeAttachment(i)} className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-destructive text-white ring-2 ring-background">
                       <X className="h-2.5 w-2.5" />
                     </button>
                   </div>
@@ -281,30 +299,30 @@ export function ChatbotWidget() {
               </div>
             )}
 
-            {/* Input area */}
-            <div className="border-t border-border bg-card p-2">
+            {/* Input area — refined */}
+            <div className="border-t border-border bg-card p-2.5">
               <div className="flex items-center gap-1">
-                <Button size="icon" variant="ghost" onClick={openCamera} title="Take photo" className="h-8 w-8 shrink-0">
+                <Button size="icon" variant="ghost" onClick={openCamera} title="Take photo" className="h-9 w-9 shrink-0 rounded-lg">
                   <Camera className="h-4 w-4" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} title="Attach file" className="h-8 w-8 shrink-0">
+                <Button size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} title="Attach file" className="h-9 w-9 shrink-0 rounded-lg">
                   <Paperclip className="h-4 w-4" />
                 </Button>
                 <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple onChange={onFileSelect} className="hidden" />
                 <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="Type your message…" className="flex-1 text-sm" />
-                <Button size="icon" onClick={() => send()} disabled={busy} className="h-8 w-8 shrink-0"><Send className="h-4 w-4" /></Button>
+                <Button size="icon" onClick={() => send()} disabled={busy} className="h-9 w-9 shrink-0 rounded-lg"><Send className="h-4 w-4" /></Button>
               </div>
-              <div className="mt-1 flex items-center justify-between">
+              <div className="mt-1.5 flex items-center justify-between">
                 {!escalated ? (
-                  <button onClick={escalateToHuman} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground">
+                  <button onClick={escalateToHuman} className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground">
                     <Headphones className="h-3 w-3" /> Talk to an Officer
                   </button>
                 ) : (
-                  <span className="flex items-center gap-1 text-[10px] text-blue-600">
-                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-blue-500" /> Waiting for officer reply…
+                  <span className="flex items-center gap-1 text-[10px] text-sky-600 dark:text-sky-400">
+                    <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-sky-500" /> Waiting for officer reply…
                   </span>
                 )}
-                <button onClick={() => { setTicketOpen(true); setOpen(false) }} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground">
+                <button onClick={() => { setTicketOpen(true); setOpen(false) }} className="flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground">
                   <LifeBuoy className="h-3 w-3" /> Support Ticket
                 </button>
               </div>
@@ -313,14 +331,16 @@ export function ChatbotWidget() {
         </div>
       )}
 
-      {/* Camera capture dialog */}
+      {/* Camera capture dialog — refined */}
       {cameraOpen && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/80 p-4">
-          <Card className="w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/80 p-4 backdrop-blur-sm">
+          <Card className="vw-mockup w-full max-w-md overflow-hidden p-0">
             <CardContent className="p-0">
-              <div className="flex items-center justify-between bg-primary p-3 text-primary-foreground">
-                <span className="text-sm font-semibold">Take a Photo</span>
-                <button onClick={closeCamera} className="rounded-lg p-1 hover:bg-primary-foreground/15"><X className="h-5 w-5" /></button>
+              <div className="relative overflow-hidden bg-primary p-3.5 text-primary-foreground">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Take a Photo</span>
+                  <button onClick={closeCamera} className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-primary-foreground/12" aria-label="Close camera"><X className="h-4 w-4" /></button>
+                </div>
               </div>
               <div className="relative bg-black">
                 <video ref={videoRef} className="h-64 w-full object-cover" playsInline />
@@ -358,12 +378,12 @@ export function SupportTicketDialog({ open, onOpenChange }: { open: boolean; onO
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { setDone(false); setForm({ issueType: 'OTP_NOT_RECEIVED' }) } }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-display"><LifeBuoy className="h-5 w-5 text-primary" /> Open a Support Ticket</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 font-display text-base font-medium"><LifeBuoy className="h-5 w-5 text-primary" /> Open a Support Ticket</DialogTitle>
         </DialogHeader>
         {done ? (
           <div className="py-6 text-center">
-            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-100 text-emerald-700"><LifeBuoy className="h-7 w-7" /></div>
-            <p className="mt-3 font-semibold">Ticket submitted</p>
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-600 ring-1 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-900/40"><LifeBuoy className="h-7 w-7" /></div>
+            <p className="mt-3 font-display text-lg font-medium">Ticket submitted<span className="vw-dot">.</span></p>
             <p className="mt-1 text-sm text-muted-foreground">An electoral observer will attend to you shortly.</p>
             <Button className="mt-4" onClick={() => onOpenChange(false)}>Close</Button>
           </div>

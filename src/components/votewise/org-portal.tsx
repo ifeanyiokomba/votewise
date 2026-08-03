@@ -78,7 +78,13 @@ export function OrgPortal({ subdomain }: { subdomain: string }) {
   if (loading) {
     return (
       <div className="grid min-h-screen place-items-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+          </div>
+          <p className="text-sm text-muted-foreground">Loading portal…</p>
+        </div>
       </div>
     )
   }
@@ -87,15 +93,15 @@ export function OrgPortal({ subdomain }: { subdomain: string }) {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-4">
         <div className="max-w-md text-center">
-          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-muted">
-            <Building2 className="h-8 w-8 text-muted-foreground" />
+          <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-muted text-muted-foreground ring-1 ring-border">
+            <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="font-display text-2xl font-bold">Organization Not Found</h1>
+          <h1 className="font-display text-2xl font-medium tracking-[-0.025em]">Organization Not Found<span className="vw-dot">.</span></h1>
           <p className="mt-2 text-sm text-muted-foreground">
             No organization exists with subdomain <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{subdomain}</code>.
           </p>
           <Link href="/">
-            <Button variant="outline" className="mt-6">Back to VoteWise</Button>
+            <Button variant="outline" className="mt-6 gap-1.5"><Building2 className="h-4 w-4" /> Back to VoteWise</Button>
           </Link>
         </div>
       </div>
@@ -260,35 +266,35 @@ function HeroSection({ org, branding, phase, primaryColor, accentColor, activeEl
       : branding?.welcomeMessage || `${org.name} — Official Online Election Portal`
 
   return (
-    <section className="relative overflow-hidden border-b border-border/60">
+    <section className="votewise-hero-bg relative overflow-hidden border-b border-border">
       {/* Background gradient using org colors */}
       <div
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-[0.07]"
         style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${accentColor} 100%)` }}
       />
       {branding?.banner && (
-        <img src={branding.banner} alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
+        <img src={branding.banner} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15" />
       )}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="votewise-orb absolute -left-20 top-10 h-72 w-72 rounded-full blur-3xl" style={{ backgroundColor: `${primaryColor}15` }} />
+        <div className="votewise-orb votewise-orb-delay absolute -right-20 top-20 h-80 w-80 rounded-full blur-3xl" style={{ backgroundColor: `${accentColor}15` }} />
+      </div>
 
-      <div className="relative mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 sm:py-24">
+      <div className="relative mx-auto max-w-[1152px] px-4 py-16 text-center sm:px-6 sm:py-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           {/* Badge */}
-          <Badge
-            variant="outline"
-            className="mb-4 gap-1.5 border-2 px-3 py-1 text-xs"
-            style={{ borderColor: `${primaryColor}40`, color: primaryColor }}
-          >
-            <ShieldCheck className="h-3 w-3" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-medium backdrop-blur">
+            <ShieldCheck className="h-3.5 w-3.5" style={{ color: primaryColor }} />
             Secure · Transparent · Trusted
-          </Badge>
+          </div>
 
           {/* Title */}
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">
-            {heroText}
+          <h1 className="mt-5 font-display text-3xl font-medium tracking-[-0.03em] sm:text-5xl">
+            {heroText}<span className="vw-dot">.</span>
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-muted-foreground sm:text-base">
             {heroSubtext}
@@ -331,9 +337,9 @@ function HeroSection({ org, branding, phase, primaryColor, accentColor, activeEl
 
 function CountdownSection({ countdown, electionName }: { countdown: any; electionName: string }) {
   return (
-    <section className="border-b border-border/60 bg-muted/20 py-8">
-      <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-        <div className="mb-3 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <section className="border-b border-border bg-muted/20 py-10">
+      <div className="mx-auto max-w-[1152px] px-4 text-center sm:px-6">
+        <div className="vw-eyebrow mb-4 justify-center">
           <Clock className="h-3.5 w-3.5" />
           {electionName} Starts In
         </div>
@@ -345,10 +351,10 @@ function CountdownSection({ countdown, electionName }: { countdown: any; electio
             { label: 'Seconds', value: countdown.seconds },
           ].map((unit) => (
             <div key={unit.label} className="text-center">
-              <div className="font-display text-3xl font-bold tabular-nums sm:text-5xl" style={{ color: 'var(--foreground)' }}>
+              <div className="vw-stat text-4xl tabular-nums sm:text-6xl" style={{ color: 'var(--foreground)' }}>
                 {String(unit.value).padStart(2, '0')}
               </div>
-              <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">
+              <div className="mt-1.5 text-[10px] uppercase tracking-wider text-muted-foreground sm:text-xs">
                 {unit.label}
               </div>
             </div>
@@ -376,10 +382,12 @@ function StatsSection({ stats, primaryColor }: { stats: any; primaryColor: strin
 
 function StatCard({ icon: Icon, label, value, color }: any) {
   return (
-    <Card className="text-center">
+    <Card className="vw-lift text-center">
       <CardContent className="p-4">
-        <Icon className="mx-auto mb-1 h-5 w-5" style={{ color }} />
-        <div className="font-display text-xl font-bold tabular-nums sm:text-2xl">{value}</div>
+        <div className="mx-auto mb-1.5 grid h-9 w-9 place-items-center rounded-lg ring-1" style={{ backgroundColor: `${color}12`, color, borderColor: `${color}30` }}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="vw-stat text-xl tabular-nums sm:text-2xl">{value}</div>
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       </CardContent>
     </Card>
