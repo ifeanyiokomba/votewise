@@ -3851,3 +3851,31 @@ model SecurityKey {
 
   @@index([officialId])
 }
+
+/// Platform-level credential — stores encrypted API keys for providers
+/// (Resend, Termii, Paystack, Flutterwave, Stripe, Sentry, S3, Slack, etc.)
+/// These are managed through the admin UI and synced to process.env at
+/// runtime so all code that reads process.env works seamlessly.
+model PlatformCredential {
+  id              String   @id @default(cuid())
+  key             String   @unique // e.g. RESEND_API_KEY, TERMII_API_KEY
+  displayName     String   // "Resend API Key"
+  category        String   // EMAIL | SMS | WHATSAPP | PAYMENT | MONITORING | STORAGE | NOTIFICATION | DATABASE | CACHE
+  provider        String   // resend | termii | paystack | flutterwave | stripe | sentry | s3 | slack | teams
+  encryptedValue  String   // AES-256-GCM encrypted value
+  iv              String   // initialization vector
+  keyId           String   @default("v1") // which encryption key was used
+  description     String?  // what this key is for
+  maskedValue     String   // masked preview: re_****...****abc
+  isConfigured    Boolean  @default(false)
+  isRequired      Boolean  @default(false) // required for platform to function
+  lastRotatedAt   DateTime?
+  lastVerifiedAt  DateTime?
+  lastVerifiedStatus String? // VALID | INVALID | UNTESTED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([provider])
+  @@index([isConfigured])
+}
