@@ -49,17 +49,10 @@ export function NavBar() {
     }
   }
 
-  // Localized nav items — recomputed per render so they pick up the
-  // current language from the store (e.g. when the user switches to French).
-  const NAV_ITEMS: { label: string; target: string }[] = [
-    { label: t('home.featuresBadge'), target: 'features' },
-    { label: t('home.productsBadge'), target: 'products' },
-    { label: t('home.pricingBadge'), target: 'pricing' },
-    { label: t('home.testimonialsBadge'), target: 'testimonials' },
-    { label: t('home.securityBadge'), target: 'security' },
-    { label: t('home.docsBadge'), target: 'docs' },
-    { label: t('home.contactBadge'), target: 'contact' },
-  ]
+  // Streamlined nav — only essential items for clean, mobile-first UX.
+  // Removed: Features, Products, Pricing, Testimonials, Security, Docs,
+  // Contact, Trust, Compliance, Stories (accessible via footer links instead).
+  const NAV_ITEMS: { label: string; target: string }[] = []
 
   function scrollTo(id: string) {
     setOpen(false)
@@ -73,91 +66,61 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:px-6">
         <button onClick={() => setView('home')} className="shrink-0">
           <Logo />
         </button>
 
-        <nav className="hidden items-center gap-1 lg:flex">
-          {NAV_ITEMS.map((n) => (
-            <Button key={n.label} variant="ghost" size="sm" onClick={() => scrollTo(n.target)} className="text-sm">
-              {n.label}
-            </Button>
-          ))}
-          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/trust'} className="text-sm">
-            Trust
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/compliance'} className="text-sm">
-            Compliance
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => window.location.href = '/success-stories'} className="text-sm">
-            Stories
-          </Button>
-        </nav>
-
-        <div className="hidden items-center gap-2 md:flex">
+        {/* Desktop: only auth buttons + theme toggle (no scroll nav) */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {voterProfile && (
             <Button onClick={() => setView('voter-dashboard')} size="sm" className="gap-1.5">
-              <BadgeCheck className="h-4 w-4" /> {t('auth.myDashboard')}
+              <BadgeCheck className="h-4 w-4" /> <span className="hidden sm:inline">{t('auth.myDashboard')}</span>
             </Button>
           )}
           {!official && (
             <Button variant="outline" size="sm" onClick={() => goToView('official-login')} className="gap-1.5">
-              <Lock className="h-4 w-4" /> {t('auth.orgLogin')}
+              <Lock className="h-4 w-4" /> <span className="hidden sm:inline">{t('auth.orgLogin')}</span><span className="sm:hidden">Login</span>
             </Button>
           )}
           {!official && (
             <Button size="sm" onClick={() => goToView('signup')} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
-              <Sparkles className="h-4 w-4" /> {t('auth.registerOrg')}
+              <Sparkles className="h-4 w-4" /> <span className="hidden sm:inline">{t('auth.registerOrg')}</span><span className="sm:hidden">Register</span>
             </Button>
           )}
           {official && (
             <Button variant="outline" size="sm" onClick={() => goToView('official')} className="gap-1.5">
-              <BarChart3 className="h-4 w-4" /> {t('auth.dashboard')}
+              <BarChart3 className="h-4 w-4" /> <span className="hidden sm:inline">{t('auth.dashboard')}</span>
             </Button>
           )}
           {voterProfile && <VoterNotifications />}
           <ThemeToggle />
+          {/* Mobile menu toggle — shows extra links on small screens */}
+          <button className="sm:hidden" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
-
-        <button className="md:hidden" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
       </div>
 
       {open && (
-        <div className="border-t border-border/60 bg-background md:hidden">
+        <div className="border-t border-border/60 bg-background sm:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
-            {NAV_ITEMS.map((n) => (
-              <Button key={n.label} variant="ghost" size="sm" onClick={() => scrollTo(n.target)} className="justify-start">
-                {n.label}
-              </Button>
-            ))}
-            <div className="my-1 h-px bg-border" />
-            {voterProfile && (
-              <Button onClick={() => { setView('voter-dashboard'); setOpen(false) }} size="sm" className="gap-1.5">
-                <BadgeCheck className="h-4 w-4" /> {t('auth.myDashboard')}
-              </Button>
-            )}
-            {!official && (
-              <Button variant="outline" size="sm" onClick={() => { goToView('official-login'); setOpen(false) }} className="gap-1.5">
-                <Lock className="h-4 w-4" /> {t('auth.organizationPortal')}
-              </Button>
-            )}
-            {!official && (
-              <Button size="sm" onClick={() => { goToView('signup'); setOpen(false) }} className="gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
-                <Sparkles className="h-4 w-4" /> {t('home.registerYourOrg')}
-              </Button>
-            )}
-            {official && (
-              <Button variant="outline" size="sm" onClick={() => { goToView('official'); setOpen(false) }} className="gap-1.5">
-                <BarChart3 className="h-4 w-4" /> {t('auth.organizationPortal')}
-              </Button>
-            )}
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-muted-foreground">{t('common.theme')}</span>
-              <ThemeToggle />
-            </div>
+            {/* Mobile: quick links to trust/compliance/stories (footer-style) */}
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = '/trust'; setOpen(false) }} className="justify-start text-sm">
+              Trust & Security
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = '/compliance'; setOpen(false) }} className="justify-start text-sm">
+              Compliance
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = '/success-stories'; setOpen(false) }} className="justify-start text-sm">
+              Success Stories
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = '/demo'; setOpen(false) }} className="justify-start text-sm">
+              Demo Portal
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = '/status'; setOpen(false) }} className="justify-start text-sm">
+              System Status
+            </Button>
           </div>
         </div>
       )}

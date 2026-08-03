@@ -1008,7 +1008,7 @@ model Candidate {
   photoUrl         String?
   // Chapter 3: generic biography field (replaces cgpa)
   biography        String?
-  screeningStatus  String      @default("PENDING") // PENDING|APPROVED|DISQUALIFIED|WITHDRAWN
+  screeningStatus  String      @default("APPLICATION") // Part 5: APPLICATION|ELIGIBILITY_CHECK|DOCUMENT_REVIEW|APPROVED|MANIFESTO_UPLOAD|CAMPAIGN_ASSETS|PUBLISHED|DISQUALIFIED|WITHDRAWN
   screeningNotes   String?
   screenedById     String?
   screenedAt       DateTime?
