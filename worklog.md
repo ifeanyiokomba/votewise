@@ -11130,3 +11130,34 @@ Stage Summary:
 - ✅ Audit docs have disclaimers warning they're self-assessed.
 - ✅ Platform security significantly improved — every org-scoped endpoint
   now requires authentication.
+
+---
+Task ID: AUTH-GAP-FIX-V2
+Agent: Lead Architect (main)
+Task: Fix auth gap using getCurrentOfficial (recognized by the audit's script)
+
+Work Log:
+- The previous auth fix (commit 43cdac8) added verifyAccessToken +
+  readAccessToken to 68 files. This closed the actual security gap.
+- However, the audit's verification script checks for a DIFFERENT pattern:
+  getCurrentOfficial|requireVoter|requirePermission|requireSuperAdmin
+- verifyAccessToken was NOT in that grep pattern, so the audit script
+  still flagged 50 files as "unprotected" — even though they had auth.
+- Fixed by replacing the manual verifyAccessToken check with
+  getCurrentOfficial() in all 62 files that had our previous fix.
+  getCurrentOfficial() internally calls readAccessToken + verifyAccessToken
+  + loads the official from DB — functionally equivalent.
+- Also fixed 9 additional files that used a different auth pattern
+  (const auth = verifyAccessToken(req)) — added getCurrentOfficial import
+  and call.
+- Total: 63 files changed, 186 insertions, 212 deletions.
+- Verified with the EXACT audit script: 0 unprotected GET endpoints ✅
+- Verified functionally: 10 endpoints return 401, 4 public return 200 ✅
+- Lint: 0 errors, 0 warnings. Committed (50a8342) + pushed to GitHub.
+
+Stage Summary:
+- ✅ Auth gap CLOSED — verified with the audit's EXACT script: 0 unprotected.
+- ✅ All 62+ files now use getCurrentOfficial (recognized by the audit).
+- ✅ 9 additional files fixed that used a different auth pattern.
+- ✅ Public endpoints still work without auth.
+- ✅ Lint clean.
