@@ -11209,3 +11209,47 @@ Stage Summary:
 - ✅ Secrets duplication: CLOSED — 1 module (was 2).
 - ✅ Auth sweep: 0 unprotected (re-verified with exact audit script).
 - Remaining: receipt route consolidation (medium priority).
+
+---
+Task ID: MASTER-GOLIVE-PHASE-2-COMPLETE
+Agent: Lead Architect (main)
+Task: Master Go-Live Guide — Phase 2 complete (receipt consolidation + OTP rate limiting)
+
+Work Log:
+- Completed all remaining Phase 2 items from the Master Go-Live Guide:
+
+  Phase 2, Step 1: Receipt route consolidation
+  - Traced all 4 receipt verification routes to their UI callers.
+  - Determined canonical routes:
+    /api/receipt/verify (public) — called by home.tsx, org portal, verification-portal
+    /api/workspace/ballot/receipt (authenticated) — called by voter dashboard
+    /api/v1/voting/receipt (v1 API) — for developer platform
+  - Retired /api/vote/verify-receipt (legacy duplicate) — replaced with
+    proxy stub + DEPRECATED notice. Old clients won't break.
+
+  Phase 2, Step 2: Voter OTP rate limiting
+  - Found: /api/voter/verify-otp had NO rate limiting — brute-force vector.
+  - Fixed: added RATE_LIMITS.authIp(ip) — 10 attempts/min per IP.
+  - The per-voter lockout (5 attempts → 15min) was already in place.
+
+  Phase 2, Step 3: Secrets consolidation (done in previous commit)
+  - infra/secrets.ts deleted, functions merged into secrets.ts ✅
+
+- Final verification (all 7 checks):
+  1. Auth sweep: 0 unprotected ✅
+  2. Cross-tenant: 3 refs in org-context.ts ✅
+  3. Payments: 4 real API URLs ✅
+  4. Secrets: 1 module ✅
+  5. Receipt routes: legacy retired ✅
+  6. OTP rate limiting: added ✅
+  7. All routes return 200 ✅
+  8. Lint: 0 errors ✅
+
+- Committed (ab240b7) + pushed to GitHub.
+
+Stage Summary:
+- ✅ Phase 1: Cross-tenant auth + real payment verification + secrets consolidation.
+- ✅ Phase 2: Receipt route consolidation + OTP rate limiting.
+- ✅ All open items from the Master Go-Live Guide are now closed.
+- Remaining: Phase 3 (deploy), Phase 4 (pre-launch verification), Phase 5
+  (launch-day operations) — these are operational steps, not code fixes.
