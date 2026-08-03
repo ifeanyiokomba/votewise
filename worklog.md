@@ -11048,3 +11048,36 @@ Stage Summary:
 - ✅ Navigation streamlined — only essential items, mobile-first.
 - ✅ Candidate workflow expanded to 7 stages per spec.
 - ✅ Mobile-first responsive design verified at 375px and 1280px.
+
+---
+Task ID: HOSTING-GUIDE + CONTINUE
+Agent: Lead Architect (main)
+Task: Create zero-cost hosting guide + continue development
+
+Work Log:
+- Platform verified: all 14 key routes return 200, 0 lint errors, 0 dev log errors.
+- Created docs/ZERO_COST_HOSTING.md — comprehensive guide for hosting
+  VoteWise at zero cost using free-tier services.
+- The guide covers:
+  1. Vercel (Hobby) — free Next.js hosting with 100GB bandwidth
+  2. Supabase (Free) — 500MB PostgreSQL database
+  3. Upstash (Free) — serverless Redis (10K commands/day)
+  4. Cloudflare R2 (Free) — 10GB object storage with zero egress fees
+  5. Cloudflare (Free) — DNS + CDN + SSL + WAF + DDoS protection
+  6. Ably/Pusher (Free) — WebSocket for live results
+  7. Resend (Free) — 3K emails/month for OTVP delivery
+  8. Termii — SMS delivery with free trial credits
+  9. Sentry (Developer) — 5K error tracking/month
+  10. GitHub Actions — free CI/CD for public repos
+- Includes: architecture diagram, step-by-step setup for each service,
+  deployment checklist, Nigeria-specific considerations (Supabase Frankfurt
+  region, Termii for Nigerian networks, .com.ng domain, Paystack, NDPR),
+  and an upgrade path for when funds become available.
+- Total monthly cost: $0 (with free Vercel subdomain) or ~$3 (with .com.ng domain)
+- Lint: 0 errors, 0 warnings. Committed (84d78b7) + pushed to GitHub.
+
+Stage Summary:
+- ✅ Platform stable: all 14 routes return 200, 0 errors.
+- ✅ Zero-cost hosting guide created with 11 free-tier services.
+- ✅ Complete deployment checklist for the user to follow.
+- ✅ Nigeria-specific recommendations included.
