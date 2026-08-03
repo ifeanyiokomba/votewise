@@ -26,10 +26,23 @@ spec:
   tls:
     - hosts:
         - votewise.com.ng
+        - admin.votewise.com.ng
         - "*.votewise.com.ng"          # multi-tenant: org subdomains
         - "*.verifyvotes.com"          # multi-tenant: shared verify domain
       secretName: votewise-tls
   rules:
+    # Platform Admin Subdomain: admin.votewise.com.ng
+    # Spec: "Platform Authentication — admin.votewise.com.ng"
+    # Dedicated subdomain for platform staff (super admins, support team)
+    - host: admin.votewise.com.ng
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: votewise-app
+                port: { number: 80 }
     # Apex domain
     - host: votewise.com.ng
       http:

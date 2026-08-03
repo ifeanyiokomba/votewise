@@ -13,98 +13,131 @@
 # NEVER proxied — it's bound to 127.0.0.1 only.
 
 {
-	# Global TLS settings — TLS 1.3 + strong cipher suites
-	protocols tls1.2 tls1.3
-	ciphers TLS_AES_256_GCM_SHA384 TLS_CHACHA20_POLY1305_SHA256 TLS_AES_128_GCM_SHA256 ECDHE-ECDSA-AES256-GCM-SHA384
-	curves X25519 secp521r1 secp384r1
-	# Automatic certificate renewal (Let's Encrypt) — enabled by default in Caddy 2
+        # Global TLS settings — TLS 1.3 + strong cipher suites
+        protocols tls1.2 tls1.3
+        ciphers TLS_AES_256_GCM_SHA384 TLS_CHACHA20_POLY1305_SHA256 TLS_AES_128_GCM_SHA256 ECDHE-ECDSA-AES256-GCM-SHA384
+        curves X25519 secp521r1 secp384r1
+        # Automatic certificate renewal (Let's Encrypt) — enabled by default in Caddy 2
 }
 
 # ---- Production domain (apex + www + wildcard subdomains) ----
 votewise.com.ng, *.votewise.com.ng, *.verifyvotes.com {
-	# HSTS + security headers (spec: "HSTS", "Strong cipher suites")
-	header {
-		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		X-XSS-Protection "1; mode=block"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "geolocation=(), microphone=(), camera=()"
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' wss: https:; frame-ancestors 'none'"
-		# Cache static assets aggressively
-		?Cache-Control "public, max-age=31536000, immutable"
-		# Remove identifying server header
-		-Server
-	}
+        # HSTS + security headers (spec: "HSTS", "Strong cipher suites")
+        header {
+                Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+                X-Content-Type-Options "nosniff"
+                X-Frame-Options "DENY"
+                X-XSS-Protection "1; mode=block"
+                Referrer-Policy "strict-origin-when-cross-origin"
+                Permissions-Policy "geolocation=(), microphone=(), camera=()"
+                Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' wss: https:; frame-ancestors 'none'"
+                # Cache static assets aggressively
+                ?Cache-Control "public, max-age=31536000, immutable"
+                # Remove identifying server header
+                -Server
+        }
 
-	# WAF: block known exploit paths
-	@block {
-		path /wp-admin* /wp-login* /.env /.git/* /xmlrpc.php /phpinfo.php /admin.php
-	}
-	respond @block 403
+        # WAF: block known exploit paths
+        @block {
+                path /wp-admin* /wp-login* /.env /.git/* /xmlrpc.php /phpinfo.php /admin.php
+        }
+        respond @block 403
 
-	# Rate limiting (spec: "Rate limiting" under Security Hardening)
-	# 50 req/s per IP, burst of 100
-	rate_limit {
-		zone dynamic 50r/s 100
-		key {remote_host}
-	}
+        # Rate limiting (spec: "Rate limiting" under Security Hardening)
+        # 50 req/s per IP, burst of 100
+        rate_limit {
+                zone dynamic 50r/s 100
+                key {remote_host}
+        }
 
-	# Request body size cap (prevents large-payload DoS)
-	request_body {
-		max_size 50MB
-	}
+        # Request body size cap (prevents large-payload DoS)
+        request_body {
+                max_size 50MB
+        }
 
-	# Socket.io live-results connections — proxy to results-service (port 3030)
-	@socketio {
-		query XTransformPort=3030
-	}
-	handle @socketio {
-		reverse_proxy localhost:3030 {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
-			# Zero-downtime: try upstreams for up to 10s during deploys
-			lb_try_duration 10s
-			lb_try_interval 250ms
-		}
-	}
+        # Platform Admin Subdomain: admin.votewise.com.ng
+        # Spec: "Platform Authentication — admin.votewise.com.ng"
+        # Dedicated subdomain for platform staff with stricter rate limiting
+        @adminSubdomain {
+                host admin.votewise.com.ng
+        }
+        handle @adminSubdomain {
+                # Stricter rate limiting for admin endpoints (10 req/s vs 50 for public)
+                rate_limit {
+                        zone admin 10r/s 20
+                        key {remote_host}
+                }
+                # Admin pages: no caching, no public access patterns
+                header {
+                        Cache-Control "no-store, no-cache, must-revalidate"
+                        Pragma "no-cache"
+                }
+                reverse_proxy localhost:3000 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Forwarded-Proto {scheme}
+                        header_up X-Real-IP {remote_host}
+                        header_up X-Admin-Subdomain "true"
+                        lb_try_duration 10s
+                        lb_try_interval 250ms
+                        health_uri /api/pihed/health
+                        health_interval 10s
+                        health_timeout 5s
+                }
+        }
 
-	# Everything else — proxy to Next.js app (port 3000)
-	handle {
-		reverse_proxy localhost:3000 {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
-			lb_try_duration 10s
-			lb_try_interval 250ms
-			# Health check for zero-downtime deploys
-			health_uri /api/pihed/health
-			health_interval 10s
-			health_timeout 5s
-		}
-	}
+        # Socket.io live-results connections — proxy to results-service (port 3030)
+        @socketio {
+                query XTransformPort=3030
+        }
+        handle @socketio {
+                reverse_proxy localhost:3030 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Forwarded-Proto {scheme}
+                        header_up X-Real-IP {remote_host}
+                        # Zero-downtime: try upstreams for up to 10s during deploys
+                        lb_try_duration 10s
+                        lb_try_interval 250ms
+                }
+        }
+
+        # Everything else — proxy to Next.js app (port 3000)
+        # Note: org admin paths like unilag.votewise.com.ng/admin are handled
+        # by Next.js routing at /o/[subdomain]/admin
+        handle {
+                reverse_proxy localhost:3000 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Forwarded-Proto {scheme}
+                        header_up X-Real-IP {remote_host}
+                        lb_try_duration 10s
+                        lb_try_interval 250ms
+                        # Health check for zero-downtime deploys
+                        health_uri /api/pihed/health
+                        health_interval 10s
+                        health_timeout 5s
+                }
+        }
 }
 
 # ---- Sandbox preview (port 81, no TLS) ----
 :81 {
-	@socketio {
-		query XTransformPort=3030
-	}
-	handle @socketio {
-		reverse_proxy localhost:3030 {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Real-IP {remote_host}
-		}
-	}
-	handle {
-		reverse_proxy localhost:3000 {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Real-IP {remote_host}
-		}
-	}
+        @socketio {
+                query XTransformPort=3030
+        }
+        handle @socketio {
+                reverse_proxy localhost:3030 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Real-IP {remote_host}
+                }
+        }
+        handle {
+                reverse_proxy localhost:3000 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Real-IP {remote_host}
+                }
+        }
 }
