@@ -3,11 +3,20 @@ import { db } from '@/lib/db'
 import { randomToken } from '@/lib/crypto'
 import { json, errorJson, getElectionContext, getClientIp, writeAudit, recordSecurityEvent, logVoterActivity } from '@/lib/election'
 import { deviceFromRequest } from '@/lib/device'
+import { RATE_LIMITS } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
 // POST /api/voter/verify-otp  body: { matric, otp }
+// Rate limited per-IP to prevent brute-force OTP guessing.
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req) || 'unknown'
+
+  // Rate limit: 10 OTP verification attempts per minute per IP.
+  // This prevents brute-force attacks (trying all 1M combinations of a 6-digit OTP).
+  const rl = RATE_LIMITS.authIp(ip)
+  if (!rl.allowed) return errorJson('Too many attempts. Please wait a minute.', 429)
+
   const body = await req.json().catch(() => ({}))
   const matric = String(body.matric || '').trim().toUpperCase()
   const otp = String(body.otp || '').trim()

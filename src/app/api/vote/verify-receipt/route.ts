@@ -1,27 +1,24 @@
 import { NextRequest } from 'next/server'
-import { db } from '@/lib/db'
-import { json, errorJson } from '@/lib/election'
+import { json } from '@/lib/election'
 
 export const dynamic = 'force-dynamic'
 
-// POST /api/vote/verify-receipt  body: { receiptCode }
-// Confirms the receipt exists + was counted WITHOUT decrypting the choice.
+// POST /api/vote/verify-receipt — DEPRECATED.
+// This route is retired. The canonical receipt verification endpoints are:
+//   - POST /api/receipt/verify (public, no auth)
+//   - POST /api/workspace/ballot/receipt (authenticated, org-scoped)
+//   - POST /api/v1/voting/receipt (v1 API, public)
+//
+// This stub exists for backwards compatibility — it proxies to the canonical
+// route so old clients don't break, but should not be used for new code.
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
-  const code = String(body.receiptCode || '').trim().toUpperCase()
-  if (!code) return errorJson('Receipt code is required', 400)
-
-  const vote = await db.encryptedVote.findUnique({
-    where: { receiptCode: code },
-    include: { position: { select: { title: true, slug: true } } },
+  // Proxy to the canonical route
+  const res = await fetch(new URL('/api/receipt/verify', req.url), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   })
-  if (!vote) return json({ valid: false, message: 'Receipt code not found.' }, 404)
-
-  return json({
-    valid: true,
-    counted: true,
-    position: vote.position.title,
-    votedAt: vote.createdAt,
-    note: 'This confirms your vote was recorded and counted. The choice is kept secret to protect ballot secrecy.',
-  })
+  const data = await res.json()
+  return json(data, res.status as any)
 }
