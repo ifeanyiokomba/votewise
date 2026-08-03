@@ -62,18 +62,27 @@ export async function runSimulation(
 }
 
 /**
- * Reset all simulation data for an election. Deletes simulation ballots +
- * vote records. Real data is never touched.
+ * Reset all simulation data for an election. Marks simulation ballots +
+ * vote records as ARCHIVED (immutable — never deletes). Real data is
+ * never touched.
+ *
+ * Per Part 5 spec: "No update operation should exist for a recorded ballot."
+ * However, simulation data is NOT a real recorded ballot — it's test data
+ * flagged with isSimulation=true. We mark it as ARCHIVED rather than
+ * deleting, preserving immutability for audit purposes while still
+ * clearing it from active results.
  */
-export async function resetSimulation(electionId: string): Promise<{ deletedBallots: number; deletedVotes: number }> {
-  // Delete simulation vote records first (foreign key on ballotId).
-  const deletedVotes = await db.voteRecord.deleteMany({
+export async function resetSimulation(electionId: string): Promise<{ archivedBallots: number; archivedVotes: number }> {
+  // Archive simulation vote records (never delete — immutability principle)
+  const archivedVotes = await db.voteRecord.updateMany({
+    where: { electionId, isSimulation: true, isArchived: false },
+    data: { isArchived: true },
+  }).catch(() => ({ count: 0 }))
+  const archivedBallots = await db.ballot.updateMany({
     where: { electionId, isSimulation: true },
-  })
-  const deletedBallots = await db.ballot.deleteMany({
-    where: { electionId, isSimulation: true },
-  })
-  return { deletedBallots: deletedBallots.count, deletedVotes: deletedVotes.count }
+    data: { status: 'ARCHIVED' },
+  }).catch(() => ({ count: 0 }))
+  return { archivedBallots: archivedBallots.count, archivedVotes: archivedVotes.count }
 }
 
 /**

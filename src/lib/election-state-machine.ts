@@ -13,11 +13,15 @@ export type ElectionState =
   | 'CONFIGURATION'
   | 'NOMINATION'
   | 'SCREENING'
+  | 'CANDIDATE_APPROVAL'
   | 'CAMPAIGN'
+  | 'READY_FOR_REVIEW'
   | 'READY'
   | 'LIVE'
   | 'PAUSED'
+  | 'VOTING_CLOSED'
   | 'COUNTING'
+  | 'RESULT_REVIEW'
   | 'RESULT_PENDING'
   | 'CERTIFIED'
   | 'ARCHIVED'
@@ -44,11 +48,17 @@ export const VALID_TRANSITIONS: StateTransition[] = [
   // NOMINATION → SCREENING (nomination closes, screening begins)
   { from: 'NOMINATION', to: 'SCREENING', action: 'CLOSE_NOMINATION', preconditions: ['Nomination period ended'] },
 
-  // SCREENING → CAMPAIGN (candidates approved, campaign begins)
-  { from: 'SCREENING', to: 'CAMPAIGN', action: 'APPROVE_CANDIDATES', preconditions: ['At least 1 approved candidate per position'] },
+  // SCREENING → CANDIDATE_APPROVAL (screening complete, formal approval stage)
+  { from: 'SCREENING', to: 'CANDIDATE_APPROVAL', action: 'COMPLETE_SCREENING', preconditions: ['All candidates screened'] },
 
-  // CAMPAIGN → READY (campaign ends, election is ready to go live)
-  { from: 'CAMPAIGN', to: 'READY', action: 'FINALIZE', preconditions: ['Campaign period ended', 'Readiness check passed'] },
+  // CANDIDATE_APPROVAL → CAMPAIGN (candidates formally approved, campaign begins)
+  { from: 'CANDIDATE_APPROVAL', to: 'CAMPAIGN', action: 'APPROVE_CANDIDATES', preconditions: ['At least 1 approved candidate per position'] },
+
+  // CAMPAIGN → READY_FOR_REVIEW (campaign ends, election enters review stage)
+  { from: 'CAMPAIGN', to: 'READY_FOR_REVIEW', action: 'END_CAMPAIGN', preconditions: ['Campaign period ended'] },
+
+  // READY_FOR_REVIEW → READY (review complete, election is ready to go live)
+  { from: 'READY_FOR_REVIEW', to: 'READY', action: 'FINALIZE_REVIEW', preconditions: ['Readiness check passed'] },
 
   // READY → LIVE (election goes live — voters can cast ballots)
   { from: 'READY', to: 'LIVE', action: 'GO_LIVE', preconditions: ['Readiness check passed (all critical checks)', 'Go-live checklist verified'] },
@@ -59,8 +69,18 @@ export const VALID_TRANSITIONS: StateTransition[] = [
   // PAUSED → LIVE (election resumed after pause)
   { from: 'PAUSED', to: 'LIVE', action: 'RESUME', preconditions: ['Lock released or admin resume'] },
 
-  // LIVE → COUNTING (voting ends, counting begins)
-  { from: 'LIVE', to: 'COUNTING', action: 'END_VOTING', preconditions: ['End time reached or admin end'] },
+  // LIVE → VOTING_CLOSED (voting ends, no more ballots accepted)
+  { from: 'LIVE', to: 'VOTING_CLOSED', action: 'CLOSE_VOTING', preconditions: ['End time reached or admin end'] },
+  { from: 'PAUSED', to: 'VOTING_CLOSED', action: 'CLOSE_VOTING', preconditions: ['Admin override: close voting while paused'] },
+
+  // VOTING_CLOSED → COUNTING (counting begins)
+  { from: 'VOTING_CLOSED', to: 'COUNTING', action: 'START_COUNTING', preconditions: ['Voting closed confirmed'] },
+
+  // COUNTING → RESULT_REVIEW (counting complete, results under review)
+  { from: 'COUNTING', to: 'RESULT_REVIEW', action: 'COMPLETE_COUNTING', preconditions: ['All votes tallied', 'Tally + VoteRecord reconciled'] },
+
+  // RESULT_REVIEW → RESULT_PENDING (review complete, results pending publication)
+  { from: 'RESULT_REVIEW', to: 'RESULT_PENDING', action: 'COMPLETE_REVIEW', preconditions: ['Integrity verification passed'] },
 
   // LIVE → PAUSED → LIVE (already covered above)
 
@@ -168,11 +188,15 @@ export class ElectionStateMachine {
       CONFIGURATION: 'Configuration',
       NOMINATION: 'Nomination Open',
       SCREENING: 'Candidate Screening',
+      CANDIDATE_APPROVAL: 'Candidate Approval',
       CAMPAIGN: 'Campaign Period',
+      READY_FOR_REVIEW: 'Ready for Review',
       READY: 'Ready for Go-Live',
       LIVE: 'Voting Live',
       PAUSED: 'Paused',
+      VOTING_CLOSED: 'Voting Closed',
       COUNTING: 'Counting Votes',
+      RESULT_REVIEW: 'Result Review',
       RESULT_PENDING: 'Results Pending',
       CERTIFIED: 'Certified',
       ARCHIVED: 'Archived',
@@ -189,11 +213,15 @@ export class ElectionStateMachine {
       CONFIGURATION: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
       NOMINATION: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
       SCREENING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+      CANDIDATE_APPROVAL: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
       CAMPAIGN: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+      READY_FOR_REVIEW: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
       READY: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
       LIVE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
       PAUSED: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+      VOTING_CLOSED: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',
       COUNTING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+      RESULT_REVIEW: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
       RESULT_PENDING: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
       CERTIFIED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
       ARCHIVED: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300',

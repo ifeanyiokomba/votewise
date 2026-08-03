@@ -796,6 +796,7 @@ model VoteRecord {
   ipAddress       String?
   deviceFingerprint String?
   isSimulation    Boolean  @default(false)
+  isArchived      Boolean  @default(false) // Part 5: immutability — archive instead of delete
   createdAt       DateTime @default(now())
 
   @@index([electionId])
