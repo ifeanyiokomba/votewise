@@ -6,7 +6,7 @@ import {
   Building2, Users, Shield, Lock, Loader2, CheckCircle2, AlertCircle,
   TrendingUp, DollarSign, Activity, Server,
   Settings as SettingsIcon, ScrollText, ShieldAlert, Zap, Layers, Network,
-  Headphones, Eye, Flag, Cpu,
+  Headphones, Eye, Flag, Cpu, Key,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -110,6 +110,7 @@ function PlatformDashboard({ official, onLogout }: { official: any; onLogout: ()
             <TabsTrigger value="fraud" className="gap-1.5"><Flag className="h-4 w-4" /> Fraud Detection</TabsTrigger>
             <TabsTrigger value="health" className="gap-1.5"><Server className="h-4 w-4" /> System Health</TabsTrigger>
             <TabsTrigger value="paystack" className="gap-1.5"><Zap className="h-4 w-4" /> Paystack</TabsTrigger>
+            <TabsTrigger value="credentials" className="gap-1.5"><Key className="h-4 w-4" /> Credentials</TabsTrigger>
             <TabsTrigger value="security" className="gap-1.5"><ShieldAlert className="h-4 w-4" /> Security</TabsTrigger>
             <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" /> Audit Log</TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5"><SettingsIcon className="h-4 w-4" /> Settings</TabsTrigger>
@@ -122,6 +123,7 @@ function PlatformDashboard({ official, onLogout }: { official: any; onLogout: ()
           <TabsContent value="fraud"><FraudTab /></TabsContent>
           <TabsContent value="health"><SystemHealthTab /></TabsContent>
           <TabsContent value="paystack"><PaystackTab /></TabsContent>
+          <TabsContent value="credentials"><CredentialsTab /></TabsContent>
           <TabsContent value="security"><SecurityTab /></TabsContent>
           <TabsContent value="audit"><AuditTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
@@ -367,7 +369,199 @@ function PaystackTab() {
     <div className="space-y-1.5"><Label>Secret Key</Label><Input type="password" value={form.secretKey} onChange={(e) => setForm((f) => ({ ...f, secretKey: e.target.value }))} placeholder="sk_live_..." className="font-mono text-xs" /></div>
     <div className="space-y-1.5"><Label>Price Per Voter (₦)</Label><Input type="number" value={form.pricePerVoter} onChange={(e) => setForm((f) => ({ ...f, pricePerVoter: parseInt(e.target.value) || 500 }))} /></div>
     <Button onClick={save} disabled={busy} className="gap-2">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Save</Button>
+    <p className="text-xs text-muted-foreground">Paystack keys can also be managed in the Credentials tab. Keys saved here are synced to the platform instantly.</p>
   </CardContent></Card>
+}
+
+// ---------------------------------------------------------------------------
+// Credentials Tab — secure provider key management
+// ---------------------------------------------------------------------------
+
+function CredentialsTab() {
+  const [credentials, setCredentials] = useState<any[]>([])
+  const [stats, setStats] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [showValue, setShowValue] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [verifying, setVerifying] = useState<string | null>(null)
+
+  async function load() {
+    try {
+      const res = await fetch('/api/admin/credentials').then(r => r.json())
+      if (res.credentials) { setCredentials(res.credentials); setStats(res.stats) }
+    } catch { toast.error('Failed to load credentials') }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+
+  async function saveCredential(key: string) {
+    if (!editValue.trim()) { toast.error('Please enter a value'); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/admin/credentials', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value: editValue }),
+      }).then(r => r.json())
+      if (res.message) {
+        toast.success(`${key} saved — now active across the platform`)
+        setEditingKey(null); setEditValue(''); setShowValue(false); load()
+      } else { toast.error(res.error || 'Failed to save') }
+    } catch { toast.error('Failed to save credential') }
+    finally { setSaving(false) }
+  }
+
+  async function verifyCredential(key: string) {
+    setVerifying(key)
+    try {
+      const res = await fetch(`/api/admin/credentials/${key}/verify`, { method: 'POST' }).then(r => r.json())
+      if (res.valid) toast.success(`${key}: ${res.message}`)
+      else toast.error(`${key}: ${res.message}`)
+      load()
+    } catch { toast.error('Verification failed') }
+    finally { setVerifying(null) }
+  }
+
+  async function removeCredential(key: string) {
+    if (!confirm(`Remove ${key}? This will disable the associated provider.`)) return
+    try {
+      await fetch(`/api/admin/credentials/${key}`, { method: 'DELETE' })
+      toast.success(`${key} removed`); load()
+    } catch { toast.error('Failed to remove credential') }
+  }
+
+  if (loading) return <div className="grid place-items-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+
+  // Only show the 3 main providers: Paystack, Resend, Termii
+  const providerKeys = ['PAYSTACK_SECRET_KEY', 'PAYSTACK_PUBLIC_KEY', 'RESEND_API_KEY', 'TERMII_API_KEY', 'TERMII_SENDER_ID', 'TERMII_WHATSAPP_KEY']
+  const mainCreds = credentials.filter(c => providerKeys.includes(c.key))
+  const otherCreds = credentials.filter(c => !providerKeys.includes(c.key))
+
+  const categoryIcons: Record<string, any> = { PAYMENT: Zap, EMAIL: Lock, SMS: Shield, WHATSAPP: Shield, MONITORING: Eye, STORAGE: Server, NOTIFICATION: AlertCircle, DATABASE: Server, CACHE: Activity, OAUTH: Key }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats */}
+      {stats && (
+        <Card className={cn('votewise-card-glow', stats.allRequiredConfigured ? 'border-emerald-500/30' : 'border-amber-500/30')}>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div><div className="font-display text-xl font-bold">{stats.configured}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Configured</div></div>
+              <div><div className="font-display text-xl font-bold text-amber-600 dark:text-amber-400">{stats.missing}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Not Set</div></div>
+              <div><div className={cn('font-display text-xl font-bold', stats.requiredMissing > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400')}>{stats.requiredMissing}</div><div className="text-[10px] uppercase tracking-wider text-muted-foreground">Required ✗</div></div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main providers */}
+      <Card>
+        <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Key className="h-4 w-4 text-primary" /> Provider Credentials</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">Enter your API keys below. They are encrypted with AES-256-GCM and instantly synced to all platform routes. Voters will be able to receive OTPs via the channels you configure.</p>
+          {mainCreds.map((cred) => {
+            const Icon = categoryIcons[cred.category] || Key
+            return (
+              <div key={cred.key} className="rounded-lg border border-border/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-sm font-semibold">{cred.displayName}</span>
+                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{cred.key}</code>
+                      {cred.isConfigured ? (
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 gap-1"><CheckCircle2 className="h-3 w-3" /> Active</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[9px] text-muted-foreground">Not Set</Badge>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{cred.description}</p>
+                    {cred.maskedValue && (
+                      <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+                        <Lock className="h-3 w-3" /> {cred.maskedValue}
+                      </div>
+                    )}
+                    {cred.lastVerifiedStatus && (
+                      <div className="mt-1 text-[10px]">
+                        {cred.lastVerifiedStatus === 'VALID' ? <span className="text-emerald-600 dark:text-emerald-400">✓ Verified</span> :
+                         cred.lastVerifiedStatus === 'INVALID' ? <span className="text-red-600 dark:text-red-400">✗ Invalid</span> :
+                         <span className="text-amber-600 dark:text-amber-400">⚠ Untested</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    {cred.isConfigured && (
+                      <Button variant="outline" size="sm" onClick={() => verifyCredential(cred.key)} disabled={verifying === cred.key} className="gap-1.5 text-xs">
+                        {verifying === cred.key ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Test
+                      </Button>
+                    )}
+                    {cred.isConfigured && (
+                      <Button variant="ghost" size="sm" onClick={() => removeCredential(cred.key)} className="gap-1.5 text-xs text-red-600 hover:text-red-700 dark:text-red-400">
+                        <AlertCircle className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {editingKey === cred.key ? (
+                  <div className="mt-3 space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input type={showValue ? 'text' : 'password'} value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder={cred.placeholder} className="font-mono pr-10" onKeyDown={(e) => e.key === 'Enter' && saveCredential(cred.key)} />
+                        <button type="button" onClick={() => setShowValue(!showValue)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showValue ? '🙈' : '👁'}</button>
+                      </div>
+                      <Button onClick={() => saveCredential(cred.key)} disabled={saving} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">{saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />} Save</Button>
+                      <Button variant="outline" size="sm" onClick={() => { setEditingKey(null); setEditValue(''); setShowValue(false) }}>Cancel</Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Encrypted with AES-256-GCM. Syncs to all routes instantly upon saving.</p>
+                  </div>
+                ) : (
+                  <Button variant={cred.isConfigured ? 'ghost' : 'outline'} size="sm" onClick={() => { setEditingKey(cred.key); setEditValue(''); setShowValue(false) }} className="mt-2 gap-1.5 text-xs">
+                    <Key className="h-3 w-3" /> {cred.isConfigured ? 'Update' : 'Configure'}
+                  </Button>
+                )}
+              </div>
+            )
+          })}
+        </CardContent>
+      </Card>
+
+      {/* Other credentials (collapsed) */}
+      {otherCreds.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="font-display text-sm">Other Credentials</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {otherCreds.map((cred) => (
+                <Badge key={cred.key} variant="outline" className={cn('gap-1 text-xs', cred.isConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground')}>
+                  {cred.isConfigured ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />} {cred.displayName}
+                </Badge>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              <a href="/admin/credentials" className="text-primary hover:underline">Manage all credentials →</a>
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Security notice */}
+      <Card className="border-emerald-500/20 bg-emerald-500/5">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-2">
+            <Lock className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+            <div className="text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground">How it works:</p>
+              <p>1. Enter your API key and click Save → it's encrypted with AES-256-GCM</p>
+              <p>2. The key is instantly synced to process.env → all platform routes pick it up</p>
+              <p>3. Voters can now receive OTPs via the channels you've configured</p>
+              <p>4. Click "Test" to verify the key works against the provider's real API</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 function SecurityTab() {
   const [events, setEvents] = useState<any[]>([])
