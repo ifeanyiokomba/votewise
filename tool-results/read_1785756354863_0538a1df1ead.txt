@@ -1,0 +1,452 @@
+     1→   800→   800→          </div>
+     2→   801→   801→        </div>
+     3→   802→   802→      </section>
+     4→   803→   803→
+     5→   804→   804→      {/* SECURITY FEATURES */}
+     6→   805→   805→      <section id="security" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+     7→   806→   806→        <Reveal>
+     8→   807→   807→          <div className="mb-10 text-center">
+     9→   808→   808→            <Badge variant="secondary" className="mb-2 gap-1"><Lock className="h-3.5 w-3.5" /> {t('home.securityBadge')}</Badge>
+    10→   809→   809→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.securityTitle')}</h2>
+    11→   810→   810→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+    12→   811→   811→              {t('home.securitySubtitle')}
+    13→   812→   812→            </p>
+    14→   813→   813→          </div>
+    15→   814→   814→        </Reveal>
+    16→   815→   815→        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+    17→   816→   816→          {SECURITY_FEATURES.map((f, i) => (
+    18→   817→   817→            <Reveal key={f.title} delay={i * 80}>
+    19→   818→   818→              <Card className="h-full">
+    20→   819→   819→                <CardContent className="p-6">
+    21→   820→   820→                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+    22→   821→   821→                    <f.icon className="h-5 w-5" />
+    23→   822→   822→                  </div>
+    24→   823→   823→                  <h3 className="mt-4 font-display text-base font-semibold">{f.title}</h3>
+    25→   824→   824→                  <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
+    26→   825→   825→                </CardContent>
+    27→   826→   826→              </Card>
+    28→   827→   827→            </Reveal>
+    29→   828→   828→          ))}
+    30→   829→   829→        </div>
+    31→   830→   830→      </section>
+    32→   831→   831→
+    33→   832→   832→      {/* PRICING */}
+    34→   833→   833→      <section id="pricing" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+    35→   834→   834→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+    36→   835→   835→          <Reveal>
+    37→   836→   836→            <div className="mb-10 text-center">
+    38→   837→   837→              <Badge variant="secondary" className="mb-2 gap-1"><DollarSign className="h-3.5 w-3.5" /> {t('home.pricingBadge')}</Badge>
+    39→   838→   838→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.pricingTitle')}</h2>
+    40→   839→   839→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+    41→   840→   840→                {t('home.pricingSubtitle')}
+    42→   841→   841→              </p>
+    43→   842→   842→            </div>
+    44→   843→   843→          </Reveal>
+    45→   844→   844→          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
+    46→   845→   845→            {PRICING.map((p, i) => (
+    47→   846→   846→              <Reveal key={p.name} delay={i * 120}>
+    48→   847→   847→                <Card className={cn('h-full', p.highlight && 'ring-2 ring-primary')}>
+    49→   848→   848→                  {p.highlight && (
+    50→   849→   849→                    <div className="rounded-t-xl bg-primary px-6 py-1.5 text-center text-xs font-semibold text-primary-foreground">
+    51→   850→   850→                      {t('home.pricingMostPopular')}
+    52→   851→   851→                    </div>
+    53→   852→   852→                  )}
+    54→   853→   853→                  <CardContent className="p-6">
+    55→   854→   854→                    <h3 className="font-display text-lg font-bold">{p.name}</h3>
+    56→   855→   855→                    <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
+    57→   856→   856→                    <div className="mt-4 flex items-baseline gap-1">
+    58→   857→   857→                      <span className="font-display text-4xl font-bold">{p.price}</span>
+    59→   858→   858→                      <span className="text-sm text-muted-foreground">{p.unit}</span>
+    60→   859→   859→                    </div>
+    61→   860→   860→                    <ul className="mt-5 space-y-2">
+    62→   861→   861→                      {p.features.map((f) => (
+    63→   862→   862→                        <li key={f} className="flex items-center gap-2 text-sm">
+    64→   863→   863→                          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+    65→   864→   864→                        </li>
+    66→   865→   865→                      ))}
+    67→   866→   866→                    </ul>
+    68→   867→   867→                    <Button
+    69→   868→   868→                      onClick={() => setView(p.highlight ? 'signup' : 'signup')}
+    70→   869→   869→                      className="mt-6 w-full gap-2"
+    71→   870→   870→                      variant={p.highlight ? 'default' : 'outline'}
+    72→   871→   871→                    >
+    73→   872→   872→                      {p.cta} <ArrowRight className="h-4 w-4" />
+    74→   873→   873→                    </Button>
+    75→   874→   874→                  </CardContent>
+    76→   875→   875→                </Card>
+    77→   876→   876→              </Reveal>
+    78→   877→   877→            ))}
+    79→   878→   878→          </div>
+    80→   879→   879→        </div>
+    81→   880→   880→      </section>
+    82→   881→   881→
+    83→   882→   882→      {/* COST ESTIMATOR — interactive BSPCM pricing calculator */}
+    84→   883→   883→      <CostEstimator />
+    85→   884→   884→
+    86→   885→   885→      {/* TESTIMONIALS */}
+    87→   886→   886→      <section id="testimonials" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+    88→   887→   887→        <Reveal>
+    89→   888→   888→          <div className="mb-10 text-center">
+    90→   889→   889→            <Badge variant="secondary" className="mb-2 gap-1"><Star className="h-3.5 w-3.5" /> {t('home.testimonialsBadge')}</Badge>
+    91→   890→   890→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.testimonialsTitle')}</h2>
+    92→   891→   891→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+    93→   892→   892→              {t('home.testimonialsSubtitle')}
+    94→   893→   893→            </p>
+    95→   894→   894→          </div>
+    96→   895→   895→        </Reveal>
+    97→   896→   896→        <div className="grid gap-6 md:grid-cols-3">
+    98→   897→   897→          {TESTIMONIALS.map((tm, i) => (
+    99→   898→   898→            <Reveal key={tm.name} delay={i * 120}>
+   100→   899→   899→              <Card className="h-full">
+   101→   900→   900→                <CardContent className="flex h-full flex-col p-6">
+   102→   901→   901→                  <div className="mb-3 flex gap-0.5">
+   103→   902→   902→                    {[0, 1, 2, 3, 4].map((s) => <Star key={s} className="h-4 w-4 fill-accent text-accent" />)}
+   104→   903→   903→                  </div>
+   105→   904→   904→                  <blockquote className="flex-1 text-sm leading-relaxed text-foreground">
+   106→   905→   905→                    &ldquo;{tm.quote}&rdquo;
+   107→   906→   906→                  </blockquote>
+   108→   907→   907→                  <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-4">
+   109→   908→   908→                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+   110→   909→   909→                      {tm.initials}
+   111→   910→   910→                    </div>
+   112→   911→   911→                    <div className="min-w-0">
+   113→   912→   912→                      <div className="truncate text-sm font-semibold">{tm.name}</div>
+   114→   913→   913→                      <div className="truncate text-xs text-muted-foreground">{tm.title}</div>
+   115→   914→   914→                    </div>
+   116→   915→   915→                  </div>
+   117→   916→   916→                </CardContent>
+   118→   917→   917→              </Card>
+   119→   918→   918→            </Reveal>
+   120→   919→   919→          ))}
+   121→   920→   920→        </div>
+   122→   921→   921→      </section>
+   123→   922→   922→
+   124→   923→   923→      {/* ORGANIZATIONS DIRECTORY */}
+   125→   924→   924→      {orgs.length > 0 && (
+   126→   925→   925→        <section id="organizations" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   127→   926→   926→          <Reveal>
+   128→   927→   927→            <div className="mb-8 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
+   129→   928→   928→              <div>
+   130→   929→   929→                <Badge variant="secondary" className="mb-2 gap-1"><Globe className="h-3.5 w-3.5" /> {t('home.orgsDirectoryBadge')}</Badge>
+   131→   930→   930→                <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.orgsDirectoryTitle')}</h2>
+   132→   931→   931→                <p className="mt-2 max-w-2xl text-muted-foreground">
+   133→   932→   932→                  {t('home.orgsDirectorySubtitle')}
+   134→   933→   933→                </p>
+   135→   934→   934→              </div>
+   136→   935→   935→            </div>
+   137→   936→   936→          </Reveal>
+   138→   937→   937→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   139→   938→   938→            {orgs.map((o, i) => (
+   140→   939→   939→              <Reveal key={o.id} delay={i * 80}>
+   141→   940→   940→                <Card className="h-full transition-all hover:shadow-md">
+   142→   941→   941→                  <CardContent className="p-5">
+   143→   942→   942→                    <div className="flex items-center gap-3">
+   144→   943→   943→                      {o.logoUrl ? (
+   145→   944→   944→                        <img src={o.logoUrl} alt={o.name} className="h-12 w-12 rounded-xl object-contain" />
+   146→   945→   945→                      ) : (
+   147→   946→   946→                        <div className="grid h-12 w-12 place-items-center rounded-xl text-white" style={{ backgroundColor: o.primaryColour }}>
+   148→   947→   947→                          <Building2 className="h-6 w-6" />
+   149→   948→   948→                        </div>
+   150→   949→   949→                      )}
+   151→   950→   950→                      <div className="min-w-0 flex-1">
+   152→   951→   951→                        <h3 className="truncate font-display text-sm font-semibold">{o.name}</h3>
+   153→   952→   952→                        <Badge variant="outline" className="mt-0.5 text-[10px]">{o.category?.replace(/_/g, ' ') || 'Organization'}</Badge>
+   154→   953→   953→                      </div>
+   155→   954→   954→                    </div>
+   156→   955→   955→                    {o.description && <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{o.description}</p>}
+   157→   956→   956→                    <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+   158→   957→   957→                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {o._count?.members || 0} members</span>
+   159→   958→   958→                      <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {o._count?.workspaces || 0} workspaces</span>
+   160→   959→   959→                      <span className="flex items-center gap-1"><Network className="h-3 w-3" /> {o._count?.voterGroups || 0} groups</span>
+   161→   960→   960→                    </div>
+   162→   961→   961→                    <div className="mt-2 font-mono text-[10px] text-muted-foreground">{o.subdomain}.votewise.com.ng</div>
+   163→   962→   962→                  </CardContent>
+   164→   963→   963→                </Card>
+   165→   964→   964→              </Reveal>
+   166→   965→   965→            ))}
+   167→   966→   966→          </div>
+   168→   967→   967→        </section>
+   169→   968→   968→      )}
+   170→   969→   969→
+   171→   970→   970→      {/* DEMO REQUEST + LIVE DEMO */}
+   172→   971→   971→      <section id="demo" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   173→   972→   972→        <div className="grid gap-6 lg:grid-cols-2">
+   174→   973→   973→          {/* Demo Request Form */}
+   175→   974→   974→          <Reveal>
+   176→   975→   975→            <Card className="votewise-card-glow h-full">
+   177→   976→   976→              <CardHeader>
+   178→   977→   977→                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.demoBadge')}</Badge>
+   179→   978→   978→                <CardTitle className="font-display text-2xl">{t('home.demoTitle')}</CardTitle>
+   180→   979→   979→                <p className="text-sm text-muted-foreground">
+   181→   980→   980→                  {t('home.demoSubtitle')}
+   182→   981→   981→                </p>
+   183→   982→   982→              </CardHeader>
+   184→   983→   983→              <CardContent className="space-y-3">
+   185→   984→   984→                <div className="grid grid-cols-2 gap-3">
+   186→   985→   985→                  <div className="space-y-1.5">
+   187→   986→   986→                    <Label htmlFor="demo-name">{t('home.demoContactPerson')} <span className="text-destructive">*</span></Label>
+   188→   987→   987→                    <Input id="demo-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+   189→   988→   988→                  </div>
+   190→   989→   989→                  <div className="space-y-1.5">
+   191→   990→   990→                    <Label htmlFor="demo-email">{t('home.demoEmail')} <span className="text-destructive">*</span></Label>
+   192→   991→   991→                    <Input id="demo-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+   193→   992→   992→                  </div>
+   194→   993→   993→                  <div className="space-y-1.5">
+   195→   994→   994→                    <Label htmlFor="demo-phone">{t('home.demoPhone')}</Label>
+   196→   995→   995→                    <Input id="demo-phone" value={demoForm.phone} onChange={(e) => setDemoForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+234 801 234 5678" />
+   197→   996→   996→                  </div>
+   198→   997→   997→                  <div className="space-y-1.5">
+   199→   998→   998→                    <Label htmlFor="demo-orgtype">{t('home.demoOrgType')}</Label>
+   200→   999→   999→                    <Input list="orgtypes-demo" id="demo-orgtype" value={demoForm.orgType} onChange={(e) => setDemoForm((f) => ({ ...f, orgType: e.target.value }))} placeholder="University" />
+   201→  1000→  1000→                    <datalist id="orgtypes-demo"><option>University</option><option>Company</option><option>Church</option><option>Association</option><option>Government</option><option>NGO</option><option>Cooperative</option><option>Other</option></datalist>
+   202→  1001→  1001→                  </div>
+   203→  1002→  1002→                </div>
+   204→  1003→  1003→                <div className="space-y-1.5">
+   205→  1004→  1004→                  <Label htmlFor="demo-org">{t('home.demoOrgName')} <span className="text-destructive">*</span></Label>
+   206→  1005→  1005→                  <Input id="demo-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="e.g. Lagos Medical Association" />
+   207→  1006→  1006→                </div>
+   208→  1007→  1007→                <div className="grid grid-cols-2 gap-3">
+   209→  1008→  1008→                  <div className="space-y-1.5">
+   210→  1009→  1009→                    <Label htmlFor="demo-voters">{t('home.demoEstimatedVoters')}</Label>
+   211→  1010→  1010→                    <Input id="demo-voters" type="number" value={demoForm.estimatedVoters} onChange={(e) => setDemoForm((f) => ({ ...f, estimatedVoters: e.target.value }))} placeholder="5000" />
+   212→  1011→  1011→                  </div>
+   213→  1012→  1012→                  <div className="space-y-1.5">
+   214→  1013→  1013→                    <Label htmlFor="demo-date">{t('home.demoPreferredDate')}</Label>
+   215→  1014→  1014→                    <Input id="demo-date" type="date" value={demoForm.preferredDate} onChange={(e) => setDemoForm((f) => ({ ...f, preferredDate: e.target.value }))} />
+   216→  1015→  1015→                  </div>
+   217→  1016→  1016→                </div>
+   218→  1017→  1017→                <div className="space-y-1.5">
+   219→  1018→  1018→                  <Label htmlFor="demo-msg">{t('home.demoMessage')}</Label>
+   220→  1019→  1019→                  <Textarea id="demo-msg" rows={2} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
+   221→  1020→  1020→                </div>
+   222→  1021→  1021→                <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+   223→  1022→  1022→                  {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+   224→  1023→  1023→                  {demoBusy ? t('home.demoSending') : t('home.demoRequestBtn')}
+   225→  1024→  1024→                </Button>
+   226→  1025→  1025→                <p className="text-center text-xs text-muted-foreground">{t('home.demoNoCommitment')}</p>
+   227→  1026→  1026→              </CardContent>
+   228→  1027→  1027→            </Card>
+   229→  1028→  1028→          </Reveal>
+   230→  1029→  1029→          {/* Live Demo Try */}
+   231→  1030→  1030→          <Reveal delay={120}>
+   232→  1031→  1031→            <Card className="votewise-card-glow h-full overflow-hidden">
+   233→  1032→  1032→              <CardHeader>
+   234→  1033→  1033→                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Play className="h-3.5 w-3.5" /> {t('home.liveDemoBadge')}</Badge>
+   235→  1034→  1034→                <CardTitle className="font-display text-2xl">{t('home.liveDemoTitle')}</CardTitle>
+   236→  1035→  1035→                <p className="text-sm text-muted-foreground">
+   237→  1036→  1036→                  {t('home.liveDemoSubtitle')}
+   238→  1037→  1037→                </p>
+   239→  1038→  1038→              </CardHeader>
+   240→  1039→  1039→              <CardContent className="space-y-3">
+   241→  1040→  1040→                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+   242→  1041→  1041→                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.tryVoterJourney')}</div>
+   243→  1042→  1042→                  <div className="mt-2 flex flex-col gap-2">
+   244→  1043→  1043→                    <Button onClick={() => setView('verify')} className="w-full gap-2">
+   245→  1044→  1044→                      <Vote className="h-5 w-5" /> {t('home.tryVotingNow')}
+   246→  1045→  1045→                    </Button>
+   247→  1046→  1046→                    <div className="grid grid-cols-2 gap-2">
+   248→  1047→  1047→                      <Button variant="outline" size="sm" onClick={() => setView('about')} className="gap-1.5">
+   249→  1048→  1048→                        <Building2 className="h-4 w-4" /> {t('home.about')}
+   250→  1049→  1049→                      </Button>
+   251→  1050→  1050→                      <Button variant="outline" size="sm" onClick={() => setView('guide')} className="gap-1.5">
+   252→  1051→  1051→                        <BookOpen className="h-4 w-4" /> {t('home.guide')}
+   253→  1052→  1052→                      </Button>
+   254→  1053→  1053→                    </div>
+   255→  1054→  1054→                  </div>
+   256→  1055→  1055→                </div>
+   257→  1056→  1056→                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+   258→  1057→  1057→                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.viewPublicResults')}</div>
+   259→  1058→  1058→                  <p className="mt-1 text-xs text-muted-foreground">{t('home.orgsDirectorySubtitle')}</p>
+   260→  1059→  1059→                  <Button variant="outline" size="sm" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="mt-2 w-full gap-1.5">
+   261→  1060→  1060→                    <Eye className="h-4 w-4" /> {t('home.viewLiveResults')}
+   262→  1061→  1061→                  </Button>
+   263→  1062→  1062→                </div>
+   264→  1063→  1063→              </CardContent>
+   265→  1064→  1064→            </Card>
+   266→  1065→  1065→          </Reveal>
+   267→  1066→  1066→        </div>
+   268→  1067→  1067→      </section>
+   269→  1068→  1068→
+   270→  1069→  1069→      {/* DOCUMENTATION */}
+   271→  1070→  1070→      <section id="docs" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+   272→  1071→  1071→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+   273→  1072→  1072→          <Reveal>
+   274→  1073→  1073→            <div className="mb-10 text-center">
+   275→  1074→  1074→              <Badge variant="secondary" className="mb-2 gap-1"><FileText className="h-3.5 w-3.5" /> {t('home.docsBadge')}</Badge>
+   276→  1075→  1075→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.docsTitle')}</h2>
+   277→  1076→  1076→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   278→  1077→  1077→                {t('home.docsSubtitle')}
+   279→  1078→  1078→              </p>
+   280→  1079→  1079→            </div>
+   281→  1080→  1080→          </Reveal>
+   282→  1081→  1081→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   283→  1082→  1082→            {DOC_LINKS.map((d, i) => (
+   284→  1083→  1083→              <Reveal key={d.title} delay={i * 80}>
+   285→  1084→  1084→                <button
+   286→  1085→  1085→                  onClick={() => {
+   287→  1086→  1086→                    if (d.action === 'security' || d.action === 'how') {
+   288→  1087→  1087→                      setView('home'); setTimeout(() => document.getElementById(d.action === 'security' ? 'security' : 'how')?.scrollIntoView({ behavior: 'smooth' }), 80)
+   289→  1088→  1088→                    } else { setView(d.action as any) }
+   290→  1089→  1089→                  }}
+   291→  1090→  1090→                  className="w-full text-left"
+   292→  1091→  1091→                >
+   293→  1092→  1092→                  <Card className="h-full transition-all hover:shadow-md hover:-translate-y-0.5">
+   294→  1093→  1093→                    <CardContent className="p-5">
+   295→  1094→  1094→                      <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+   296→  1095→  1095→                        <d.icon className="h-5 w-5" />
+   297→  1096→  1096→                      </div>
+   298→  1097→  1097→                      <h3 className="mt-3 font-display text-sm font-semibold">{d.title}</h3>
+   299→  1098→  1098→                      <p className="mt-1.5 text-xs text-muted-foreground">{d.desc}</p>
+   300→  1099→  1099→                      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary">
+   301→  1100→  1100→                        {t('home.readMore')} <ArrowRight className="h-3 w-3" />
+   302→  1101→  1101→                      </div>
+   303→  1102→  1102→                    </CardContent>
+   304→  1103→  1103→                  </Card>
+   305→  1104→  1104→                </button>
+   306→  1105→  1105→              </Reveal>
+   307→  1106→  1106→            ))}
+   308→  1107→  1107→          </div>
+   309→  1108→  1108→        </div>
+   310→  1109→  1109→      </section>
+   311→  1110→  1110→
+   312→  1111→  1111→      {/* CONTACT */}
+   313→  1112→  1112→      <section id="contact" className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 scroll-mt-20">
+   314→  1113→  1113→        <Reveal>
+   315→  1114→  1114→          <div className="mb-8 text-center">
+   316→  1115→  1115→            <Badge variant="secondary" className="mb-2 gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.contactBadge')}</Badge>
+   317→  1116→  1116→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.contactTitle')}</h2>
+   318→  1117→  1117→            <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+   319→  1118→  1118→              {t('home.contactSubtitle')}
+   320→  1119→  1119→            </p>
+   321→  1120→  1120→          </div>
+   322→  1121→  1121→        </Reveal>
+   323→  1122→  1122→        <Reveal delay={100}>
+   324→  1123→  1123→          <Card className="votewise-card-glow">
+   325→  1124→  1124→            <CardContent className="space-y-3 p-6">
+   326→  1125→  1125→              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   327→  1126→  1126→                <div className="space-y-1.5">
+   328→  1127→  1127→                  <Label htmlFor="contact-name">{t('home.contactName')}</Label>
+   329→  1128→  1128→                  <Input id="contact-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+   330→  1129→  1129→                </div>
+   331→  1130→  1130→                <div className="space-y-1.5">
+   332→  1131→  1131→                  <Label htmlFor="contact-email">{t('home.demoEmail')}</Label>
+   333→  1132→  1132→                  <Input id="contact-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+   334→  1133→  1133→                </div>
+   335→  1134→  1134→              </div>
+   336→  1135→  1135→              <div className="space-y-1.5">
+   337→  1136→  1136→                <Label htmlFor="contact-org">{t('home.contactOrgOptional')}</Label>
+   338→  1137→  1137→                <Input id="contact-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="Your organization" />
+   339→  1138→  1138→              </div>
+   340→  1139→  1139→              <div className="space-y-1.5">
+   341→  1140→  1140→                <Label htmlFor="contact-msg">{t('home.contactMessage')}</Label>
+   342→  1141→  1141→                <Textarea id="contact-msg" rows={4} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="How can we help?" />
+   343→  1142→  1142→              </div>
+   344→  1143→  1143→              <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+   345→  1144→  1144→                {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+   346→  1145→  1145→                {demoBusy ? t('home.contactSending') : t('home.contactSend')}
+   347→  1146→  1146→              </Button>
+   348→  1147→  1147→              <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
+   349→  1148→  1148→                <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.com.ng</span>
+   350→  1149→  1149→                <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> +234 800 VOTEWISE</span>
+   351→  1150→  1150→              </div>
+   352→  1151→  1151→            </CardContent>
+   353→  1152→  1152→          </Card>
+   354→  1153→  1153→        </Reveal>
+   355→  1154→  1154→      </section>
+   356→  1155→  1155→
+   357→  1156→  1156→      {/* ORG SIGNUP CTA */}
+   358→  1157→  1157→      <section className="border-t border-border/60 bg-gradient-to-br from-accent/10 via-primary/5 to-transparent">
+   359→  1158→  1158→        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center">
+   360→  1159→  1159→          <div>
+   361→  1160→  1160→            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> {t('home.signupBadge')}</Badge>
+   362→  1161→  1161→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.signupTitle')}</h2>
+   363→  1162→  1162→            <p className="mt-2 max-w-lg text-muted-foreground">
+   364→  1163→  1163→              {t('home.signupSubtitle')}
+   365→  1164→  1164→            </p>
+   366→  1165→  1165→            <div className="mt-4 space-y-1.5">
+   367→  1166→  1166→              {[
+   368→  1167→  1167→                t('home.signupFeature1'),
+   369→  1168→  1168→                t('home.signupFeature2'),
+   370→  1169→  1169→                t('home.signupFeature3'),
+   371→  1170→  1170→                t('home.signupFeature4'),
+   372→  1171→  1171→              ].map((f) => (
+   373→  1172→  1172→                <div key={f} className="flex items-center gap-2 text-sm">
+   374→  1173→  1173→                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+   375→  1174→  1174→                </div>
+   376→  1175→  1175→              ))}
+   377→  1176→  1176→            </div>
+   378→  1177→  1177→            <Button size="lg" onClick={() => setView('signup')} className="mt-6 gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+   379→  1178→  1178→              <Building2 className="h-5 w-5" /> {t('home.registerYourOrg')}
+   380→  1179→  1179→            </Button>
+   381→  1180→  1180→          </div>
+   382→  1181→  1181→          <div className="grid grid-cols-3 gap-3">
+   383→  1182→  1182→            {[
+   384→  1183→  1183→              { icon: Building2, label: 'University', desc: 'Union election' },
+   385→  1184→  1184→              { icon: Heart, label: 'NGO', desc: 'Board election' },
+   386→  1185→  1185→              { icon: Church, label: 'Church', desc: 'Parish council' },
+   387→  1186→  1186→              { icon: Briefcase, label: 'Company', desc: 'Staff election' },
+   388→  1187→  1187→              { icon: Users2, label: 'Cooperative', desc: 'Exec election' },
+   389→  1188→  1188→              { icon: Award, label: 'Prof. Body', desc: 'Officers election' },
+   390→  1189→  1189→            ].map((o, i) => (
+   391→  1190→  1190→              <div key={i} className="rounded-xl border border-border/60 bg-card p-4 text-center">
+   392→  1191→  1191→                <o.icon className="mx-auto h-8 w-8 text-primary" />
+   393→  1192→  1192→                <div className="mt-2 text-sm font-semibold">{o.label}</div>
+   394→  1193→  1193→                <div className="text-[10px] text-muted-foreground">{o.desc}</div>
+   395→  1194→  1194→              </div>
+   396→  1195→  1195→            ))}
+   397→  1196→  1196→          </div>
+   398→  1197→  1197→        </div>
+   399→  1198→  1198→      </section>
+   400→  1199→  1199→    </div>
+   401→  1200→  1200→  )
+   402→  1201→  1201→}
+   403→  1202→  1202→
+   404→  1203→  1203→function HeroStat({ value, suffix, label }: { value: number; suffix?: string; label: string }) {
+   405→  1204→  1204→  const [display, setDisplay] = useState(0)
+   406→  1205→  1205→  useEffect(() => {
+   407→  1206→  1206→    const duration = 800
+   408→  1207→  1207→    const start = display
+   409→  1208→  1208→    const diff = value - start
+   410→  1209→  1209→    if (diff === 0) return
+   411→  1210→  1210→    const startTime = Date.now()
+   412→  1211→  1211→    const t = setInterval(() => {
+   413→  1212→  1212→      const elapsed = Date.now() - startTime
+   414→  1213→  1213→      const progress = Math.min(1, elapsed / duration)
+   415→  1214→  1214→      const eased = 1 - Math.pow(1 - progress, 3)
+   416→  1215→  1215→      setDisplay(Math.round(start + diff * eased))
+   417→  1216→  1216→      if (progress >= 1) clearInterval(t)
+   418→  1217→  1217→    }, 16)
+   419→  1218→  1218→    return () => clearInterval(t)
+   420→  1219→  1219→  }, [value])
+   421→  1220→  1220→  return (
+   422→  1221→  1221→    <div className="rounded-xl border border-border/60 bg-card/50 p-3 backdrop-blur">
+   423→  1222→  1222→      <div className="font-display text-2xl font-bold tabular-nums text-primary sm:text-3xl">
+   424→  1223→  1223→        {display.toLocaleString()}{suffix}
+   425→  1224→  1224→      </div>
+   426→  1225→  1225→      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+   427→  1226→  1226→    </div>
+   428→  1227→  1227→  )
+   429→  1228→  1228→}
+   430→  1229→  1229→
+   431→  1230→  1230→// Local cn helper (avoid extra import churn in this file).
+   432→  1231→  1231→function cn(...classes: (string | false | undefined | null)[]): string {
+   433→  1232→  1232→  return classes.filter(Boolean).join(' ')
+   434→  1233→  1233→}
+   435→  1234→  1234→
+   436→  1235→  1235→// ---------------------------------------------------------------------------
+   437→  1236→  1236→// Verify an Election — public verification portal CTA.
+   438→  1237→  1237→// Lets anyone paste an election ID or a /verify/[id] / /results/[id] URL and
+   439→  1238→  1238→// jump straight to the public verification portal for that certified election.
+   440→  1239→  1239→// ---------------------------------------------------------------------------
+   441→  1240→  1240→
+   442→  1241→  1241→function LearnHowToVoteSection() {
+   443→  1242→  1242→  const { t } = useTranslation()
+   444→  1243→  1243→  return (
+   445→  1244→  1244→    <section
+   446→  1245→  1245→      id="learn"
+   447→  1246→  1246→      className="border-b border-border/60 bg-gradient-to-b from-accent/5 to-background scroll-mt-20"
+   448→  1247→  1247→    >
+   449→  1248→  1248→      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+   450→  1249→  1249→        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+
+[showing lines 1-450 of 452; use offset=451 with limit to continue reading]

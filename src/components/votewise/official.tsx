@@ -57,42 +57,116 @@ export function OfficialLoginView() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center px-4 py-16 sm:px-6">
-      <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-4 self-start gap-1.5">
-        <ArrowLeft className="h-4 w-4" /> Back
-      </Button>
-      <Card className="votewise-card-glow w-full">
-        <CardHeader className="text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground"><Lock className="h-7 w-7" /></div>
-          <CardTitle className="mt-3 font-display">Organization Portal</CardTitle>
-          <p className="text-sm text-muted-foreground">Sign in to manage your organization&apos;s elections.</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2"><Label htmlFor="aemail">Email</Label><Input id="aemail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-          <div className="space-y-2"><Label htmlFor="apass">Password</Label><Input id="apass" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-          {needs2fa && (
-            <div className="space-y-2">
-              <Label htmlFor="atotp">2FA Code (from your authenticator app)</Label>
-              <Input id="atotp" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="123456" className="font-mono" />
+    <div className="relative min-h-screen">
+      {/* Split-screen: left branding panel (desktop), right form */}
+      <div className="mx-auto grid min-h-screen max-w-[1152px] lg:grid-cols-2">
+        {/* Left — branding panel */}
+        <div className="relative hidden overflow-hidden border-r border-border bg-primary/[0.03] lg:flex lg:flex-col lg:justify-between lg:p-12">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+            <div className="votewise-orb absolute -left-20 top-20 h-72 w-72 rounded-full bg-primary/8 blur-3xl" />
+            <div className="votewise-orb votewise-orb-delay absolute bottom-10 -right-10 h-80 w-80 rounded-full bg-accent/8 blur-3xl" />
+          </div>
+          <div className="relative">
+            <button onClick={() => setView('home')} className="flex items-center gap-2.5">
+              <img src="/logo-votewise.png" alt="VoteWise" width={36} height={36} className="rounded-[10px]" />
+              <div className="leading-tight">
+                <div className="font-display text-lg font-medium tracking-tight">VoteWise</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Election Platform</div>
+              </div>
+            </button>
+          </div>
+          <div className="relative space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-medium backdrop-blur">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Organization Portal
             </div>
-          )}
-          {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
-          <Button onClick={onLogin} disabled={loading} className="w-full gap-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : needs2fa ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-            {needs2fa ? 'Verify & Sign In' : 'Sign In'}
-          </Button>
-          <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-            <p className="font-semibold text-foreground">Demo credentials</p>
-            <div className="mt-1 space-y-0.5 font-mono">
-              <div>admin@votewise.com.ng / admin123 (Org Owner)</div>
-              <div>elcom@votewise.com.ng / elcom123 (Committee)</div>
-              <div>eng.faculty@votewise.com.ng / faculty123 (Officer)</div>
-              <div>csc.dept@votewise.com.ng / dept123 (Officer)</div>
-              <div>observer@votewise.com.ng / observer123 (Observer)</div>
+            <h2 className="font-display text-4xl font-medium leading-[1.1] tracking-[-0.03em]">
+              Manage elections from<br />a single control room<span className="vw-dot">.</span>
+            </h2>
+            <p className="max-w-md text-base leading-relaxed text-muted-foreground">
+              Sign in to create elections, manage voters, monitor live turnout, and certify results — all from one trusted dashboard.
+            </p>
+            <div className="grid grid-cols-2 gap-4 pt-4">
+              {[
+                { icon: BarChart3, label: 'Live analytics' },
+                { icon: ShieldCheck, label: 'Audit trail' },
+                { icon: Users, label: 'Voter management' },
+                { icon: BadgeCheck, label: 'Certified results' },
+              ].map((f) => (
+                <div key={f.label} className="flex items-center gap-2.5">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10">
+                    <f.icon className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-medium">{f.label}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="relative text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="votewise-live-dot inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              All actions are logged in a tamper-evident audit trail.
+            </span>
+          </div>
+        </div>
+
+        {/* Right — form panel */}
+        <div className="flex flex-col justify-center px-4 py-8 sm:px-6 lg:px-12 lg:py-12">
+          <Button variant="ghost" size="sm" onClick={() => setView('home')} className="mb-6 w-fit gap-1.5">
+            <ArrowLeft className="h-4 w-4" /> Back to home
+          </Button>
+
+          <div className="mb-8">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-primary-foreground">
+              <Lock className="h-6 w-6" />
+            </div>
+            <h1 className="mt-4 font-display text-3xl font-medium tracking-[-0.025em] sm:text-4xl">
+              Sign in to your<br className="sm:hidden" /> portal<span className="vw-dot">.</span>
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Manage your organization&apos;s elections, voters, and results.
+            </p>
+          </div>
+
+          <Card className="vw-lift">
+            <CardContent className="space-y-4 p-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="aemail">Email</Label>
+                <Input id="aemail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourorg.org" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="apass">Password</Label>
+                <Input id="apass" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" />
+              </div>
+              {needs2fa && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="atotp">2FA Code (from your authenticator app)</Label>
+                  <Input id="atotp" value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="123456" className="font-mono" />
+                </div>
+              )}
+              {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
+              <Button onClick={onLogin} disabled={loading} className="w-full gap-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : needs2fa ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                {needs2fa ? 'Verify & Sign In' : 'Sign In'}
+              </Button>
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
+                <p className="font-medium text-foreground">Demo credentials</p>
+                <div className="mt-1.5 space-y-1 font-mono text-muted-foreground">
+                  <div>admin@votewise.com.ng / admin123 <span className="text-muted-foreground/60">(Org Owner)</span></div>
+                  <div>elcom@votewise.com.ng / elcom123 <span className="text-muted-foreground/60">(Committee)</span></div>
+                  <div>observer@votewise.com.ng / observer123 <span className="text-muted-foreground/60">(Observer)</span></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Don&apos;t have an organization?{' '}
+            <button onClick={() => setView('signup')} className="font-medium text-primary hover:underline">
+              Register one →
+            </button>
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -137,14 +211,14 @@ export function OfficialDashboard() {
   const canViewSecurity = role === 'SUPER_ADMIN' || role === 'ELECTORAL_COMMITTEE'
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+    <div className="mx-auto w-full max-w-[1152px] px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-2xl font-bold">Organization Portal</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-display text-2xl font-medium tracking-[-0.025em]">Organization Portal</h1>
             <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-muted-foreground">{ROLE_LABELS[role] || 'Official'}</Badge>
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">{official?.name} · {official?.email}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{official?.name} · {official?.email}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setView('home')} className="gap-1.5"><Building2 className="h-4 w-4" /> Public View</Button>
@@ -210,10 +284,10 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
   return (
     <div className="space-y-6">
       {canManage && (
-        <Card className="votewise-card-glow">
-          <CardHeader>
+        <Card className="vw-lift">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="font-display">Election Lifecycle</CardTitle>
+              <CardTitle className="font-display text-base font-medium">Election Lifecycle</CardTitle>
               {election && <StatusBadge status={election.liveStatus || election.status} />}
             </div>
           </CardHeader>
@@ -256,8 +330,8 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
       <TurnoutByFacultyChart />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Download className="h-4 w-4" /> Export Results</CardTitle></CardHeader>
+        <Card className="vw-lift">
+          <CardHeader className="pb-3"><CardTitle className="font-display text-sm font-medium flex items-center gap-2"><Download className="h-4 w-4 text-primary" /> Export Results</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => window.open(api.exportResults('csv'))} className="gap-1.5"><Download className="h-4 w-4" /> CSV</Button>
             <Button variant="outline" size="sm" onClick={() => window.open(api.exportResults('json'))} className="gap-1.5"><Download className="h-4 w-4" /> JSON</Button>
@@ -265,8 +339,8 @@ function OverviewTab({ election, setElection, role }: { election: any; setElecti
           </CardContent>
         </Card>
         {canManage && (
-          <Card>
-            <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Bell className="h-4 w-4" /> Broadcast Notification</CardTitle></CardHeader>
+          <Card className="vw-lift">
+            <CardHeader className="pb-3"><CardTitle className="font-display text-sm font-medium flex items-center gap-2"><Bell className="h-4 w-4 text-primary" /> Broadcast Notification</CardTitle></CardHeader>
             <CardContent>
               <p className="mb-3 text-xs text-muted-foreground">Send an in-app notification to all registered voters.</p>
               <Button onClick={() => setBroadcastOpen(true)} className="gap-1.5"><Bell className="h-4 w-4" /> Compose Broadcast</Button>
@@ -293,16 +367,16 @@ function SystemHealthWidget() {
     const t = setInterval(load, 15000)
     return () => clearInterval(t)
   }, [])
-  if (loading) return <Card><CardContent className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></CardContent></Card>
+  if (loading) return <Card className="vw-lift"><CardContent className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></CardContent></Card>
   if (!health) return null
   const statusIcon = (s: string) => s === 'healthy' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : s === 'degraded' ? <AlertCircle className="h-4 w-4 text-amber-600" /> : <AlertCircle className="h-4 w-4 text-destructive" />
   const statusCls = (s: string) => s === 'healthy' ? 'text-emerald-600' : s === 'degraded' ? 'text-amber-600' : 'text-destructive'
   return (
-    <Card>
-      <CardHeader>
+    <Card className="vw-lift">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="font-display text-base flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> System Health</CardTitle>
-          <Badge className={cn('gap-1', health.overall === 'healthy' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+          <CardTitle className="font-display text-sm font-medium flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> System Health</CardTitle>
+          <Badge className={cn('gap-1', health.overall === 'healthy' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300')}>
             <span className={cn('h-1.5 w-1.5 rounded-full', health.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500')} />
             {health.overall.toUpperCase()}
           </Badge>
@@ -311,20 +385,20 @@ function SystemHealthWidget() {
       <CardContent>
         <div className="grid gap-3 sm:grid-cols-2">
           {health.checks.map((c: any) => (
-            <div key={c.name} className="flex items-center gap-2 rounded-lg border border-border/60 p-2.5">
+            <div key={c.name} className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2.5">
               {statusIcon(c.status)}
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">{c.name}</div>
                 <div className="text-xs text-muted-foreground">{c.detail}</div>
               </div>
-              <span className={cn('text-xs font-semibold capitalize', statusCls(c.status))}>{c.status}</span>
+              <span className={cn('text-xs font-medium capitalize', statusCls(c.status))}>{c.status}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/60 pt-3 text-center text-xs">
-          <div><div className="font-bold text-foreground">{health.counts.voters}</div><div className="text-muted-foreground">Voters</div></div>
-          <div><div className="font-bold text-foreground">{health.counts.votes}</div><div className="text-muted-foreground">Votes</div></div>
-          <div><div className="font-bold text-foreground">{health.counts.auditLogs}</div><div className="text-muted-foreground">Audit Logs</div></div>
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3 text-center text-xs">
+          <div><div className="vw-stat text-lg text-foreground">{health.counts.voters}</div><div className="text-muted-foreground">Voters</div></div>
+          <div><div className="vw-stat text-lg text-foreground">{health.counts.votes}</div><div className="text-muted-foreground">Votes</div></div>
+          <div><div className="vw-stat text-lg text-foreground">{health.counts.auditLogs}</div><div className="text-muted-foreground">Audit Logs</div></div>
         </div>
         <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
           <span>Uptime: {Math.floor(health.uptime / 60)}m {Math.floor(health.uptime % 60)}s</span>
@@ -604,21 +678,21 @@ function TurnoutByFacultyChart() {
     const t = setInterval(() => api.observerAnalytics().then((d) => setData(d)).catch(() => {}), 10000)
     return () => clearInterval(t)
   }, [])
-  if (!data) return <Card><CardContent className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></CardContent></Card>
+  if (!data) return <Card className="vw-lift"><CardContent className="py-10 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></CardContent></Card>
   const max = Math.max(1, ...data.byFaculty.map((f: any) => f.total))
   return (
-    <Card>
-      <CardHeader><CardTitle className="font-display text-base flex items-center gap-2"><Building2 className="h-4 w-4" /> Turnout by {term.workspaceLabel}</CardTitle></CardHeader>
+    <Card className="vw-lift">
+      <CardHeader className="pb-3"><CardTitle className="font-display text-sm font-medium flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> Turnout by {term.workspaceLabel}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {data.byFaculty.map((f: any) => (
-          <div key={f.id} className="space-y-1">
+          <div key={f.id} className="space-y-1.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="truncate">{f.name}</span>
-              <span className="font-mono text-xs">{f.voted}/{f.total} <span className="text-muted-foreground">({f.pct}%)</span></span>
+              <span className="truncate font-medium">{f.name}</span>
+              <span className="font-mono text-xs tabular-nums">{f.voted}/{f.total} <span className="text-muted-foreground">({f.pct}%)</span></span>
             </div>
-            <div className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-muted">
+            <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-muted">
               <div className="votewise-bar-anim rounded-l-full bg-primary transition-all" style={{ width: `${(f.voted / max) * 100}%` }} />
-              <div className="votewise-bar-anim rounded-r-full bg-muted-foreground/30 transition-all" style={{ width: `${((f.total - f.voted) / max) * 100}%` }} />
+              <div className="votewise-bar-anim rounded-r-full bg-muted-foreground/25 transition-all" style={{ width: `${((f.total - f.voted) / max) * 100}%` }} />
             </div>
           </div>
         ))}
@@ -696,9 +770,9 @@ function LifecycleBtn({ action, label, icon: Icon, current, busy, onClick, disab
 
 function StatCard({ icon: Icon, label, value, accent }: any) {
   return (
-    <Card><CardContent className="flex items-center gap-3 py-4">
-      <div className={cn('grid h-11 w-11 place-items-center rounded-xl', accent ? 'bg-accent/20 text-accent-foreground' : 'bg-primary/10 text-primary')}><Icon className="h-5 w-5" /></div>
-      <div><div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div><div className="font-display text-xl font-bold">{value}</div></div>
+    <Card className="vw-lift"><CardContent className="flex items-center gap-3 py-4">
+      <div className={cn('grid h-11 w-11 place-items-center rounded-xl ring-1', accent ? 'bg-accent/12 text-accent-foreground ring-accent/15' : 'bg-primary/8 text-primary ring-primary/10')}><Icon className="h-5 w-5" /></div>
+      <div><div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div><div className="vw-stat text-xl text-foreground">{value}</div></div>
     </CardContent></Card>
   )
 }

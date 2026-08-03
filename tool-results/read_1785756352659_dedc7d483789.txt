@@ -1,0 +1,452 @@
+   800→   800→          </div>
+   801→   801→        </div>
+   802→   802→      </section>
+   803→   803→
+   804→   804→      {/* SECURITY FEATURES */}
+   805→   805→      <section id="security" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   806→   806→        <Reveal>
+   807→   807→          <div className="mb-10 text-center">
+   808→   808→            <Badge variant="secondary" className="mb-2 gap-1"><Lock className="h-3.5 w-3.5" /> {t('home.securityBadge')}</Badge>
+   809→   809→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.securityTitle')}</h2>
+   810→   810→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   811→   811→              {t('home.securitySubtitle')}
+   812→   812→            </p>
+   813→   813→          </div>
+   814→   814→        </Reveal>
+   815→   815→        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+   816→   816→          {SECURITY_FEATURES.map((f, i) => (
+   817→   817→            <Reveal key={f.title} delay={i * 80}>
+   818→   818→              <Card className="h-full">
+   819→   819→                <CardContent className="p-6">
+   820→   820→                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+   821→   821→                    <f.icon className="h-5 w-5" />
+   822→   822→                  </div>
+   823→   823→                  <h3 className="mt-4 font-display text-base font-semibold">{f.title}</h3>
+   824→   824→                  <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
+   825→   825→                </CardContent>
+   826→   826→              </Card>
+   827→   827→            </Reveal>
+   828→   828→          ))}
+   829→   829→        </div>
+   830→   830→      </section>
+   831→   831→
+   832→   832→      {/* PRICING */}
+   833→   833→      <section id="pricing" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+   834→   834→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+   835→   835→          <Reveal>
+   836→   836→            <div className="mb-10 text-center">
+   837→   837→              <Badge variant="secondary" className="mb-2 gap-1"><DollarSign className="h-3.5 w-3.5" /> {t('home.pricingBadge')}</Badge>
+   838→   838→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.pricingTitle')}</h2>
+   839→   839→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   840→   840→                {t('home.pricingSubtitle')}
+   841→   841→              </p>
+   842→   842→            </div>
+   843→   843→          </Reveal>
+   844→   844→          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
+   845→   845→            {PRICING.map((p, i) => (
+   846→   846→              <Reveal key={p.name} delay={i * 120}>
+   847→   847→                <Card className={cn('h-full', p.highlight && 'ring-2 ring-primary')}>
+   848→   848→                  {p.highlight && (
+   849→   849→                    <div className="rounded-t-xl bg-primary px-6 py-1.5 text-center text-xs font-semibold text-primary-foreground">
+   850→   850→                      {t('home.pricingMostPopular')}
+   851→   851→                    </div>
+   852→   852→                  )}
+   853→   853→                  <CardContent className="p-6">
+   854→   854→                    <h3 className="font-display text-lg font-bold">{p.name}</h3>
+   855→   855→                    <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
+   856→   856→                    <div className="mt-4 flex items-baseline gap-1">
+   857→   857→                      <span className="font-display text-4xl font-bold">{p.price}</span>
+   858→   858→                      <span className="text-sm text-muted-foreground">{p.unit}</span>
+   859→   859→                    </div>
+   860→   860→                    <ul className="mt-5 space-y-2">
+   861→   861→                      {p.features.map((f) => (
+   862→   862→                        <li key={f} className="flex items-center gap-2 text-sm">
+   863→   863→                          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+   864→   864→                        </li>
+   865→   865→                      ))}
+   866→   866→                    </ul>
+   867→   867→                    <Button
+   868→   868→                      onClick={() => setView(p.highlight ? 'signup' : 'signup')}
+   869→   869→                      className="mt-6 w-full gap-2"
+   870→   870→                      variant={p.highlight ? 'default' : 'outline'}
+   871→   871→                    >
+   872→   872→                      {p.cta} <ArrowRight className="h-4 w-4" />
+   873→   873→                    </Button>
+   874→   874→                  </CardContent>
+   875→   875→                </Card>
+   876→   876→              </Reveal>
+   877→   877→            ))}
+   878→   878→          </div>
+   879→   879→        </div>
+   880→   880→      </section>
+   881→   881→
+   882→   882→      {/* COST ESTIMATOR — interactive BSPCM pricing calculator */}
+   883→   883→      <CostEstimator />
+   884→   884→
+   885→   885→      {/* TESTIMONIALS */}
+   886→   886→      <section id="testimonials" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   887→   887→        <Reveal>
+   888→   888→          <div className="mb-10 text-center">
+   889→   889→            <Badge variant="secondary" className="mb-2 gap-1"><Star className="h-3.5 w-3.5" /> {t('home.testimonialsBadge')}</Badge>
+   890→   890→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.testimonialsTitle')}</h2>
+   891→   891→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   892→   892→              {t('home.testimonialsSubtitle')}
+   893→   893→            </p>
+   894→   894→          </div>
+   895→   895→        </Reveal>
+   896→   896→        <div className="grid gap-6 md:grid-cols-3">
+   897→   897→          {TESTIMONIALS.map((tm, i) => (
+   898→   898→            <Reveal key={tm.name} delay={i * 120}>
+   899→   899→              <Card className="h-full">
+   900→   900→                <CardContent className="flex h-full flex-col p-6">
+   901→   901→                  <div className="mb-3 flex gap-0.5">
+   902→   902→                    {[0, 1, 2, 3, 4].map((s) => <Star key={s} className="h-4 w-4 fill-accent text-accent" />)}
+   903→   903→                  </div>
+   904→   904→                  <blockquote className="flex-1 text-sm leading-relaxed text-foreground">
+   905→   905→                    &ldquo;{tm.quote}&rdquo;
+   906→   906→                  </blockquote>
+   907→   907→                  <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-4">
+   908→   908→                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+   909→   909→                      {tm.initials}
+   910→   910→                    </div>
+   911→   911→                    <div className="min-w-0">
+   912→   912→                      <div className="truncate text-sm font-semibold">{tm.name}</div>
+   913→   913→                      <div className="truncate text-xs text-muted-foreground">{tm.title}</div>
+   914→   914→                    </div>
+   915→   915→                  </div>
+   916→   916→                </CardContent>
+   917→   917→              </Card>
+   918→   918→            </Reveal>
+   919→   919→          ))}
+   920→   920→        </div>
+   921→   921→      </section>
+   922→   922→
+   923→   923→      {/* ORGANIZATIONS DIRECTORY */}
+   924→   924→      {orgs.length > 0 && (
+   925→   925→        <section id="organizations" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   926→   926→          <Reveal>
+   927→   927→            <div className="mb-8 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
+   928→   928→              <div>
+   929→   929→                <Badge variant="secondary" className="mb-2 gap-1"><Globe className="h-3.5 w-3.5" /> {t('home.orgsDirectoryBadge')}</Badge>
+   930→   930→                <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.orgsDirectoryTitle')}</h2>
+   931→   931→                <p className="mt-2 max-w-2xl text-muted-foreground">
+   932→   932→                  {t('home.orgsDirectorySubtitle')}
+   933→   933→                </p>
+   934→   934→              </div>
+   935→   935→            </div>
+   936→   936→          </Reveal>
+   937→   937→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   938→   938→            {orgs.map((o, i) => (
+   939→   939→              <Reveal key={o.id} delay={i * 80}>
+   940→   940→                <Card className="h-full transition-all hover:shadow-md">
+   941→   941→                  <CardContent className="p-5">
+   942→   942→                    <div className="flex items-center gap-3">
+   943→   943→                      {o.logoUrl ? (
+   944→   944→                        <img src={o.logoUrl} alt={o.name} className="h-12 w-12 rounded-xl object-contain" />
+   945→   945→                      ) : (
+   946→   946→                        <div className="grid h-12 w-12 place-items-center rounded-xl text-white" style={{ backgroundColor: o.primaryColour }}>
+   947→   947→                          <Building2 className="h-6 w-6" />
+   948→   948→                        </div>
+   949→   949→                      )}
+   950→   950→                      <div className="min-w-0 flex-1">
+   951→   951→                        <h3 className="truncate font-display text-sm font-semibold">{o.name}</h3>
+   952→   952→                        <Badge variant="outline" className="mt-0.5 text-[10px]">{o.category?.replace(/_/g, ' ') || 'Organization'}</Badge>
+   953→   953→                      </div>
+   954→   954→                    </div>
+   955→   955→                    {o.description && <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{o.description}</p>}
+   956→   956→                    <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+   957→   957→                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {o._count?.members || 0} members</span>
+   958→   958→                      <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {o._count?.workspaces || 0} workspaces</span>
+   959→   959→                      <span className="flex items-center gap-1"><Network className="h-3 w-3" /> {o._count?.voterGroups || 0} groups</span>
+   960→   960→                    </div>
+   961→   961→                    <div className="mt-2 font-mono text-[10px] text-muted-foreground">{o.subdomain}.votewise.com.ng</div>
+   962→   962→                  </CardContent>
+   963→   963→                </Card>
+   964→   964→              </Reveal>
+   965→   965→            ))}
+   966→   966→          </div>
+   967→   967→        </section>
+   968→   968→      )}
+   969→   969→
+   970→   970→      {/* DEMO REQUEST + LIVE DEMO */}
+   971→   971→      <section id="demo" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   972→   972→        <div className="grid gap-6 lg:grid-cols-2">
+   973→   973→          {/* Demo Request Form */}
+   974→   974→          <Reveal>
+   975→   975→            <Card className="votewise-card-glow h-full">
+   976→   976→              <CardHeader>
+   977→   977→                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.demoBadge')}</Badge>
+   978→   978→                <CardTitle className="font-display text-2xl">{t('home.demoTitle')}</CardTitle>
+   979→   979→                <p className="text-sm text-muted-foreground">
+   980→   980→                  {t('home.demoSubtitle')}
+   981→   981→                </p>
+   982→   982→              </CardHeader>
+   983→   983→              <CardContent className="space-y-3">
+   984→   984→                <div className="grid grid-cols-2 gap-3">
+   985→   985→                  <div className="space-y-1.5">
+   986→   986→                    <Label htmlFor="demo-name">{t('home.demoContactPerson')} <span className="text-destructive">*</span></Label>
+   987→   987→                    <Input id="demo-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+   988→   988→                  </div>
+   989→   989→                  <div className="space-y-1.5">
+   990→   990→                    <Label htmlFor="demo-email">{t('home.demoEmail')} <span className="text-destructive">*</span></Label>
+   991→   991→                    <Input id="demo-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+   992→   992→                  </div>
+   993→   993→                  <div className="space-y-1.5">
+   994→   994→                    <Label htmlFor="demo-phone">{t('home.demoPhone')}</Label>
+   995→   995→                    <Input id="demo-phone" value={demoForm.phone} onChange={(e) => setDemoForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+234 801 234 5678" />
+   996→   996→                  </div>
+   997→   997→                  <div className="space-y-1.5">
+   998→   998→                    <Label htmlFor="demo-orgtype">{t('home.demoOrgType')}</Label>
+   999→   999→                    <Input list="orgtypes-demo" id="demo-orgtype" value={demoForm.orgType} onChange={(e) => setDemoForm((f) => ({ ...f, orgType: e.target.value }))} placeholder="University" />
+  1000→  1000→                    <datalist id="orgtypes-demo"><option>University</option><option>Company</option><option>Church</option><option>Association</option><option>Government</option><option>NGO</option><option>Cooperative</option><option>Other</option></datalist>
+  1001→  1001→                  </div>
+  1002→  1002→                </div>
+  1003→  1003→                <div className="space-y-1.5">
+  1004→  1004→                  <Label htmlFor="demo-org">{t('home.demoOrgName')} <span className="text-destructive">*</span></Label>
+  1005→  1005→                  <Input id="demo-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="e.g. Lagos Medical Association" />
+  1006→  1006→                </div>
+  1007→  1007→                <div className="grid grid-cols-2 gap-3">
+  1008→  1008→                  <div className="space-y-1.5">
+  1009→  1009→                    <Label htmlFor="demo-voters">{t('home.demoEstimatedVoters')}</Label>
+  1010→  1010→                    <Input id="demo-voters" type="number" value={demoForm.estimatedVoters} onChange={(e) => setDemoForm((f) => ({ ...f, estimatedVoters: e.target.value }))} placeholder="5000" />
+  1011→  1011→                  </div>
+  1012→  1012→                  <div className="space-y-1.5">
+  1013→  1013→                    <Label htmlFor="demo-date">{t('home.demoPreferredDate')}</Label>
+  1014→  1014→                    <Input id="demo-date" type="date" value={demoForm.preferredDate} onChange={(e) => setDemoForm((f) => ({ ...f, preferredDate: e.target.value }))} />
+  1015→  1015→                  </div>
+  1016→  1016→                </div>
+  1017→  1017→                <div className="space-y-1.5">
+  1018→  1018→                  <Label htmlFor="demo-msg">{t('home.demoMessage')}</Label>
+  1019→  1019→                  <Textarea id="demo-msg" rows={2} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
+  1020→  1020→                </div>
+  1021→  1021→                <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+  1022→  1022→                  {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+  1023→  1023→                  {demoBusy ? t('home.demoSending') : t('home.demoRequestBtn')}
+  1024→  1024→                </Button>
+  1025→  1025→                <p className="text-center text-xs text-muted-foreground">{t('home.demoNoCommitment')}</p>
+  1026→  1026→              </CardContent>
+  1027→  1027→            </Card>
+  1028→  1028→          </Reveal>
+  1029→  1029→          {/* Live Demo Try */}
+  1030→  1030→          <Reveal delay={120}>
+  1031→  1031→            <Card className="votewise-card-glow h-full overflow-hidden">
+  1032→  1032→              <CardHeader>
+  1033→  1033→                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Play className="h-3.5 w-3.5" /> {t('home.liveDemoBadge')}</Badge>
+  1034→  1034→                <CardTitle className="font-display text-2xl">{t('home.liveDemoTitle')}</CardTitle>
+  1035→  1035→                <p className="text-sm text-muted-foreground">
+  1036→  1036→                  {t('home.liveDemoSubtitle')}
+  1037→  1037→                </p>
+  1038→  1038→              </CardHeader>
+  1039→  1039→              <CardContent className="space-y-3">
+  1040→  1040→                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+  1041→  1041→                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.tryVoterJourney')}</div>
+  1042→  1042→                  <div className="mt-2 flex flex-col gap-2">
+  1043→  1043→                    <Button onClick={() => setView('verify')} className="w-full gap-2">
+  1044→  1044→                      <Vote className="h-5 w-5" /> {t('home.tryVotingNow')}
+  1045→  1045→                    </Button>
+  1046→  1046→                    <div className="grid grid-cols-2 gap-2">
+  1047→  1047→                      <Button variant="outline" size="sm" onClick={() => setView('about')} className="gap-1.5">
+  1048→  1048→                        <Building2 className="h-4 w-4" /> {t('home.about')}
+  1049→  1049→                      </Button>
+  1050→  1050→                      <Button variant="outline" size="sm" onClick={() => setView('guide')} className="gap-1.5">
+  1051→  1051→                        <BookOpen className="h-4 w-4" /> {t('home.guide')}
+  1052→  1052→                      </Button>
+  1053→  1053→                    </div>
+  1054→  1054→                  </div>
+  1055→  1055→                </div>
+  1056→  1056→                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+  1057→  1057→                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.viewPublicResults')}</div>
+  1058→  1058→                  <p className="mt-1 text-xs text-muted-foreground">{t('home.orgsDirectorySubtitle')}</p>
+  1059→  1059→                  <Button variant="outline" size="sm" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="mt-2 w-full gap-1.5">
+  1060→  1060→                    <Eye className="h-4 w-4" /> {t('home.viewLiveResults')}
+  1061→  1061→                  </Button>
+  1062→  1062→                </div>
+  1063→  1063→              </CardContent>
+  1064→  1064→            </Card>
+  1065→  1065→          </Reveal>
+  1066→  1066→        </div>
+  1067→  1067→      </section>
+  1068→  1068→
+  1069→  1069→      {/* DOCUMENTATION */}
+  1070→  1070→      <section id="docs" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+  1071→  1071→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+  1072→  1072→          <Reveal>
+  1073→  1073→            <div className="mb-10 text-center">
+  1074→  1074→              <Badge variant="secondary" className="mb-2 gap-1"><FileText className="h-3.5 w-3.5" /> {t('home.docsBadge')}</Badge>
+  1075→  1075→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.docsTitle')}</h2>
+  1076→  1076→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+  1077→  1077→                {t('home.docsSubtitle')}
+  1078→  1078→              </p>
+  1079→  1079→            </div>
+  1080→  1080→          </Reveal>
+  1081→  1081→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1082→  1082→            {DOC_LINKS.map((d, i) => (
+  1083→  1083→              <Reveal key={d.title} delay={i * 80}>
+  1084→  1084→                <button
+  1085→  1085→                  onClick={() => {
+  1086→  1086→                    if (d.action === 'security' || d.action === 'how') {
+  1087→  1087→                      setView('home'); setTimeout(() => document.getElementById(d.action === 'security' ? 'security' : 'how')?.scrollIntoView({ behavior: 'smooth' }), 80)
+  1088→  1088→                    } else { setView(d.action as any) }
+  1089→  1089→                  }}
+  1090→  1090→                  className="w-full text-left"
+  1091→  1091→                >
+  1092→  1092→                  <Card className="h-full transition-all hover:shadow-md hover:-translate-y-0.5">
+  1093→  1093→                    <CardContent className="p-5">
+  1094→  1094→                      <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+  1095→  1095→                        <d.icon className="h-5 w-5" />
+  1096→  1096→                      </div>
+  1097→  1097→                      <h3 className="mt-3 font-display text-sm font-semibold">{d.title}</h3>
+  1098→  1098→                      <p className="mt-1.5 text-xs text-muted-foreground">{d.desc}</p>
+  1099→  1099→                      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary">
+  1100→  1100→                        {t('home.readMore')} <ArrowRight className="h-3 w-3" />
+  1101→  1101→                      </div>
+  1102→  1102→                    </CardContent>
+  1103→  1103→                  </Card>
+  1104→  1104→                </button>
+  1105→  1105→              </Reveal>
+  1106→  1106→            ))}
+  1107→  1107→          </div>
+  1108→  1108→        </div>
+  1109→  1109→      </section>
+  1110→  1110→
+  1111→  1111→      {/* CONTACT */}
+  1112→  1112→      <section id="contact" className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 scroll-mt-20">
+  1113→  1113→        <Reveal>
+  1114→  1114→          <div className="mb-8 text-center">
+  1115→  1115→            <Badge variant="secondary" className="mb-2 gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.contactBadge')}</Badge>
+  1116→  1116→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.contactTitle')}</h2>
+  1117→  1117→            <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+  1118→  1118→              {t('home.contactSubtitle')}
+  1119→  1119→            </p>
+  1120→  1120→          </div>
+  1121→  1121→        </Reveal>
+  1122→  1122→        <Reveal delay={100}>
+  1123→  1123→          <Card className="votewise-card-glow">
+  1124→  1124→            <CardContent className="space-y-3 p-6">
+  1125→  1125→              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  1126→  1126→                <div className="space-y-1.5">
+  1127→  1127→                  <Label htmlFor="contact-name">{t('home.contactName')}</Label>
+  1128→  1128→                  <Input id="contact-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+  1129→  1129→                </div>
+  1130→  1130→                <div className="space-y-1.5">
+  1131→  1131→                  <Label htmlFor="contact-email">{t('home.demoEmail')}</Label>
+  1132→  1132→                  <Input id="contact-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+  1133→  1133→                </div>
+  1134→  1134→              </div>
+  1135→  1135→              <div className="space-y-1.5">
+  1136→  1136→                <Label htmlFor="contact-org">{t('home.contactOrgOptional')}</Label>
+  1137→  1137→                <Input id="contact-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="Your organization" />
+  1138→  1138→              </div>
+  1139→  1139→              <div className="space-y-1.5">
+  1140→  1140→                <Label htmlFor="contact-msg">{t('home.contactMessage')}</Label>
+  1141→  1141→                <Textarea id="contact-msg" rows={4} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="How can we help?" />
+  1142→  1142→              </div>
+  1143→  1143→              <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+  1144→  1144→                {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+  1145→  1145→                {demoBusy ? t('home.contactSending') : t('home.contactSend')}
+  1146→  1146→              </Button>
+  1147→  1147→              <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
+  1148→  1148→                <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.com.ng</span>
+  1149→  1149→                <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> +234 800 VOTEWISE</span>
+  1150→  1150→              </div>
+  1151→  1151→            </CardContent>
+  1152→  1152→          </Card>
+  1153→  1153→        </Reveal>
+  1154→  1154→      </section>
+  1155→  1155→
+  1156→  1156→      {/* ORG SIGNUP CTA */}
+  1157→  1157→      <section className="border-t border-border/60 bg-gradient-to-br from-accent/10 via-primary/5 to-transparent">
+  1158→  1158→        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center">
+  1159→  1159→          <div>
+  1160→  1160→            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> {t('home.signupBadge')}</Badge>
+  1161→  1161→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.signupTitle')}</h2>
+  1162→  1162→            <p className="mt-2 max-w-lg text-muted-foreground">
+  1163→  1163→              {t('home.signupSubtitle')}
+  1164→  1164→            </p>
+  1165→  1165→            <div className="mt-4 space-y-1.5">
+  1166→  1166→              {[
+  1167→  1167→                t('home.signupFeature1'),
+  1168→  1168→                t('home.signupFeature2'),
+  1169→  1169→                t('home.signupFeature3'),
+  1170→  1170→                t('home.signupFeature4'),
+  1171→  1171→              ].map((f) => (
+  1172→  1172→                <div key={f} className="flex items-center gap-2 text-sm">
+  1173→  1173→                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+  1174→  1174→                </div>
+  1175→  1175→              ))}
+  1176→  1176→            </div>
+  1177→  1177→            <Button size="lg" onClick={() => setView('signup')} className="mt-6 gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+  1178→  1178→              <Building2 className="h-5 w-5" /> {t('home.registerYourOrg')}
+  1179→  1179→            </Button>
+  1180→  1180→          </div>
+  1181→  1181→          <div className="grid grid-cols-3 gap-3">
+  1182→  1182→            {[
+  1183→  1183→              { icon: Building2, label: 'University', desc: 'Union election' },
+  1184→  1184→              { icon: Heart, label: 'NGO', desc: 'Board election' },
+  1185→  1185→              { icon: Church, label: 'Church', desc: 'Parish council' },
+  1186→  1186→              { icon: Briefcase, label: 'Company', desc: 'Staff election' },
+  1187→  1187→              { icon: Users2, label: 'Cooperative', desc: 'Exec election' },
+  1188→  1188→              { icon: Award, label: 'Prof. Body', desc: 'Officers election' },
+  1189→  1189→            ].map((o, i) => (
+  1190→  1190→              <div key={i} className="rounded-xl border border-border/60 bg-card p-4 text-center">
+  1191→  1191→                <o.icon className="mx-auto h-8 w-8 text-primary" />
+  1192→  1192→                <div className="mt-2 text-sm font-semibold">{o.label}</div>
+  1193→  1193→                <div className="text-[10px] text-muted-foreground">{o.desc}</div>
+  1194→  1194→              </div>
+  1195→  1195→            ))}
+  1196→  1196→          </div>
+  1197→  1197→        </div>
+  1198→  1198→      </section>
+  1199→  1199→    </div>
+  1200→  1200→  )
+  1201→  1201→}
+  1202→  1202→
+  1203→  1203→function HeroStat({ value, suffix, label }: { value: number; suffix?: string; label: string }) {
+  1204→  1204→  const [display, setDisplay] = useState(0)
+  1205→  1205→  useEffect(() => {
+  1206→  1206→    const duration = 800
+  1207→  1207→    const start = display
+  1208→  1208→    const diff = value - start
+  1209→  1209→    if (diff === 0) return
+  1210→  1210→    const startTime = Date.now()
+  1211→  1211→    const t = setInterval(() => {
+  1212→  1212→      const elapsed = Date.now() - startTime
+  1213→  1213→      const progress = Math.min(1, elapsed / duration)
+  1214→  1214→      const eased = 1 - Math.pow(1 - progress, 3)
+  1215→  1215→      setDisplay(Math.round(start + diff * eased))
+  1216→  1216→      if (progress >= 1) clearInterval(t)
+  1217→  1217→    }, 16)
+  1218→  1218→    return () => clearInterval(t)
+  1219→  1219→  }, [value])
+  1220→  1220→  return (
+  1221→  1221→    <div className="rounded-xl border border-border/60 bg-card/50 p-3 backdrop-blur">
+  1222→  1222→      <div className="font-display text-2xl font-bold tabular-nums text-primary sm:text-3xl">
+  1223→  1223→        {display.toLocaleString()}{suffix}
+  1224→  1224→      </div>
+  1225→  1225→      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+  1226→  1226→    </div>
+  1227→  1227→  )
+  1228→  1228→}
+  1229→  1229→
+  1230→  1230→// Local cn helper (avoid extra import churn in this file).
+  1231→  1231→function cn(...classes: (string | false | undefined | null)[]): string {
+  1232→  1232→  return classes.filter(Boolean).join(' ')
+  1233→  1233→}
+  1234→  1234→
+  1235→  1235→// ---------------------------------------------------------------------------
+  1236→  1236→// Verify an Election — public verification portal CTA.
+  1237→  1237→// Lets anyone paste an election ID or a /verify/[id] / /results/[id] URL and
+  1238→  1238→// jump straight to the public verification portal for that certified election.
+  1239→  1239→// ---------------------------------------------------------------------------
+  1240→  1240→
+  1241→  1241→function LearnHowToVoteSection() {
+  1242→  1242→  const { t } = useTranslation()
+  1243→  1243→  return (
+  1244→  1244→    <section
+  1245→  1245→      id="learn"
+  1246→  1246→      className="border-b border-border/60 bg-gradient-to-b from-accent/5 to-background scroll-mt-20"
+  1247→  1247→    >
+  1248→  1248→      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+  1249→  1249→        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+
+[showing lines 800-1249 of 1628; use offset=1250 with limit to continue reading]
