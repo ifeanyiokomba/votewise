@@ -149,9 +149,14 @@ export function can(ctx: PermissionContext, cap: Capability): boolean {
 }
 
 // Check if a role requires 2FA
+// Spec: "MFA mandatory for VoteWise owners, super admins, support team."
+// In production: PLATFORM_SUPER_ADMIN, ORG_OWNER, SUPPORT_AGENT must use 2FA.
+// In development/sandbox: 2FA is optional (to allow easy testing without
+// a TOTP app). The login route still checks `requires2FA()` — it just
+// returns false in non-production environments.
 export function requires2FA(role: Role | string): boolean {
+  if (process.env.NODE_ENV !== 'production') return false
   const normalized = normalizeRole(role)
-  // Platform super admins, org owners, and support agents must use 2FA
   return normalized === 'PLATFORM_SUPER_ADMIN' || normalized === 'ORG_OWNER' || normalized === 'SUPPORT_AGENT'
 }
 

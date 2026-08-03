@@ -67,11 +67,30 @@ export async function POST(req: NextRequest) {
     return errorJson('Please verify your email before signing in.', 403)
   }
 
-  // 2FA gate.
-  if (requires2FA(official.role as any) && official.totpEnabled) {
+  // 2FA gate — Enterprise Audit Part 4: Platform Authentication requires MFA mandatory.
+  // Spec: "MFA mandatory for VoteWise owners, super admins, support team."
+  // Spec: "MFA optional/required depending on role for org staff."
+  //
+  // CRITICAL FIX: Previously the code said `requires2FA(role) && totpEnabled`
+  // — this meant if 2FA was required but NOT enrolled, the user could login
+  // without 2FA! Now: if 2FA is required and NOT enrolled, BLOCK login and
+  // force enrollment first.
+  if (requires2FA(official.role as any)) {
+    if (!official.totpEnabled) {
+      // 2FA is required for this role but not yet set up — block login
+      await recordSecurityEvent({
+        severity: 'HIGH', category: 'AUTH_FAILURE',
+        actorId: official.id, actorEmail: official.email, ipAddress: ip,
+        message: `Login blocked: 2FA required but not enrolled for ${official.email}`,
+      })
+      return json({
+        needs2faEnrollment: true,
+        message: 'Multi-factor authentication is required for your role but not yet set up. Please contact your administrator to enroll.',
+        enrollmentRequired: true,
+      }, 403)
+    }
+    // 2FA is enrolled — require the code
     if (!totp) {
-      // Don't reveal whether 2FA is enabled to unauthenticated callers in
-      // production — but for our dashboard UX we return a hint.
       return json({ needs2fa: true, message: 'Two-factor authentication required.' })
     }
     const { verifyTotp } = await import('@/lib/crypto')
@@ -82,6 +101,73 @@ export async function POST(req: NextRequest) {
         message: 'Failed 2FA verification',
       })
       return errorJson('Invalid 2FA code', 401)
+    }
+  }
+
+  // IP allowlist check — Enterprise Audit Part 4: "IP monitoring"
+  // Spec: "Platform Authentication requires IP monitoring."
+  // Look up the org via OrganizationMember to get IP allowlist settings.
+  const orgMember = await db.organizationMember.findFirst({
+    where: { email: official.email },
+    select: { organizationId: true },
+  }).catch(() => null)
+
+  if (orgMember?.organizationId) {
+    const orgSecurity = await db.organizationSecurity.findUnique({
+      where: { organizationId: orgMember.organizationId },
+      select: { ipAllowlist: true },
+    }).catch(() => null)
+
+    if (orgSecurity?.ipAllowlist) {
+      try {
+        const allowlist: string[] = JSON.parse(orgSecurity.ipAllowlist)
+        if (allowlist.length > 0 && !allowlist.includes(ip)) {
+          const ipAllowed = allowlist.some((range) => {
+            if (range.includes('/')) {
+              const [network, bits] = range.split('/')
+              const ipParts = ip.split('.').map(Number)
+              const netParts = network.split('.').map(Number)
+              const prefixOctets = Math.ceil(parseInt(bits) / 8)
+              return ipParts.slice(0, prefixOctets).every((part, i) => part === netParts[i])
+            }
+            return range === ip
+          })
+          if (!ipAllowed) {
+            await recordSecurityEvent({
+              severity: 'HIGH', category: 'AUTH_FAILURE',
+              actorId: official.id, actorEmail: official.email, ipAddress: ip,
+              message: `Login blocked from non-allowlisted IP: ${ip}`,
+            })
+            return errorJson('Access denied: your IP address is not on the allowlist.', 403)
+          }
+        }
+      } catch { /* malformed allowlist — skip check */ }
+    }
+  }
+
+  // Concurrent session limit — Enterprise Audit Part 4: "Session controls"
+  // Limit to 3 concurrent active sessions per user to prevent credential sharing.
+  const activeSessions = await db.loginSession.count({
+    where: {
+      officialId: official.id,
+      expiresAt: { gt: new Date() },
+      revokedAt: null,
+    },
+  }).catch(() => 0)
+
+  if (activeSessions >= 3) {
+    // Revoke the oldest session
+    const oldest = await db.loginSession.findFirst({
+      where: { officialId: official.id, expiresAt: { gt: new Date() }, revokedAt: null },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, sessionToken: true },
+    }).catch(() => null)
+
+    if (oldest) {
+      await db.loginSession.update({
+        where: { id: oldest.id },
+        data: { revokedAt: new Date() },
+      }).catch(() => {})
     }
   }
 
@@ -100,6 +186,18 @@ export async function POST(req: NextRequest) {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   })
+  // Create a LoginSession for session tracking (Part 4: "Session controls")
+  await db.loginSession.create({
+    data: {
+      officialId: official.id,
+      sessionToken: access.slice(-64), // use part of the JWT as session token
+      role: official.role,
+      ipAddress: ip,
+      userAgent: req.headers.get('user-agent') || null,
+      mfaVerified: requires2FA(official.role as any),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 min (matches access token TTL)
+    },
+  }).catch(() => {})
   await db.electionOfficial.update({
     where: { id: official.id },
     data: { failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },

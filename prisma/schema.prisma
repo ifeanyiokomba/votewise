@@ -3832,3 +3832,22 @@ model OrganizationBilling {
 
   @@index([organizationId])
 }
+
+/// A registered WebAuthn/FIDO2 security key (hardware key or passkey).
+/// Spec: "Hardware security key support" for Platform Authentication.
+/// Users can register one or more security keys for passwordless or
+/// second-factor authentication.
+model SecurityKey {
+  id              String   @id @default(cuid())
+  officialId      String   // ElectionOfficial ID
+  credentialId    String   @unique // base64url encoded credential ID
+  publicKey       String   // base64url encoded public key
+  counter         Int      @default(0) // signature counter for replay detection
+  transports      String?  // JSON array: ["usb", "nfc", "ble", "internal"]
+  name            String?  // user-friendly name: "YubiKey 5C" or "iPhone Passkey"
+  platform       String?  // "cross-platform" (hardware key) or "platform" (passkey)
+  lastUsedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([officialId])
+}
