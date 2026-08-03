@@ -1,3 +1,6 @@
+> **⚠️ These audit scores are self-assessed claims, not independently verified.**
+> Treat every "✅ Keep, 9.x/10" as a claim to verify against actual code, not as a fact.
+
 # VoteWise Database Architecture Audit — Part 2 Response
 
 > **Enterprise Technical Audit Part 2 — Database Architecture & Prisma Audit**

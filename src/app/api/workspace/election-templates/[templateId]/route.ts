@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { json, errorJson, writeAudit, getClientIp } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { requirePermission, type IAMContext } from '@/lib/iam'
+import { verifyAccessToken, readAccessToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,10 @@ function safeParse(data: string | null | undefined): any | null {
 // with the full templateData payload (so the UI can preview positions/candidates).
 // Read access requires org context (any org member).
 export async function GET(req: NextRequest, { params }: { params: Promise<{ templateId: string }> }) {
+  // Auth check — closes the endpoint authentication gap (audit finding)
+  const token = readAccessToken(req)
+  const auth = await verifyAccessToken(token)
+  if (!auth) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

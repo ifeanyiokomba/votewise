@@ -5,6 +5,36 @@
 > This guide covers free-tier hosting options for every component of the
 > VoteWise platform, from development to production.
 
+> **⚠️ IMPORTANT — Current Code Status (verified against commit `84d78b7`):**
+>
+> This guide describes the **target architecture**. Before following it,
+> three prerequisites must be resolved:
+>
+> 1. **Prisma datasource is SQLite, not Postgres.** `prisma/schema.prisma`
+>    currently has `provider = "sqlite"`. Before deploying to Supabase,
+>    change to `provider = "postgresql"` and run `npx prisma migrate deploy`.
+>    Also switch any JSON-in-a-string columns to Postgres native `Json` type.
+>
+> 2. **No Redis dependency exists.** `src/lib/ratelimit.ts` uses in-memory
+>    token buckets, not Redis. To use Upstash Redis, add `ioredis` or
+>    `@upstash/redis` and wire it into `ratelimit.ts`. Until then, rate
+>    limiting is per-instance only (problematic with multiple replicas).
+>
+> 3. **No S3/R2 SDK exists.** `src/lib/infra/storage.ts` has the interface
+>    but the S3 implementation is stubbed. To use R2, add `@aws-sdk/client-s3`
+>    and wire it into the `uploadS3()` and `downloadS3()` methods.
+>
+> 4. **Nameserver conflict:** Vercel requires delegating nameservers to
+>    `ns1.vercel-dns.com` to issue wildcard SSL for `*.votewise.com.ng`.
+>    This conflicts with delegating to Cloudflare. Pick one:
+>    - **Vercel nameservers**: wildcard SSL works; lose Cloudflare WAF/CDN
+>    - **Cloudflare nameservers**: keep WAF/CDN; need manual wildcard cert
+>
+> **Recommended path for zero-cost initial deployment:** Path A (self-hosted
+> with Bun + Caddy + SQLite) — no migration needed, everything works as-is.
+> See `docs/DEPLOYMENT.md` for Path A setup. Use Path B (below) after
+> completing the three prerequisites.
+
 ---
 
 ## Architecture Overview

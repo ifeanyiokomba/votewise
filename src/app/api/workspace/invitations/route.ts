@@ -5,11 +5,16 @@ import { hashPassword, randomToken } from '@/lib/crypto'
 import { requireOrganization } from '@/lib/org-context'
 import { getCurrentOfficial } from '@/lib/guards'
 import { validatePassword } from '@/lib/password-policy'
+import { verifyAccessToken, readAccessToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/workspace/invitations — list pending invitations for the org.
 export async function GET(req: NextRequest) {
+  // Auth check — closes the endpoint authentication gap (audit finding)
+  const token = readAccessToken(req)
+  const auth = await verifyAccessToken(token)
+  if (!auth) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

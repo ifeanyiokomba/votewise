@@ -1,3 +1,6 @@
+> **⚠️ These audit scores are self-assessed claims, not independently verified.**
+> Treat every "✅ Keep, 9.x/10" as a claim to verify against actual code, not as a fact.
+
 # VoteWise Enterprise Architecture v1.0
 
 > **Response to Enterprise Technical Audit Part 1**

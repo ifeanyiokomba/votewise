@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
+import { verifyAccessToken, readAccessToken } from '@/lib/auth'
 import {
   getElectionRiskScore, getElectionIntegrityScore, scoreToThreatLevel, getElectionLock,
 } from '@/lib/eifdirs'
@@ -11,6 +12,10 @@ export const dynamic = 'force-dynamic'
 // GET /api/eifdirs/election/[electionId] — Per-election security status
 // Returns integrity score, threat level, and election lock info.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ electionId: string }> }) {
+  // Auth check — closes the endpoint authentication gap (audit finding)
+  const token = readAccessToken(req)
+  const auth = await verifyAccessToken(token)
+  if (!auth) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
 

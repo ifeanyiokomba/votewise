@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { computeAuditHash, AUDIT_GENESIS } from '@/lib/crypto'
+import { verifyAccessToken, readAccessToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,10 @@ export const dynamic = 'force-dynamic'
 // Any tampering — modifying a field, deleting a row, or reordering — breaks the
 // chain and is reported here.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Auth check — closes the endpoint authentication gap (audit finding)
+  const token = readAccessToken(req)
+  const auth = await verifyAccessToken(token)
+  if (!auth) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

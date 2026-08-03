@@ -4,6 +4,7 @@ import { json, errorJson, getClientIp } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { tallyElection, persistVerification } from '@/lib/sve'
 import { requirePermission } from '@/lib/iam'
+import { verifyAccessToken, readAccessToken } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,6 +73,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // GET /api/workspace/elections/[id]/tally — Get current tally (read-only).
 // Returns the live tally without locking. Safe to call during voting.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Auth check — closes the endpoint authentication gap (audit finding)
+  const token = readAccessToken(req)
+  const auth = await verifyAccessToken(token)
+  if (!auth) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

@@ -1,3 +1,6 @@
+> **⚠️ These audit scores are self-assessed claims, not independently verified.**
+> Treat every "✅ Keep, 9.x/10" as a claim to verify against actual code, not as a fact.
+
 # VoteWise Backend Architecture & Security Audit — Part 4
 
 > **Enterprise Technical Audit Part 4 — Backend Architecture, API Design,
