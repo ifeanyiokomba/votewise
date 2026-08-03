@@ -3,11 +3,14 @@ import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { generateIntegrityCertificate, getIntegrityCertificate } from '@/lib/eifdirs'
 import { verifyAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/eifdirs/certificate/[electionId] — Get integrity certificate
 export async function GET(req: NextRequest, { params }: { params: Promise<{ electionId: string }> }) {
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
 

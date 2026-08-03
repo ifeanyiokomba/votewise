@@ -3,6 +3,7 @@ import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { upgradeSubscription, downgradeSubscription, processRenewalReminders } from '@/lib/bspcm'
 import { verifyAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest) {
 
 // GET /api/bspcm/subscription?action=renewal-reminders — Process renewal reminders (admin/cron)
 export async function GET(req: NextRequest) {
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const action = new URL(req.url).searchParams.get('action')
   if (action === 'renewal-reminders') {
     const result = await processRenewalReminders()

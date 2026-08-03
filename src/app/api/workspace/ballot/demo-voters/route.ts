@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
-import { verifyAccessToken, readAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,9 +12,8 @@ export const dynamic = 'force-dynamic'
 // is for demo/testing convenience.
 export async function GET(req: NextRequest) {
   // Auth check — closes the endpoint authentication gap (audit finding)
-  const token = readAccessToken(req)
-  const auth = await verifyAccessToken(token)
-  if (!auth) return errorJson('Unauthorized', 401)
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

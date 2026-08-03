@@ -4,7 +4,7 @@ import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { requirePermission } from '@/lib/iam'
 import { runRiskLimitingAudit, type RLAResult } from '@/lib/sve'
-import { verifyAccessToken, readAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,9 +83,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // if no audit has been run yet.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Auth check — closes the endpoint authentication gap (audit finding)
-  const token = readAccessToken(req)
-  const auth = await verifyAccessToken(token)
-  if (!auth) return errorJson('Unauthorized', 401)
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

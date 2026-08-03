@@ -52,9 +52,8 @@ function normalizeTicket(t: any): TicketRow {
 // process restart). Raw SQL bypasses the model-layer validation.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Auth check — closes the endpoint authentication gap (audit finding)
-  const token = readAccessToken(req)
-  const auth = await verifyAccessToken(token)
-  if (!auth) return errorJson('Unauthorized', 401)
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult
@@ -194,7 +193,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // 8-byte random hex id (cuid-shaped) — sufficient for dev/sample tickets.
 // Production uses Prisma's cuid() generation.
 import { randomBytes } from 'crypto'
-import { verifyAccessToken, readAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 function generateId(): string {
   const ts = Date.now().toString(36)
   const rand = randomBytes(8).toString('hex')

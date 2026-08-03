@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { verifyAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,8 @@ const DEFAULTS = {
 
 // GET /api/raei/data-retention — Get the org's data retention policy
 export async function GET(req: NextRequest) {
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
 

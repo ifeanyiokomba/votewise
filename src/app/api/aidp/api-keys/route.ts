@@ -3,12 +3,15 @@ import { json, errorJson } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { createApiKey, listApiKeys } from '@/lib/aidp'
 import { verifyAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 import { SCOPES } from '@/lib/aidp/types'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/aidp/api-keys — List API keys
 export async function GET(req: NextRequest) {
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const keys = await listApiKeys(orgResult.id)

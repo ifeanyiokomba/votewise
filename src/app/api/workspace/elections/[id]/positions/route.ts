@@ -4,7 +4,7 @@ import { json, errorJson, writeAudit, getClientIp } from '@/lib/election'
 import { requireOrganization } from '@/lib/org-context'
 import { requirePermission, type IAMContext } from '@/lib/iam'
 import { randomToken } from '@/lib/crypto'
-import { verifyAccessToken, readAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,9 +37,8 @@ async function auth(
 // Read access requires org context (any org member).
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Auth check — closes the endpoint authentication gap (audit finding)
-  const token = readAccessToken(req)
-  const auth = await verifyAccessToken(token)
-  if (!auth) return errorJson('Unauthorized', 401)
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const orgResult = await requireOrganization(req)
   if ('error' in orgResult) return orgResult.error
   const org = orgResult

@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { errorJson, writeAudit, getClientIp } from '@/lib/election'
 import { requirePermission, type IAMContext } from '@/lib/iam'
 import { tallyElection, getVerification, verifyElectionAuditChain } from '@/lib/sve'
-import { verifyAccessToken, readAccessToken } from '@/lib/auth'
+import { getCurrentOfficial } from '@/lib/guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,9 +94,8 @@ async function getOrgElection(orgId: string, electionId: string): Promise<Electi
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Auth check — closes the endpoint authentication gap (audit finding)
-  const token = readAccessToken(req)
-  const auth = await verifyAccessToken(token)
-  if (!auth) return errorJson('Unauthorized', 401)
+  const official = await getCurrentOfficial(req)
+  if (!official) return errorJson('Unauthorized', 401)
   const { id: electionId } = await params
   const url = new URL(req.url)
   const format = (url.searchParams.get('format') || 'csv').toLowerCase() as ExportFormat
