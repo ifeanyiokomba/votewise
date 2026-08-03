@@ -11253,3 +11253,51 @@ Stage Summary:
 - ✅ All open items from the Master Go-Live Guide are now closed.
 - Remaining: Phase 3 (deploy), Phase 4 (pre-launch verification), Phase 5
   (launch-day operations) — these are operational steps, not code fixes.
+
+---
+Task ID: CREDENTIAL-MANAGER
+Agent: Lead Architect (main)
+Task: Build secure provider credentials management interface
+
+Work Log:
+- Created a dedicated, secure admin interface for inputting and managing
+  API keys for all platform providers.
+- New Prisma model: PlatformCredential (encrypted storage with AES-256-GCM)
+- New module: src/lib/domains/credential-manager.ts with:
+  - 21 credential types defined (RESEND_API_KEY, TERMII_API_KEY,
+    PAYSTACK_SECRET_KEY, FLUTTERWAVE_SECRET_KEY, STRIPE_SECRET_KEY,
+    SENTRY_DSN, S3_BUCKET, S3_ACCESS_KEY, S3_SECRET_KEY, SLACK_WEBHOOK_URL,
+    TEAMS_WEBHOOK_URL, DATABASE_URL, REDIS_URL, GOOGLE_CLIENT_ID, etc.)
+  - 10 categories: EMAIL, SMS, WHATSAPP, PAYMENT, STORAGE, MONITORING,
+    NOTIFICATION, DATABASE, CACHE, OAUTH
+  - encrypt/decrypt with AES-256-GCM
+  - setCredential() — encrypts + stores + syncs to process.env
+  - getCredential() — reads from process.env or DB
+  - verifyCredential() — makes real API call to test the key
+  - syncCredentialsToEnv() — loads all at startup
+- New API routes (4):
+  - GET/POST /api/admin/credentials
+  - DELETE /api/admin/credentials/[key]
+  - POST /api/admin/credentials/[key]/verify
+- New page: /admin/credentials with:
+  - Stats banner (configured/missing/required)
+  - Credentials grouped by 10 categories
+  - Secure input with show/hide toggle
+  - Test button (verifies against real provider API)
+  - Remove button (with confirmation)
+  - Security notice (AES-256-GCM encrypted, platform admin only)
+- Verified end-to-end:
+  - Page renders all 21 credentials ✅
+  - Save works: "Credential RESEND_API_KEY saved successfully" ✅
+  - Masked value: re_t...3xyz ✅
+  - Verify calls real API ✅
+  - Stats: total:21, configured:2 ✅
+- Lint: 0 errors, 0 warnings. Committed (2866963) + pushed to GitHub.
+
+Stage Summary:
+- ✅ Dedicated secure interface for provider credentials at /admin/credentials
+- ✅ 21 credential types across 10 categories
+- ✅ AES-256-GCM encrypted storage
+- ✅ Auto-syncs to process.env — all platform code works seamlessly
+- ✅ Test button verifies keys against real provider APIs
+- ✅ Only platform super admins can access
