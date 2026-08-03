@@ -40,3 +40,26 @@ export const SVE_VOTER_PEPPER = requireSecret('SVE_VOTER_PEPPER')
 
 // Optional — has a safe default.
 export const VOTE_KEY_ID = process.env.VOTE_KEY_ID || 'v1'
+
+// ---------------------------------------------------------------------------
+// Secret verification + management helpers (consolidated from infra/secrets.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify all required secrets are present. Returns missing list.
+ * Used by the readiness checker.
+ */
+export function verifySecrets(): { ok: boolean; missing: string[] } {
+  const required = ['VOTE_ENC_KEY', 'VOTER_HASH_PEPPER', 'HMAC_SECRET', 'SVE_BALLOT_PEPPER', 'SVE_VOTER_PEPPER']
+  const missing = required.filter((k) => !process.env[k] || process.env[k]!.length < 16)
+  return { ok: missing.length === 0, missing }
+}
+
+/**
+ * Get a secret (returns undefined if missing). Use for optional secrets.
+ */
+export function getSecret(key: string): string | undefined {
+  const v = process.env[key]
+  if (!v || v.length < 16) return undefined
+  return v
+}

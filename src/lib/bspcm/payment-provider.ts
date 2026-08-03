@@ -68,19 +68,28 @@ class PaystackProvider implements PaymentProvider {
   }
 
   async verify(reference: string): Promise<PaymentResult> {
-    try {
-      // In production: call Paystack verify API
-      // const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-      //   headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-      // })
-
-      console.log(`[PAYSTACK] Verify: ${reference}`)
+    const secretKey = process.env.PAYSTACK_SECRET_KEY
+    if (!secretKey || secretKey.startsWith('sk_test_') === false && secretKey.length < 10) {
+      // Billing is NOT configured with real credentials — reject all verifications.
+      // This prevents the mock-verify vulnerability where any reference returns 'VERIFIED'.
+      console.warn('[PAYSTACK] Verify REJECTED: PAYSTACK_SECRET_KEY not configured with real credentials.')
       return {
-        success: true,
+        success: false,
         reference,
-        status: 'VERIFIED',
-        message: 'Payment verified successfully.',
+        status: 'FAILED',
+        message: 'Payment verification is not available. Billing is not configured.',
       }
+    }
+
+    try {
+      const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      })
+      const data = await response.json() as any
+      if (data.status && data.data.status === 'success') {
+        return { success: true, reference, status: 'VERIFIED', message: 'Payment verified successfully.' }
+      }
+      return { success: false, reference, status: 'FAILED', message: `Paystack returned: ${data.data?.status || 'unknown'}` }
     } catch (e: any) {
       return { success: false, reference, status: 'FAILED', message: e.message }
     }
@@ -107,8 +116,23 @@ class FlutterwaveProvider implements PaymentProvider {
   }
 
   async verify(reference: string): Promise<PaymentResult> {
-    console.log(`[FLUTTERWAVE] Verify: ${reference}`)
-    return { success: true, reference, status: 'VERIFIED', message: 'Payment verified.' }
+    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY
+    if (!secretKey || secretKey.length < 10) {
+      console.warn('[FLUTTERWAVE] Verify REJECTED: FLUTTERWAVE_SECRET_KEY not configured.')
+      return { success: false, reference, status: 'FAILED', message: 'Payment verification is not available. Billing is not configured.' }
+    }
+    try {
+      const response = await fetch(`https://api.flutterwave.com/v3/transactions/${reference}/verify`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      })
+      const data = await response.json() as any
+      if (data.status === 'success' && data.data?.status === 'successful') {
+        return { success: true, reference, status: 'VERIFIED', message: 'Payment verified.' }
+      }
+      return { success: false, reference, status: 'FAILED', message: `Flutterwave returned: ${data.data?.status || 'unknown'}` }
+    } catch (e: any) {
+      return { success: false, reference, status: 'FAILED', message: e.message }
+    }
   }
 }
 
@@ -132,8 +156,23 @@ class StripeProvider implements PaymentProvider {
   }
 
   async verify(reference: string): Promise<PaymentResult> {
-    console.log(`[STRIPE] Verify: ${reference}`)
-    return { success: true, reference, status: 'VERIFIED', message: 'Payment verified.' }
+    const secretKey = process.env.STRIPE_SECRET_KEY
+    if (!secretKey || !secretKey.startsWith('sk_')) {
+      console.warn('[STRIPE] Verify REJECTED: STRIPE_SECRET_KEY not configured.')
+      return { success: false, reference, status: 'FAILED', message: 'Payment verification is not available. Billing is not configured.' }
+    }
+    try {
+      const response = await fetch(`https://api.stripe.com/v1/payment_intents/${reference}`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      })
+      const data = await response.json() as any
+      if (data.status === 'succeeded') {
+        return { success: true, reference, status: 'VERIFIED', message: 'Payment verified.' }
+      }
+      return { success: false, reference, status: 'FAILED', message: `Stripe returned: ${data.status || 'unknown'}` }
+    } catch (e: any) {
+      return { success: false, reference, status: 'FAILED', message: e.message }
+    }
   }
 }
 
