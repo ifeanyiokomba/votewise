@@ -143,38 +143,38 @@ async function deliverViaChannel(
 
   if (!attempt) return { channel, status: 'FAILED', error: 'DB error' }
 
-  // Simulate delivery (in production: call Resend/Termii SDK)
-  const success = Math.random() > 0.15 // 85% success rate
-  const now = new Date()
+  // Call the real provider API (Resend for email, Termii for SMS/WhatsApp)
+  // Falls back to simulated delivery if the API key is not configured.
+  const result = await callProviderAPI(channel, destination, code, voter)
 
-  if (success) {
+  if (result.success) {
     await db.otpDeliveryAttempt.update({
       where: { id: attempt.id },
       data: {
         status: 'SENT',
         attempts: 1,
         provider: channel === 'EMAIL' ? 'resend' : 'termii',
-        providerMessageId: `msg_${Math.random().toString(36).slice(2, 12)}`,
-        sentAt: now,
-        deliveredAt: now,
+        providerMessageId: result.messageId || `msg_${Date.now()}`,
+        sentAt: new Date(),
+        deliveredAt: new Date(),
       },
     })
     return { channel, status: 'SENT', attemptId: attempt.id }
   } else {
     // Retry up to maxAttempts
     let retries = 0
-    let lastError = 'Provider returned error'
+    let lastError = result.error || 'Provider returned error'
     while (retries < config.maxAttempts - 1) {
       retries++
-      const retrySuccess = Math.random() > 0.5
-      if (retrySuccess) {
+      const retryResult = await callProviderAPI(channel, destination, code, voter)
+      if (retryResult.success) {
         await db.otpDeliveryAttempt.update({
           where: { id: attempt.id },
           data: {
             status: 'SENT',
             attempts: retries + 1,
             provider: channel === 'EMAIL' ? 'resend' : 'termii',
-            providerMessageId: `msg_${Math.random().toString(36).slice(2, 12)}`,
+            providerMessageId: retryResult.messageId || `msg_${Date.now()}`,
             sentAt: new Date(),
             deliveredAt: new Date(),
           },
@@ -352,4 +352,146 @@ function maskValue(channel: OtpChannel, value: string): string {
   }
   // Phone: +234***1234
   return `${value.slice(0, 4)}***${value.slice(-4)}`
+}
+
+// ---------------------------------------------------------------------------
+// Real provider API calls (Resend for email, Termii for SMS/WhatsApp)
+// Falls back to simulated delivery when API keys are not configured.
+// ---------------------------------------------------------------------------
+
+async function callProviderAPI(
+  channel: OtpChannel,
+  destination: string,
+  code: string,
+  voter: any,
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  if (channel === 'EMAIL') {
+    return callResend(destination, code, voter)
+  } else if (channel === 'SMS') {
+    return callTermiiSMS(destination, code)
+  } else if (channel === 'WHATSAPP') {
+    return callTermiiWhatsApp(destination, code)
+  }
+  return { success: false, error: 'Unknown channel' }
+}
+
+async function callResend(to: string, code: string, voter: any): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY
+
+  // Dev mode: no API key → simulate success
+  if (!apiKey || apiKey.length < 10) {
+    console.log(`[OTVP-EMAIL] (dev mode) To: ${to} | Code: ${code}`)
+    return { success: true, messageId: `dev_email_${Date.now()}` }
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM_EMAIL || 'VoteWise <noreply@votewise.com.ng>',
+        to: [to],
+        subject: 'Your VoteWise Voting Code',
+        html: `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #15803d;">VoteWise — Your Voting Code</h2>
+            <p>Hello ${voter.voterName || 'Voter'},</p>
+            <p>Your One-Time Voting Password (OTVP) is:</p>
+            <div style="font-size: 32px; font-weight: bold; text-align: center; padding: 20px; background: #f0fdf4; border-radius: 8px; letter-spacing: 8px; color: #15803d;">
+              ${code}
+            </div>
+            <p>This code expires in <strong>5 minutes</strong>. Do not share it with anyone.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
+              VoteWise — Africa's Most Trusted Election Management Platform
+            </p>
+          </div>
+        `,
+      }),
+    })
+
+    const data = await response.json() as any
+    if (response.ok && data.id) {
+      return { success: true, messageId: data.id }
+    }
+    console.error('[OTVP-EMAIL] Resend error:', data)
+    return { success: false, error: data.message || `HTTP ${response.status}` }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function callTermiiSMS(to: string, code: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const apiKey = process.env.TERMII_API_KEY
+
+  // Dev mode: no API key → simulate success
+  if (!apiKey || apiKey.length < 10) {
+    console.log(`[OTVP-SMS] (dev mode) To: ${to} | Code: ${code}`)
+    return { success: true, messageId: `dev_sms_${Date.now()}` }
+  }
+
+  try {
+    const senderId = process.env.TERMII_SENDER_ID || 'VoteWise'
+    const message = `VoteWise: Your voting code is ${code}. Expires in 5 minutes. Do not share with anyone.`
+
+    const response = await fetch('https://api.termii.com/api/sms/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to,
+        from: senderId,
+        sms: message,
+        type: 'plain',
+        channel: 'generic',
+        api_key: apiKey,
+      }),
+    })
+
+    const data = await response.json() as any
+    if (response.ok && (data.code === 'ok' || data.message_id)) {
+      return { success: true, messageId: data.message_id || `termii_${Date.now()}` }
+    }
+    console.error('[OTVP-SMS] Termii error:', data)
+    return { success: false, error: data.message || `HTTP ${response.status}` }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
+}
+
+async function callTermiiWhatsApp(to: string, code: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const apiKey = process.env.TERMII_API_KEY || process.env.TERMII_WHATSAPP_KEY
+
+  // Dev mode: no API key → simulate success
+  if (!apiKey || apiKey.length < 10) {
+    console.log(`[OTVP-WHATSAPP] (dev mode) To: ${to} | Code: ${code}`)
+    return { success: true, messageId: `dev_wa_${Date.now()}` }
+  }
+
+  try {
+    const message = `VoteWise: Your voting code is ${code}. Expires in 5 minutes. Do not share with anyone.`
+
+    const response = await fetch('https://api.termii.com/api/sms/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to,
+        from: 'VoteWise',
+        sms: message,
+        type: 'plain',
+        channel: 'whatsapp',
+        api_key: apiKey,
+      }),
+    })
+
+    const data = await response.json() as any
+    if (response.ok && (data.code === 'ok' || data.message_id)) {
+      return { success: true, messageId: data.message_id || `termii_wa_${Date.now()}` }
+    }
+    console.error('[OTVP-WHATSAPP] Termii error:', data)
+    return { success: false, error: data.message || `HTTP ${response.status}` }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
 }

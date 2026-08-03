@@ -1,11 +1,16 @@
-// VoteWise — Chapter 12 Provider Abstraction
+// VoteWise — Provider Abstraction Layer (wired to real APIs)
 //
-// Provider-agnostic delivery system. Each channel (EMAIL, SMS, WhatsApp,
-// In-App) has a provider that implements the DeliveryProvider interface.
-// New providers can be added without modifying existing code.
+// Email: Resend (https://resend.com) — 3,000 emails/month free
+// SMS: Termii (https://termii.com) — ~₦2-4 per SMS, all Nigerian networks
+// WhatsApp: Termii (same API key) — ~₦5 per message
 //
-// In sandbox, all providers are no-ops (log to console).
-// In production, these dispatch to Resend (email), Termii (SMS/WhatsApp), etc.
+// When API keys are configured (via /admin/credentials), these providers
+// make REAL API calls. When keys are NOT configured, they fall back to
+// console.log (sandbox/dev mode) so the platform still works for testing.
+//
+// The credential manager syncs keys to process.env at startup and on save,
+// so these providers read from process.env directly — no code changes
+// needed when a key is added/rotated via the admin UI.
 
 import type { Channel, MessageStatus } from './types'
 
@@ -29,21 +34,46 @@ export interface DeliveryProvider {
 }
 
 // ---------------------------------------------------------------------------
-// Email Provider (Resend in production, console.log in sandbox)
+// Email Provider — Resend (real API calls when configured)
 // ---------------------------------------------------------------------------
 
 class EmailProvider implements DeliveryProvider {
   channel: Channel = 'EMAIL'
 
   async send(req: DeliveryRequest): Promise<DeliveryResult> {
-    try {
-      // In production: use Resend or SendGrid
-      // const { Resend } = await import('resend')
-      // const resend = new Resend(process.env.RESEND_API_KEY)
-      // const result = await resend.emails.send({ from: ..., to: req.to, subject: req.subject, html: req.body })
+    const apiKey = process.env.RESEND_API_KEY
 
-      console.log(`[EMAIL] To: ${req.to} | Subject: ${req.subject || '(no subject)'}`)
-      return { success: true, status: 'DELIVERED', externalId: `email_${Date.now()}` }
+    // If no API key configured, fall back to console log (dev/sandbox mode)
+    if (!apiKey || apiKey.length < 10) {
+      console.log(`[EMAIL] (dev mode — no RESEND_API_KEY) To: ${req.to} | Subject: ${req.subject || '(no subject)'}`)
+      console.log(`[EMAIL] Body preview: ${req.body.slice(0, 100)}...`)
+      return { success: true, status: 'DELIVERED', externalId: `dev_email_${Date.now()}` }
+    }
+
+    try {
+      // Call the real Resend API
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: process.env.RESEND_FROM_EMAIL || 'VoteWise <noreply@votewise.com.ng>',
+          to: [req.to],
+          subject: req.subject || 'VoteWise Notification',
+          html: req.body,
+        }),
+      })
+
+      const data = await response.json() as any
+
+      if (response.ok && data.id) {
+        return { success: true, status: 'DELIVERED', externalId: data.id }
+      }
+
+      console.error('[EMAIL] Resend API error:', data)
+      return { success: false, status: 'FAILED', error: data.message || `Resend returned ${response.status}` }
     } catch (e: any) {
       return { success: false, status: 'FAILED', error: e.message }
     }
@@ -51,17 +81,45 @@ class EmailProvider implements DeliveryProvider {
 }
 
 // ---------------------------------------------------------------------------
-// SMS Provider (Termii in production)
+// SMS Provider — Termii (real API calls when configured)
 // ---------------------------------------------------------------------------
 
 class SmsProvider implements DeliveryProvider {
   channel: Channel = 'SMS'
 
   async send(req: DeliveryRequest): Promise<DeliveryResult> {
+    const apiKey = process.env.TERMII_API_KEY
+
+    // If no API key configured, fall back to console log (dev/sandbox mode)
+    if (!apiKey || apiKey.length < 10) {
+      console.log(`[SMS] (dev mode — no TERMII_API_KEY) To: ${req.to} | Body: ${req.body.slice(0, 80)}...`)
+      return { success: true, status: 'DELIVERED', externalId: `dev_sms_${Date.now()}` }
+    }
+
     try {
-      // In production: use Termii or Twilio
-      console.log(`[SMS] To: ${req.to} | Body: ${req.body.slice(0, 50)}...`)
-      return { success: true, status: 'DELIVERED', externalId: `sms_${Date.now()}` }
+      // Call the real Termii SMS API
+      const senderId = process.env.TERMII_SENDER_ID || 'VoteWise'
+      const response = await fetch('https://api.termii.com/api/sms/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: req.to,
+          from: senderId,
+          sms: req.body,
+          type: 'plain',
+          channel: 'generic',
+          api_key: apiKey,
+        }),
+      })
+
+      const data = await response.json() as any
+
+      if (response.ok && (data.code === 'ok' || data.message_id)) {
+        return { success: true, status: 'DELIVERED', externalId: data.message_id || `termii_sms_${Date.now()}` }
+      }
+
+      console.error('[SMS] Termii API error:', data)
+      return { success: false, status: 'FAILED', error: data.message || `Termii returned ${response.status}` }
     } catch (e: any) {
       return { success: false, status: 'FAILED', error: e.message }
     }
@@ -69,16 +127,44 @@ class SmsProvider implements DeliveryProvider {
 }
 
 // ---------------------------------------------------------------------------
-// WhatsApp Provider (Termii/WhatsApp Business API in production)
+// WhatsApp Provider — Termii (real API calls when configured)
 // ---------------------------------------------------------------------------
 
 class WhatsAppProvider implements DeliveryProvider {
   channel: Channel = 'WHATSAPP'
 
   async send(req: DeliveryRequest): Promise<DeliveryResult> {
+    const apiKey = process.env.TERMII_API_KEY || process.env.TERMII_WHATSAPP_KEY
+
+    // If no API key configured, fall back to console log (dev/sandbox mode)
+    if (!apiKey || apiKey.length < 10) {
+      console.log(`[WHATSAPP] (dev mode — no TERMII key) To: ${req.to} | Body: ${req.body.slice(0, 80)}...`)
+      return { success: true, status: 'DELIVERED', externalId: `dev_wa_${Date.now()}` }
+    }
+
     try {
-      console.log(`[WHATSAPP] To: ${req.to} | Body: ${req.body.slice(0, 50)}...`)
-      return { success: true, status: 'DELIVERED', externalId: `wa_${Date.now()}` }
+      // Call the real Termii WhatsApp API
+      const response = await fetch('https://api.termii.com/api/sms/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: req.to,
+          from: 'VoteWise',
+          sms: req.body,
+          type: 'plain',
+          channel: 'whatsapp',
+          api_key: apiKey,
+        }),
+      })
+
+      const data = await response.json() as any
+
+      if (response.ok && (data.code === 'ok' || data.message_id)) {
+        return { success: true, status: 'DELIVERED', externalId: data.message_id || `termii_wa_${Date.now()}` }
+      }
+
+      console.error('[WHATSAPP] Termii API error:', data)
+      return { success: false, status: 'FAILED', error: data.message || `Termii returned ${response.status}` }
     } catch (e: any) {
       return { success: false, status: 'FAILED', error: e.message }
     }
@@ -94,8 +180,6 @@ class InAppProvider implements DeliveryProvider {
 
   async send(req: DeliveryRequest): Promise<DeliveryResult> {
     try {
-      // In-app notifications are stored in the Notification table
-      // The actual create is handled by the communication engine
       console.log(`[IN_APP] To: ${req.to} | Subject: ${req.subject || '(notification)'}`)
       return { success: true, status: 'DELIVERED', externalId: `inapp_${Date.now()}` }
     } catch (e: any) {
