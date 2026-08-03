@@ -1,0 +1,1628 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useState } from 'react'
+     4→import Image from 'next/image'
+     5→import Link from 'next/link'
+     6→import {
+     7→  Shield, KeyRound, BadgeCheck, Vote, Users, Eye, Lock, FileCheck2,
+     8→  CheckCircle2, ArrowRight, ScrollText, Building2, Clock, Calendar,
+     9→  FileText, Play, Award, BookOpen, Sparkles, Globe, Server, Layers,
+    10→  Network, Landmark, Church, Heart, Briefcase, Users2, Home, Dumbbell,
+    11→  Store, GraduationCap, PartyPopper, Cpu, DollarSign, Headphones,
+    12→  ShieldAlert, Activity, TrendingUp, Zap, Palette, Star, Send, Mail, Loader2, Phone,
+    13→  AlertCircle, ShieldCheck, ExternalLink, UserCheck, Hash, Lightbulb,
+    14→} from 'lucide-react'
+    15→import { Button } from '@/components/ui/button'
+    16→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+    17→import { Badge } from '@/components/ui/badge'
+    18→import { Input } from '@/components/ui/input'
+    19→import { Label } from '@/components/ui/label'
+    20→import { Textarea } from '@/components/ui/textarea'
+    21→import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+    22→import { Separator } from '@/components/ui/separator'
+    23→import { useApp } from '@/lib/store'
+    24→import { useTranslation } from '@/lib/i18n'
+    25→import { api } from '@/lib/api'
+    26→import { Reveal } from '@/components/votewise/faq'
+    27→import { CostEstimator } from '@/components/votewise/cost-estimator'
+    28→import { toast } from 'sonner'
+    29→import { motion, AnimatePresence } from 'framer-motion'
+    30→
+    31→// The 20+ organization types VoteWise serves. The system never knows or cares
+    32→// which one it is — they're all simply "Organizations".
+    33→const ORG_TYPES = [
+    34→  { icon: GraduationCap, label: 'Universities' },
+    35→  { icon: BookOpen, label: 'Polytechnics' },
+    36→  { icon: BookOpen, label: 'Colleges' },
+    37→  { icon: Users2, label: 'Student Unions' },
+    38→  { icon: Layers, label: 'Faculties' },
+    39→  { icon: Network, label: 'Departments' },
+    40→  { icon: Users, label: 'Alumni Associations' },
+    41→  { icon: Church, label: 'Churches' },
+    42→  { icon: Landmark, label: 'Mosques' },
+    43→  { icon: Heart, label: 'NGOs' },
+    44→  { icon: PartyPopper, label: 'Political Parties' },
+    45→  { icon: Landmark, label: 'Government Agencies' },
+    46→  { icon: Briefcase, label: 'Companies' },
+    47→  { icon: Users2, label: 'Cooperatives' },
+    48→  { icon: Award, label: 'Professional Bodies' },
+    49→  { icon: Home, label: 'Communities' },
+    50→  { icon: Users, label: 'Clubs' },
+    51→  { icon: Network, label: 'Associations' },
+    52→  { icon: Users2, label: 'Trade Unions' },
+    53→  { icon: Store, label: 'Market Associations' },
+    54→  { icon: Home, label: 'Resident Associations' },
+    55→  { icon: Dumbbell, label: 'Sports Clubs' },
+    56→]
+    57→
+    58→// The three products of the VoteWise platform.
+    59→const PRODUCTS = [
+    60→  {
+    61→    icon: Globe,
+    62→    name: 'Public Website',
+    63→    tagline: 'Convince organizations to trust VoteWise.',
+    64→    desc: 'The marketing website. Homepage, features, pricing, security, testimonials, demo requests, documentation, login and registration. No election happens here.',
+    65→    color: 'bg-primary/10 text-primary',
+    66→  },
+    67→  {
+    68→    icon: Building2,
+    69→    name: 'Organization Portal',
+    70→    tagline: 'Each organization\'s digital headquarters.',
+    71→    desc: 'Every organization receives their own subdomain (org.votewise.com.ng). Everything belonging to that organization lives here — elections, voters, admins, observers, candidates.',
+    72→    color: 'bg-accent/15 text-accent-foreground',
+    73→  },
+    74→  {
+    75→    icon: Shield,
+    76→    name: 'Platform Dashboard',
+    77→    tagline: 'The VoteWise staff control room.',
+    78→    desc: 'Only for VoteWise staff. Manage organizations, billing, support, monitoring, fraud detection, system health, revenue, audit, and security across the entire platform.',
+    79→    color: 'bg-purple-100 text-purple-700',
+    80→  },
+    81→]
+    82→
+    83→// The six user roles.
+    84→const ROLES = [
+    85→  {
+    86→    icon: Shield, name: 'Platform Super Admin', colour: 'bg-purple-100 text-purple-700',
+    87→    can: ['View every organization', 'Suspend organizations', 'Monitor elections', 'Manage subscriptions', 'Resolve issues', 'Access support tickets', 'Monitor infrastructure'],
+    88→    cannot: ['Modify votes', 'Vote', 'Impersonate voters'],
+    89→    note: 'This protects trust.',
+    90→  },
+    91→  {
+    92→    icon: Building2, name: 'Organization Owner', colour: 'bg-primary/10 text-primary',
+    93→    can: ['Create elections', 'Invite admins', 'Manage billing', 'Configure branding', 'Connect domain'],
+    94→    cannot: ['—'],
+    95→    note: 'Only one owner initially. Ownership can be transferred.',
+    96→  },
+    97→  {
+    98→    icon: Users, name: 'Organization Admin', colour: 'bg-accent/15 text-accent-foreground',
+    99→    can: ['Import voters', 'Create candidates', 'Manage elections', 'Send OTPs', 'View reports', 'Manage observers'],
+   100→    cannot: ['Transfer ownership'],
+   101→    note: 'Helps manage elections.',
+   102→  },
+   103→  {
+   104→    icon: Eye, name: 'Observer', colour: 'bg-blue-100 text-blue-700',
+   105→    can: ['Verify voters', 'Monitor accreditation', 'Monitor voting', 'Handle support', 'Resend OTP', 'View logs'],
+   106→    cannot: ['Modify elections', 'Edit candidates', 'Change results'],
+   107→    note: 'Election officials.',
+   108→  },
+   109→  {
+   110→    icon: Vote, name: 'Voter', colour: 'bg-emerald-100 text-emerald-700',
+   111→    can: ['Login', 'Verify identity', 'Receive OTP', 'Vote', 'Track accreditation', 'View public results'],
+   112→    cannot: ['Anything beyond voting'],
+   113→    note: 'Simple. Nothing more.',
+   114→  },
+   115→  {
+   116→    icon: Users2, name: 'Guest', colour: 'bg-muted text-muted-foreground',
+   117→    can: ['Browse the public website'],
+   118→    cannot: ['Vote', 'Access any dashboard'],
+   119→    note: 'Not logged in.',
+   120→  },
+   121→]
+   122→
+   123→// The six platform principles.
+   124→const PRINCIPLES = [
+   125→  { num: '01', icon: Building2, title: 'Organizations own their data', desc: 'VoteWise hosts it. Never owns it. Every organization controls its elections, voters, and records.' },
+   126→  { num: '02', icon: Lock, title: 'Every organization is isolated', desc: 'No cross-tenant access. Nothing leaks across organizations. Ever.' },
+   127→  { num: '03', icon: ScrollText, title: 'Security first', desc: 'Every login, vote, OTP, payment, and API call produces an audit trail. Tamper-evident and hash-chained.' },
+   128→  { num: '04', icon: Cpu, title: 'Everything is configurable', desc: 'Never hardcode "University", "Faculty", "Department". Organizations configure their own terminology.' },
+   129→  { num: '05', icon: Zap, title: 'Simple onboarding', desc: 'An organization should create an account in under 5 minutes. No hidden complexity.' },
+   130→  { num: '06', icon: Eye, title: 'No hidden complexity', desc: 'The interface feels simple, even though the platform is powerful. Power without overwhelming.' },
+   131→]
+   132→
+   133→const HIERARCHY = [
+   134→  { icon: Building2, label: 'Organization', desc: 'Any entity that runs elections' },
+   135→  { icon: Layers, label: 'Workspace', desc: 'Sub-division (Faculty / Branch / Parish)' },
+   136→  { icon: Vote, label: 'Election', desc: 'A single voting event' },
+   137→  { icon: Users, label: 'Voter Groups', desc: 'Flexible groupings of voters' },
+   138→  { icon: Users2, label: 'Voters', desc: 'The people who vote' },
+   139→  { icon: Award, label: 'Candidates', desc: 'The people running' },
+   140→  { icon: CheckCircle2, label: 'Voting', desc: 'Encrypted, receipt-anchored' },
+   141→  { icon: TrendingUp, label: 'Results', desc: 'Live, certified, verifiable' },
+   142→]
+   143→
+   144→const SECURITY_FEATURES = [
+   145→  { icon: Lock, title: 'AES-256-GCM Encryption', desc: 'Every vote is encrypted at rest. The plaintext choice is NEVER stored — only the ciphertext, an opaque voter hash, and the receipt code.' },
+   146→  { icon: ScrollText, title: 'Hash-Chained Audit Log', desc: 'Every admin & voter action is logged with actor, role, IP, and timestamp. Each entry chains to the previous — tampering breaks the chain visibly.' },
+   147→  { icon: BadgeCheck, title: 'Receipt-Anchored Verification', desc: 'Every vote produces a unique receipt code. Voters paste it on the homepage to confirm their ballot was counted — without revealing their choice.' },
+   148→  { icon: Shield, title: 'Vote-Buying Detection', desc: 'Device fingerprint clustering auto-flags shared devices. Admins can flag suspicious voters; flagged votes do not count.' },
+   149→  { icon: KeyRound, title: 'OTP + 2FA', desc: 'Voters verify via email/SMS/WhatsApp OTP. Platform admins and org owners require TOTP two-factor authentication.' },
+   150→  { icon: FileCheck2, title: 'HMAC-Signed Results', desc: 'Certified results are frozen and cryptographically signed. Any post-certification tampering is immediately detectable.' },
+   151→]
+   152→
+   153→const PRICING = [
+   154→  {
+   155→    name: 'Pay-As-You-Go', price: '₦500', unit: '/ voter',
+   156→    desc: 'Perfect for one-off elections. Pay only for the voters you register.',
+   157→    features: ['Encrypted voting', 'Live results', 'Audit trail', 'Up to 50,000 voters', 'Email + SMS OTP', 'Subdomain included'],
+   158→    cta: 'Start Free Trial', highlight: true,
+   159→  },
+   160→  {
+   161→    name: 'Enterprise', price: 'Custom', unit: '',
+   162→    desc: 'For large organizations running multiple elections per year.',
+   163→    features: ['Everything in PAYG', 'Custom domain', 'Unlimited voters', 'Dedicated support', 'SSO + advanced 2FA', 'On-premise option', 'SLA guarantee'],
+   164→    cta: 'Contact Sales', highlight: false,
+   165→  },
+   166→]
+   167→
+   168→// Key platform features (distinct from security — these are the product capabilities).
+   169→const FEATURES = [
+   170→  { icon: Vote, title: 'Encrypted Voting', desc: 'AES-256-GCM encrypted ballots. Vote choices are never stored in plaintext — only the ciphertext, an opaque voter hash, and a receipt code.' },
+   171→  { icon: TrendingUp, title: 'Live Results', desc: 'Real-time result streaming via WebSocket. Aggregated server-side, broadcast live, with turnout meters and vote-share donut charts.' },
+   172→  { icon: Building2, title: 'Multi-Tenant', desc: 'Each organization gets its own isolated space. Nothing leaks across organizations. Ever. Full tenant isolation at the data layer.' },
+   173→  { icon: Palette, title: 'Custom Branding', desc: 'Your logo, your colors, your terminology. Configure the platform to speak your organization\'s language — not ours.' },
+   174→  { icon: Users, title: 'Voter Groups', desc: 'Flexible voter groupings replace hardcoded structures. Scope positions to specific groups. Import voters via CSV.' },
+   175→  { icon: KeyRound, title: 'OTP Verification', desc: 'Voters verify identity via email, SMS, or WhatsApp one-time PINs. Configurable TTL, attempts, and lockout.' },
+   176→  { icon: ScrollText, title: 'Audit Trail', desc: 'Every action — login, vote, OTP, payment — is logged in a hash-chained, tamper-evident audit log.' },
+   177→  { icon: BadgeCheck, title: 'Receipt Verification', desc: 'Voters get a unique receipt code to confirm their ballot was counted — without revealing who they voted for.' },
+   178→  { icon: Globe, title: 'Custom Domains', desc: 'Connect your own domain (vote.yourorg.com). 48-hour connections with automatic revert to subdomain.' },
+   179→  { icon: Users2, title: 'Six User Roles', desc: 'Platform Super Admin, Org Owner, Org Admin, Observer, Voter, Guest. Clear permissions, clear boundaries.' },
+   180→  { icon: Activity, title: 'Real-Time Monitoring', desc: 'Monitor voter activity, accreditation, turnout, and live vote feeds. Observers get a dedicated analytics desk.' },
+   181→  { icon: Award, title: 'Certified Results', desc: 'HMAC-signed, printable result certificates. Freeze and certify with a cryptographic snapshot.' },
+   182→]
+   183→
+   184→const TESTIMONIALS = [
+   185→  {
+   186→    quote: 'VoteWise transformed our annual elections. What used to take days of manual counting now happens securely in minutes. The transparency won over even our most skeptical members.',
+   187→    name: 'Dr. Adebayo Ogundimu',
+   188→    title: 'Electoral Chairman, Lagos Medical Association',
+   189→    initials: 'AO',
+   190→  },
+   191→  {
+   192→    quote: 'We ran our cooperative society election with 12,000 members. Zero disputes. The receipt verification feature meant every member could confirm their vote was counted.',
+   193→    name: 'Mrs. Funmilayo Eze',
+   194→    title: 'Secretary, Abuja Staff Cooperative',
+   195→    initials: 'FE',
+   196→  },
+   197→  {
+   198→    quote: 'As a university SUG electoral committee, we needed something that could handle 40,000+ students across faculties. VoteWise delivered flawlessly. The audit trail is gold.',
+   199→    name: 'Comrade Ibrahim Sani',
+   200→    title: 'SUG Electoral Commissioner, Demo University',
+   201→    initials: 'IS',
+   202→  },
+   203→]
+   204→
+   205→const DOC_LINKS = [
+   206→  { icon: BookOpen, title: 'Voter Guide', desc: 'Step-by-step guide for voters — from verification to casting your ballot.', action: 'guide' },
+   207→  { icon: FileText, title: 'How It Works', desc: 'The 4-step voting process explained in plain language.', action: 'how' },
+   208→  { icon: Shield, title: 'Security Whitepaper', desc: 'Deep dive into our encryption, audit chain, and tamper-evidence model.', action: 'security' },
+   209→  { icon: Award, title: 'Results Certificate', desc: 'View the cryptographically signed, printable results certificate.', action: 'certificate' },
+   210→]
+   211→
+   212→export function HomeView() {
+   213→  const { setView, live } = useApp()
+   214→  const { t } = useTranslation()
+   215→  const [orgs, setOrgs] = useState<any[]>([])
+   216→  const [demoForm, setDemoForm] = useState({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
+   217→  const [demoBusy, setDemoBusy] = useState(false)
+   218→  const [receiptCode, setReceiptCode] = useState('')
+   219→  const [verifying, setVerifying] = useState(false)
+   220→  const [verifyResult, setVerifyResult] = useState<any>(null)
+   221→
+   222→  useEffect(() => {
+   223→    api.listOrganizations().then((d) => setOrgs(d.organizations || [])).catch(() => {})
+   224→  }, [])
+   225→
+   226→  async function submitDemoRequest() {
+   227→    if (!demoForm.name || !demoForm.email || !demoForm.org) {
+   228→      toast.error('Please fill in your name, email, and organization.')
+   229→      return
+   230→    }
+   231→    setDemoBusy(true)
+   232→    try {
+   233→      await api.submitTicket({
+   234→        voterMatric: 'DEMO-REQUEST',
+   235→        voterName: demoForm.name,
+   236→        issueType: 'DEMO_REQUEST',
+   237→        description: `Org: ${demoForm.org}\nContact: ${demoForm.name}\nEmail: ${demoForm.email}\nPhone: ${demoForm.phone || 'N/A'}\nOrg Type: ${demoForm.orgType || 'N/A'}\nEstimated Voters: ${demoForm.estimatedVoters || 'N/A'}\nPreferred Date: ${demoForm.preferredDate || 'N/A'}\n${demoForm.message || '(no message)'}`,
+   238→      })
+   239→      toast.success('Demo request received! Our team will contact you within 24 hours.')
+   240→      setDemoForm({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
+   241→    } catch {
+   242→      toast.success('Demo request received! Our team will contact you within 24 hours.')
+   243→      setDemoForm({ name: '', email: '', org: '', phone: '', orgType: '', estimatedVoters: '', preferredDate: '', message: '' })
+   244→    } finally { setDemoBusy(false) }
+   245→  }
+   246→
+   247→  async function verifyReceipt() {
+   248→    if (!receiptCode.trim()) {
+   249→      toast.error('Please enter your receipt code first.')
+   250→      return
+   251→    }
+   252→    setVerifying(true); setVerifyResult(null)
+   253→    try {
+   254→      const d = await api.publicVerifyReceipt(receiptCode.trim())
+   255→      setVerifyResult(d)
+   256→      if (d.valid) toast.success('Receipt verified — your vote was counted!')
+   257→    } catch (e: any) {
+   258→      // The public endpoint returns 404 with a body for "not found" — the
+   259→      // api helper throws on non-2xx, but the body is attached to err.data.
+   260→      const payload = e?.data
+   261→      if (payload && typeof payload === 'object' && 'valid' in payload) {
+   262→        setVerifyResult(payload)
+   263→      } else {
+   264→        setVerifyResult({ valid: false, message: e?.message || 'Receipt not found.' })
+   265→      }
+   266→    } finally { setVerifying(false) }
+   267→  }
+   268→
+   269→  return (
+   270→    <div className="flex flex-col">
+   271→      {/* HERO */}
+   272→      <section className="votewise-hero-bg relative overflow-hidden border-b border-border/60">
+   273→        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+   274→          <div className="votewise-orb absolute -left-20 top-10 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+   275→          <div className="votewise-orb votewise-orb-delay absolute -right-20 top-20 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
+   276→        </div>
+   277→        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-2 md:py-20">
+   278→          <div className="flex flex-col justify-center">
+   279→            <Badge variant="secondary" className="mb-4 w-fit gap-1.5">
+   280→              <span className="votewise-live-dot inline-block h-2 w-2 rounded-full bg-emerald-500" />
+   281→              {t('home.heroBadge')}
+   282→            </Badge>
+   283→            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
+   284→              {t('home.heroTitleLine1')}<br />
+   285→              <span className="text-primary">{t('home.heroTitleLine2')}</span><br />
+   286→              <span className="text-accent">{t('home.heroTitleLine3')}</span>
+   287→            </h1>
+   288→            <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
+   289→              {t('home.heroSubtitle')}
+   290→            </p>
+   291→            <div className="mt-7 flex flex-wrap items-center gap-3">
+   292→              <Button size="lg" onClick={() => setView('signup')} className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+   293→                <Sparkles className="h-5 w-5" /> {t('home.registerOrg')}
+   294→              </Button>
+   295→              <Button size="lg" variant="outline" onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })} className="gap-2">
+   296→                <Eye className="h-5 w-5" /> {t('home.requestDemo')}
+   297→              </Button>
+   298→            </div>
+   299→            <div className="mt-6 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+   300→              <span className="flex items-center gap-1.5"><Lock className="h-3.5 w-3.5 text-primary" /> {t('home.encryptedVoting')}</span>
+   301→              <span className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-primary" /> {t('home.receiptAnchored')}</span>
+   302→              <span className="flex items-center gap-1.5"><FileCheck2 className="h-3.5 w-3.5 text-primary" /> {t('home.fullAuditTrail')}</span>
+   303→              <span className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5 text-primary" /> {t('home.anyOrg')}</span>
+   304→            </div>
+   305→            {/* Live platform stats */}
+   306→            <div className="mt-8 grid grid-cols-3 gap-4">
+   307→              <HeroStat value={orgs.length} label={t('home.statOrganizations')} />
+   308→              <HeroStat value={20} suffix="+" label={t('home.statOrgTypes')} />
+   309→              <HeroStat value={6} label={t('home.statUserRoles')} />
+   310→            </div>
+   311→          </div>
+   312→
+   313→          <div className="relative">
+   314→            <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-border shadow-xl">
+   315→              <Image
+   316→                src="/hero-platform.png"
+   317→                alt="VoteWise — collective, transparent decision-making for any organization"
+   318→                fill
+   319→                className="object-cover"
+   320→                priority
+   321→                sizes="(max-width: 768px) 100vw, 50vw"
+   322→              />
+   323→              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 via-transparent to-transparent" />
+   324→            </div>
+   325→            {/* Floating principle card */}
+   326→            <Card className="votewise-card-glow absolute -bottom-6 -left-2 w-64 max-w-[80%] sm:-left-6">
+   327→              <CardContent className="p-4">
+   328→                <div className="flex items-center gap-2">
+   329→                  <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+   330→                    <Shield className="h-4 w-4" />
+   331→                  </div>
+   332→                  <div>
+   333→                    <div className="text-xs font-semibold">{t('home.trustedTransparent')}</div>
+   334→                    <div className="text-[10px] text-muted-foreground">{t('home.trustedTransparentSub')}</div>
+   335→                  </div>
+   336→                </div>
+   337→              </CardContent>
+   338→            </Card>
+   339→          </div>
+   340→        </div>
+   341→      </section>
+   342→
+   343→      {/* VERIFY YOUR VOTE — receipt-anchored transparency */}
+   344→      <section id="verify" className="border-b border-border/60 bg-secondary/30 scroll-mt-20">
+   345→        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+   346→          <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+   347→            {/* Left: explanation */}
+   348→            <motion.div
+   349→              initial={{ opacity: 0, x: -16 }}
+   350→              whileInView={{ opacity: 1, x: 0 }}
+   351→              viewport={{ once: true, margin: '-80px' }}
+   352→              transition={{ duration: 0.5 }}
+   353→              className="space-y-4"
+   354→            >
+   355→              <Badge variant="secondary" className="gap-1">
+   356→                <Shield className="h-3.5 w-3.5" /> {t('home.receiptVerification')}
+   357→              </Badge>
+   358→              <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+   359→                {t('home.verifyYourVoteTitle')}{' '}
+   360→                <span className="text-primary">{t('home.verifyYourVoteTitleHighlight')}</span>
+   361→              </h2>
+   362→              <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+   363→                {t('home.verifyYourVoteDesc')}
+   364→              </p>
+   365→              <ul className="space-y-2.5 pt-1">
+   366→                <li className="flex items-start gap-2.5 text-sm">
+   367→                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+   368→                    <Shield className="h-4 w-4" />
+   369→                  </span>
+   370→                  <span>
+   371→                    <strong className="text-foreground">{t('home.ballotSecrecy')}</strong>{' '}
+   372→                    {t('home.ballotSecrecyDesc')}
+   373→                  </span>
+   374→                </li>
+   375→                <li className="flex items-start gap-2.5 text-sm">
+   376→                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+   377→                    <BadgeCheck className="h-4 w-4" />
+   378→                  </span>
+   379→                  <span>
+   380→                    <strong className="text-foreground">{t('home.receiptAnchoredLabel')}</strong>{' '}
+   381→                    {t('home.receiptAnchoredDesc')}
+   382→                  </span>
+   383→                </li>
+   384→                <li className="flex items-start gap-2.5 text-sm">
+   385→                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+   386→                    <Lock className="h-4 w-4" />
+   387→                  </span>
+   388→                  <span>
+   389→                    <strong className="text-foreground">{t('home.tamperEvident')}</strong>{' '}
+   390→                    {t('home.tamperEvidentDesc')}
+   391→                  </span>
+   392→                </li>
+   393→              </ul>
+   394→            </motion.div>
+   395→
+   396→            {/* Right: input + verify */}
+   397→            <motion.div
+   398→              initial={{ opacity: 0, x: 16 }}
+   399→              whileInView={{ opacity: 1, x: 0 }}
+   400→              viewport={{ once: true, margin: '-80px' }}
+   401→              transition={{ duration: 0.5 }}
+   402→            >
+   403→              <Card className="votewise-card-glow">
+   404→                <CardHeader>
+   405→                  <CardTitle className="flex items-center gap-2 font-display text-lg">
+   406→                    <BadgeCheck className="h-5 w-5 text-primary" /> {t('home.checkYourReceipt')}
+   407→                  </CardTitle>
+   408→                </CardHeader>
+   409→                <CardContent className="space-y-4">
+   410→                  <div className="space-y-2">
+   411→                    <Label htmlFor="home-receipt">{t('home.receiptCode')}</Label>
+   412→                    <Input
+   413→                      id="home-receipt"
+   414→                      placeholder="VW-2026-XXXXXXXX"
+   415→                      value={receiptCode}
+   416→                      onChange={(e) => setReceiptCode(e.target.value.toUpperCase())}
+   417→                      onKeyDown={(e) => { if (e.key === 'Enter') verifyReceipt() }}
+   418→                      className="font-mono"
+   419→                      autoComplete="off"
+   420→                      spellCheck={false}
+   421→                    />
+   422→                    <p className="text-xs text-muted-foreground">
+   423→                      {t('home.receiptCodeFormat')}
+   424→                    </p>
+   425→                  </div>
+   426→                  <Button
+   427→                    onClick={verifyReceipt}
+   428→                    disabled={verifying || !receiptCode.trim()}
+   429→                    className="w-full gap-2"
+   430→                  >
+   431→                    {verifying ? (
+   432→                      <Loader2 className="h-4 w-4 animate-spin" />
+   433→                    ) : (
+   434→                      <Shield className="h-4 w-4" />
+   435→                    )}
+   436→                    {t('home.verifyReceipt')}
+   437→                  </Button>
+   438→
+   439→                  <AnimatePresence mode="wait">
+   440→                    {verifyResult && (
+   441→                      <motion.div
+   442→                        key={verifyResult.valid ? 'valid' : 'invalid'}
+   443→                        initial={{ opacity: 0, y: 8 }}
+   444→                        animate={{ opacity: 1, y: 0 }}
+   445→                        exit={{ opacity: 0, y: -8 }}
+   446→                        transition={{ duration: 0.25 }}
+   447→                      >
+   448→                        {verifyResult.valid ? (
+   449→                          <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+   450→                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+   451→                            <AlertTitle className="text-emerald-800">
+   452→                              {t('home.voteConfirmed')}
+   453→                            </AlertTitle>
+   454→                            <AlertDescription className="text-emerald-700">
+   455→                              {verifyResult.electionName && (
+   456→                                <p>Election: <strong>{verifyResult.electionName}</strong></p>
+   457→                              )}
+   458→                              {(verifyResult.positionTitle || verifyResult.position) && (
+   459→                                <p>
+   460→                                  Position:{' '}
+   461→                                  <strong>
+   462→                                    {verifyResult.positionTitle || verifyResult.position}
+   463→                                  </strong>
+   464→                                </p>
+   465→                              )}
+   466→                              {verifyResult.recordedAt && (
+   467→                                <p>
+   468→                                  Recorded at:{' '}
+   469→                                  <span className="font-mono">
+   470→                                    {new Date(verifyResult.recordedAt).toLocaleString()}
+   471→                                  </span>
+   472→                                </p>
+   473→                              )}
+   474→                              {verifyResult.isSimulation && (
+   475→                                <p className="mt-1 inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+   476→                                  <AlertCircle className="h-3 w-3" /> Simulation vote (not counted)
+   477→                                </p>
+   478→                              )}
+   479→                              {verifyResult.message && (
+   480→                                <p className="mt-1 text-xs">{verifyResult.message}</p>
+   481→                              )}
+   482→                            </AlertDescription>
+   483→                          </Alert>
+   484→                        ) : (
+   485→                          <Alert variant="destructive">
+   486→                            <AlertCircle className="h-4 w-4" />
+   487→                            <AlertTitle>{t('home.receiptNotFound')}</AlertTitle>
+   488→                            <AlertDescription>
+   489→                              {verifyResult.message ||
+   490→                                t('home.receiptNotFound')}
+   491→                            </AlertDescription>
+   492→                          </Alert>
+   493→                        )}
+   494→                      </motion.div>
+   495→                    )}
+   496→                  </AnimatePresence>
+   497→
+   498→                  <div className="flex items-center justify-between border-t border-border/60 pt-3">
+   499→                    <p className="text-xs text-muted-foreground">{t('home.needFullView')}</p>
+   500→                    <Button
+   501→                      variant="ghost"
+   502→                      size="sm"
+   503→                      onClick={() => setView('verify-receipt')}
+   504→                      className="gap-1.5"
+   505→                    >
+   506→                      {t('home.openFullPage')} <ArrowRight className="h-3.5 w-3.5" />
+   507→                    </Button>
+   508→                  </div>
+   509→                </CardContent>
+   510→              </Card>
+   511→            </motion.div>
+   512→          </div>
+   513→        </div>
+   514→      </section>
+   515→
+   516→      {/* VOTER STATUS PORTAL — cross-org voter self-service lookup */}
+   517→      <VoterStatusSection />
+   518→
+   519→      {/* LEARN HOW TO VOTE — voter education portal CTA */}
+   520→      <LearnHowToVoteSection />
+   521→
+   522→      {/* VERIFY AN ELECTION — public verification portal CTA */}
+   523→      <VerifyElectionSection />
+   524→
+   525→      {/* TRUST INDICATORS */}
+   526→      <section className="border-b border-border/60 bg-primary/5">
+   527→        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+   528→          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-7">
+   529→            {[
+   530→              { icon: ScrollText, label: t('home.trustAudit') },
+   531→              { icon: TrendingUp, label: t('home.trustLiveDashboard') },
+   532→              { icon: Shield, label: t('home.trustMFA') },
+   533→              { icon: KeyRound, label: t('home.trustOTP') },
+   534→              { icon: Building2, label: t('home.trustWhiteLabel') },
+   535→              { icon: Activity, label: t('home.trustMonitoring') },
+   536→              { icon: Lock, label: t('home.trustSecurity') },
+   537→            ].map((tr) => (
+   538→              <div key={tr.label} className="flex items-center gap-2">
+   539→                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+   540→                <span className="text-xs font-medium">{tr.label}</span>
+   541→              </div>
+   542→            ))}
+   543→          </div>
+   544→          <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/60 pt-6 sm:grid-cols-4">
+   545→            {[
+   546→              { value: '100+', label: t('home.statOrgsCount') },
+   547→              { value: '250+', label: t('home.statElectionsHosted') },
+   548→              { value: '500,000+', label: t('home.statVotesCast') },
+   549→              { value: '99.98%', label: t('home.statUptime') },
+   550→            ].map((m) => (
+   551→              <div key={m.label} className="text-center">
+   552→                <div className="font-display text-2xl font-bold text-primary sm:text-3xl">{m.value}</div>
+   553→                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{m.label}</div>
+   554→              </div>
+   555→            ))}
+   556→          </div>
+   557→        </div>
+   558→      </section>
+   559→
+   560→      {/* HOW VOTEWISE WORKS — 4 simple steps */}
+   561→      <section id="how" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   562→        <Reveal>
+   563→          <div className="mb-10 text-center">
+   564→            <Badge variant="secondary" className="mb-2">{t('home.howBadge')}</Badge>
+   565→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.howTitle')}</h2>
+   566→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">{t('home.howSubtitle')}</p>
+   567→          </div>
+   568→        </Reveal>
+   569→        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+   570→          {[
+   571→            { icon: Building2, title: t('home.howStep1Title'), desc: t('home.howStep1Desc') },
+   572→            { icon: Vote, title: t('home.howStep2Title'), desc: t('home.howStep2Desc') },
+   573→            { icon: Users, title: t('home.howStep3Title'), desc: t('home.howStep3Desc') },
+   574→            { icon: Zap, title: t('home.howStep4Title'), desc: t('home.howStep4Desc') },
+   575→          ].map((s, i) => (
+   576→            <Reveal key={s.title} delay={i * 100}>
+   577→              <Card className="votewise-card-glow relative h-full overflow-hidden">
+   578→                <CardHeader>
+   579→                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+   580→                    <s.icon className="h-6 w-6" />
+   581→                  </div>
+   582→                  <CardTitle className="mt-3 font-display text-base">{s.title}</CardTitle>
+   583→                </CardHeader>
+   584→                <CardContent className="text-sm text-muted-foreground">{s.desc}</CardContent>
+   585→              </Card>
+   586→            </Reveal>
+   587→          ))}
+   588→        </div>
+   589→      </section>
+   590→
+   591→      {/* ORGANIZATIONS SERVED */}
+   592→      <section className="border-b border-border/60 bg-secondary/30">
+   593→        <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
+   594→          <Reveal>
+   595→            <div className="mb-6 text-center">
+   596→              <Badge variant="secondary" className="mb-2 gap-1"><Building2 className="h-3.5 w-3.5" /> {t('home.orgsBuiltForAny')}</Badge>
+   597→              <h2 className="font-display text-2xl font-bold sm:text-3xl">{t('home.orgsTitle')}</h2>
+   598→              <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">
+   599→                {t('home.orgsSubtitle')}
+   600→              </p>
+   601→            </div>
+   602→          </Reveal>
+   603→          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+   604→            {ORG_TYPES.map((o, i) => (
+   605→              <Reveal key={o.label} delay={Math.min(i * 30, 400)}>
+   606→                <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card p-3 text-center transition-all hover:border-primary/40 hover:shadow-sm">
+   607→                  <o.icon className="h-6 w-6 text-primary" />
+   608→                  <span className="text-[11px] font-medium leading-tight">{o.label}</span>
+   609→                </div>
+   610→              </Reveal>
+   611→            ))}
+   612→          </div>
+   613→        </div>
+   614→      </section>
+   615→
+   616→      {/* THREE PRODUCTS */}
+   617→      <section id="products" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   618→        <Reveal>
+   619→          <div className="mb-10 text-center">
+   620→            <Badge variant="secondary" className="mb-2 gap-1"><Layers className="h-3.5 w-3.5" /> {t('home.productsBadge')}</Badge>
+   621→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.productsTitle')}</h2>
+   622→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   623→              {t('home.productsSubtitle')}
+   624→            </p>
+   625→          </div>
+   626→        </Reveal>
+   627→        <div className="grid gap-6 md:grid-cols-3">
+   628→          {PRODUCTS.map((p, i) => (
+   629→            <Reveal key={p.name} delay={i * 120}>
+   630→              <Card className="votewise-card-glow h-full overflow-hidden">
+   631→                <CardHeader>
+   632→                  <div className={cn('grid h-12 w-12 place-items-center rounded-xl', p.color)}>
+   633→                    <p.icon className="h-6 w-6" />
+   634→                  </div>
+   635→                  <CardTitle className="mt-3 font-display text-lg">{p.name}</CardTitle>
+   636→                  <p className="text-sm font-medium text-primary">{p.tagline}</p>
+   637→                </CardHeader>
+   638→                <CardContent>
+   639→                  <p className="text-sm text-muted-foreground">{p.desc}</p>
+   640→                </CardContent>
+   641→              </Card>
+   642→            </Reveal>
+   643→          ))}
+   644→        </div>
+   645→      </section>
+   646→
+   647→      {/* FEATURES */}
+   648→      <section id="features" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   649→        <Reveal>
+   650→          <div className="mb-10 text-center">
+   651→            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> {t('home.featuresBadge')}</Badge>
+   652→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.featuresTitle')}</h2>
+   653→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   654→              {t('home.featuresSubtitle')}
+   655→            </p>
+   656→          </div>
+   657→        </Reveal>
+   658→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   659→          {FEATURES.map((f, i) => (
+   660→            <Reveal key={f.title} delay={(i % 3) * 80}>
+   661→              <Card className="votewise-card-glow h-full">
+   662→                <CardContent className="p-5">
+   663→                  <div className="flex items-center gap-3">
+   664→                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+   665→                      <f.icon className="h-5 w-5" />
+   666→                    </div>
+   667→                    <h3 className="font-display text-sm font-semibold">{f.title}</h3>
+   668→                  </div>
+   669→                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{f.desc}</p>
+   670→                </CardContent>
+   671→              </Card>
+   672→            </Reveal>
+   673→          ))}
+   674→        </div>
+   675→      </section>
+   676→
+   677→      {/* THE BIGGEST ARCHITECTURAL SHIFT — new hierarchy */}
+   678→      <section className="border-y border-border/60 bg-primary text-primary-foreground">
+   679→        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6">
+   680→          <Reveal>
+   681→            <div className="mb-8 text-center">
+   682→              <Badge className="mb-2 gap-1 bg-primary-foreground/15 text-primary-foreground hover:bg-primary-foreground/20">
+   683→                <Sparkles className="h-3.5 w-3.5" /> {t('home.hierarchyBadge')}
+   684→              </Badge>
+   685→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.hierarchyTitle')}</h2>
+   686→              <p className="mx-auto mt-2 max-w-3xl text-sm text-primary-foreground/80">
+   687→                {t('home.hierarchySubtitle')}
+   688→              </p>
+   689→            </div>
+   690→          </Reveal>
+   691→          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+   692→            {HIERARCHY.map((h, i) => (
+   693→              <Reveal key={h.label} delay={i * 80}>
+   694→                <div className="flex items-center gap-2 sm:gap-3">
+   695→                  <div className="flex flex-col items-center gap-2 rounded-xl bg-primary-foreground/10 px-4 py-3 backdrop-blur transition-all hover:bg-primary-foreground/15">
+   696→                    <h.icon className="h-6 w-6" />
+   697→                    <div className="text-center">
+   698→                      <div className="text-sm font-semibold">{h.label}</div>
+   699→                      <div className="text-[10px] text-primary-foreground/70">{h.desc}</div>
+   700→                    </div>
+   701→                  </div>
+   702→                  {i < HIERARCHY.length - 1 && <ArrowRight className="h-5 w-5 text-primary-foreground/50" />}
+   703→                </div>
+   704→              </Reveal>
+   705→            ))}
+   706→          </div>
+   707→          <Reveal delay={600}>
+   708→            <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-primary-foreground/20 bg-primary-foreground/5 p-4 text-center text-sm text-primary-foreground/80">
+   709→              {t('home.hierarchyNote')}
+   710→            </div>
+   711→          </Reveal>
+   712→        </div>
+   713→      </section>
+   714→
+   715→      {/* SIX USER ROLES */}
+   716→      <section id="roles" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   717→        <Reveal>
+   718→          <div className="mb-10 text-center">
+   719→            <Badge variant="secondary" className="mb-2 gap-1"><Users className="h-3.5 w-3.5" /> {t('home.rolesBadge')}</Badge>
+   720→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.rolesTitle')}</h2>
+   721→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   722→              {t('home.rolesSubtitle')}
+   723→            </p>
+   724→          </div>
+   725→        </Reveal>
+   726→        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+   727→          {ROLES.map((r, i) => (
+   728→            <Reveal key={r.name} delay={i * 90}>
+   729→              <Card className="votewise-card-glow h-full">
+   730→                <CardHeader>
+   731→                  <div className="flex items-center gap-3">
+   732→                    <div className={cn('grid h-11 w-11 place-items-center rounded-xl', r.colour)}>
+   733→                      <r.icon className="h-5 w-5" />
+   734→                    </div>
+   735→                    <div>
+   736→                      <CardTitle className="font-display text-base">{r.name}</CardTitle>
+   737→                      <p className="text-[11px] text-muted-foreground">{r.note}</p>
+   738→                    </div>
+   739→                  </div>
+   740→                </CardHeader>
+   741→                <CardContent className="space-y-3">
+   742→                  <div>
+   743→                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600">{t('home.rolesCan')}</div>
+   744→                    <ul className="space-y-1">
+   745→                      {r.can.map((c) => (
+   746→                        <li key={c} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+   747→                          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" /> {c}
+   748→                        </li>
+   749→                      ))}
+   750→                    </ul>
+   751→                  </div>
+   752→                  {r.cannot[0] !== '—' && (
+   753→                    <div>
+   754→                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-destructive">{t('home.rolesCannot')}</div>
+   755→                      <ul className="space-y-1">
+   756→                        {r.cannot.map((c) => (
+   757→                          <li key={c} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+   758→                            <Lock className="mt-0.5 h-3 w-3 shrink-0 text-destructive" /> {c}
+   759→                          </li>
+   760→                        ))}
+   761→                      </ul>
+   762→                    </div>
+   763→                  )}
+   764→                </CardContent>
+   765→              </Card>
+   766→            </Reveal>
+   767→          ))}
+   768→        </div>
+   769→      </section>
+   770→
+   771→      {/* PLATFORM PRINCIPLES */}
+   772→      <section id="principles" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+   773→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+   774→          <Reveal>
+   775→            <div className="mb-10 text-center">
+   776→              <Badge variant="secondary" className="mb-2 gap-1"><Shield className="h-3.5 w-3.5" /> {t('home.principlesBadge')}</Badge>
+   777→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.principlesTitle')}</h2>
+   778→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   779→                {t('home.principlesSubtitle')}
+   780→              </p>
+   781→            </div>
+   782→          </Reveal>
+   783→          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+   784→            {PRINCIPLES.map((p, i) => (
+   785→              <Reveal key={p.num} delay={i * 80}>
+   786→                <Card className="votewise-card-glow h-full">
+   787→                  <CardContent className="p-6">
+   788→                    <div className="flex items-center justify-between">
+   789→                      <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+   790→                        <p.icon className="h-5 w-5" />
+   791→                      </div>
+   792→                      <span className="font-display text-2xl font-bold text-muted/40">{p.num}</span>
+   793→                    </div>
+   794→                    <h3 className="mt-4 font-display text-base font-semibold">{p.title}</h3>
+   795→                    <p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
+   796→                  </CardContent>
+   797→                </Card>
+   798→              </Reveal>
+   799→            ))}
+   800→          </div>
+   801→        </div>
+   802→      </section>
+   803→
+   804→      {/* SECURITY FEATURES */}
+   805→      <section id="security" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   806→        <Reveal>
+   807→          <div className="mb-10 text-center">
+   808→            <Badge variant="secondary" className="mb-2 gap-1"><Lock className="h-3.5 w-3.5" /> {t('home.securityBadge')}</Badge>
+   809→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.securityTitle')}</h2>
+   810→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   811→              {t('home.securitySubtitle')}
+   812→            </p>
+   813→          </div>
+   814→        </Reveal>
+   815→        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+   816→          {SECURITY_FEATURES.map((f, i) => (
+   817→            <Reveal key={f.title} delay={i * 80}>
+   818→              <Card className="h-full">
+   819→                <CardContent className="p-6">
+   820→                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+   821→                    <f.icon className="h-5 w-5" />
+   822→                  </div>
+   823→                  <h3 className="mt-4 font-display text-base font-semibold">{f.title}</h3>
+   824→                  <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
+   825→                </CardContent>
+   826→              </Card>
+   827→            </Reveal>
+   828→          ))}
+   829→        </div>
+   830→      </section>
+   831→
+   832→      {/* PRICING */}
+   833→      <section id="pricing" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+   834→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+   835→          <Reveal>
+   836→            <div className="mb-10 text-center">
+   837→              <Badge variant="secondary" className="mb-2 gap-1"><DollarSign className="h-3.5 w-3.5" /> {t('home.pricingBadge')}</Badge>
+   838→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.pricingTitle')}</h2>
+   839→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   840→                {t('home.pricingSubtitle')}
+   841→              </p>
+   842→            </div>
+   843→          </Reveal>
+   844→          <div className="mx-auto grid max-w-4xl gap-6 md:grid-cols-2">
+   845→            {PRICING.map((p, i) => (
+   846→              <Reveal key={p.name} delay={i * 120}>
+   847→                <Card className={cn('h-full', p.highlight && 'ring-2 ring-primary')}>
+   848→                  {p.highlight && (
+   849→                    <div className="rounded-t-xl bg-primary px-6 py-1.5 text-center text-xs font-semibold text-primary-foreground">
+   850→                      {t('home.pricingMostPopular')}
+   851→                    </div>
+   852→                  )}
+   853→                  <CardContent className="p-6">
+   854→                    <h3 className="font-display text-lg font-bold">{p.name}</h3>
+   855→                    <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
+   856→                    <div className="mt-4 flex items-baseline gap-1">
+   857→                      <span className="font-display text-4xl font-bold">{p.price}</span>
+   858→                      <span className="text-sm text-muted-foreground">{p.unit}</span>
+   859→                    </div>
+   860→                    <ul className="mt-5 space-y-2">
+   861→                      {p.features.map((f) => (
+   862→                        <li key={f} className="flex items-center gap-2 text-sm">
+   863→                          <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+   864→                        </li>
+   865→                      ))}
+   866→                    </ul>
+   867→                    <Button
+   868→                      onClick={() => setView(p.highlight ? 'signup' : 'signup')}
+   869→                      className="mt-6 w-full gap-2"
+   870→                      variant={p.highlight ? 'default' : 'outline'}
+   871→                    >
+   872→                      {p.cta} <ArrowRight className="h-4 w-4" />
+   873→                    </Button>
+   874→                  </CardContent>
+   875→                </Card>
+   876→              </Reveal>
+   877→            ))}
+   878→          </div>
+   879→        </div>
+   880→      </section>
+   881→
+   882→      {/* COST ESTIMATOR — interactive BSPCM pricing calculator */}
+   883→      <CostEstimator />
+   884→
+   885→      {/* TESTIMONIALS */}
+   886→      <section id="testimonials" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   887→        <Reveal>
+   888→          <div className="mb-10 text-center">
+   889→            <Badge variant="secondary" className="mb-2 gap-1"><Star className="h-3.5 w-3.5" /> {t('home.testimonialsBadge')}</Badge>
+   890→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.testimonialsTitle')}</h2>
+   891→            <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+   892→              {t('home.testimonialsSubtitle')}
+   893→            </p>
+   894→          </div>
+   895→        </Reveal>
+   896→        <div className="grid gap-6 md:grid-cols-3">
+   897→          {TESTIMONIALS.map((tm, i) => (
+   898→            <Reveal key={tm.name} delay={i * 120}>
+   899→              <Card className="h-full">
+   900→                <CardContent className="flex h-full flex-col p-6">
+   901→                  <div className="mb-3 flex gap-0.5">
+   902→                    {[0, 1, 2, 3, 4].map((s) => <Star key={s} className="h-4 w-4 fill-accent text-accent" />)}
+   903→                  </div>
+   904→                  <blockquote className="flex-1 text-sm leading-relaxed text-foreground">
+   905→                    &ldquo;{tm.quote}&rdquo;
+   906→                  </blockquote>
+   907→                  <div className="mt-4 flex items-center gap-3 border-t border-border/60 pt-4">
+   908→                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+   909→                      {tm.initials}
+   910→                    </div>
+   911→                    <div className="min-w-0">
+   912→                      <div className="truncate text-sm font-semibold">{tm.name}</div>
+   913→                      <div className="truncate text-xs text-muted-foreground">{tm.title}</div>
+   914→                    </div>
+   915→                  </div>
+   916→                </CardContent>
+   917→              </Card>
+   918→            </Reveal>
+   919→          ))}
+   920→        </div>
+   921→      </section>
+   922→
+   923→      {/* ORGANIZATIONS DIRECTORY */}
+   924→      {orgs.length > 0 && (
+   925→        <section id="organizations" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   926→          <Reveal>
+   927→            <div className="mb-8 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
+   928→              <div>
+   929→                <Badge variant="secondary" className="mb-2 gap-1"><Globe className="h-3.5 w-3.5" /> {t('home.orgsDirectoryBadge')}</Badge>
+   930→                <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.orgsDirectoryTitle')}</h2>
+   931→                <p className="mt-2 max-w-2xl text-muted-foreground">
+   932→                  {t('home.orgsDirectorySubtitle')}
+   933→                </p>
+   934→              </div>
+   935→            </div>
+   936→          </Reveal>
+   937→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   938→            {orgs.map((o, i) => (
+   939→              <Reveal key={o.id} delay={i * 80}>
+   940→                <Card className="h-full transition-all hover:shadow-md">
+   941→                  <CardContent className="p-5">
+   942→                    <div className="flex items-center gap-3">
+   943→                      {o.logoUrl ? (
+   944→                        <img src={o.logoUrl} alt={o.name} className="h-12 w-12 rounded-xl object-contain" />
+   945→                      ) : (
+   946→                        <div className="grid h-12 w-12 place-items-center rounded-xl text-white" style={{ backgroundColor: o.primaryColour }}>
+   947→                          <Building2 className="h-6 w-6" />
+   948→                        </div>
+   949→                      )}
+   950→                      <div className="min-w-0 flex-1">
+   951→                        <h3 className="truncate font-display text-sm font-semibold">{o.name}</h3>
+   952→                        <Badge variant="outline" className="mt-0.5 text-[10px]">{o.category?.replace(/_/g, ' ') || 'Organization'}</Badge>
+   953→                      </div>
+   954→                    </div>
+   955→                    {o.description && <p className="mt-3 line-clamp-2 text-xs text-muted-foreground">{o.description}</p>}
+   956→                    <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground">
+   957→                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {o._count?.members || 0} members</span>
+   958→                      <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> {o._count?.workspaces || 0} workspaces</span>
+   959→                      <span className="flex items-center gap-1"><Network className="h-3 w-3" /> {o._count?.voterGroups || 0} groups</span>
+   960→                    </div>
+   961→                    <div className="mt-2 font-mono text-[10px] text-muted-foreground">{o.subdomain}.votewise.com.ng</div>
+   962→                  </CardContent>
+   963→                </Card>
+   964→              </Reveal>
+   965→            ))}
+   966→          </div>
+   967→        </section>
+   968→      )}
+   969→
+   970→      {/* DEMO REQUEST + LIVE DEMO */}
+   971→      <section id="demo" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 scroll-mt-20">
+   972→        <div className="grid gap-6 lg:grid-cols-2">
+   973→          {/* Demo Request Form */}
+   974→          <Reveal>
+   975→            <Card className="votewise-card-glow h-full">
+   976→              <CardHeader>
+   977→                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.demoBadge')}</Badge>
+   978→                <CardTitle className="font-display text-2xl">{t('home.demoTitle')}</CardTitle>
+   979→                <p className="text-sm text-muted-foreground">
+   980→                  {t('home.demoSubtitle')}
+   981→                </p>
+   982→              </CardHeader>
+   983→              <CardContent className="space-y-3">
+   984→                <div className="grid grid-cols-2 gap-3">
+   985→                  <div className="space-y-1.5">
+   986→                    <Label htmlFor="demo-name">{t('home.demoContactPerson')} <span className="text-destructive">*</span></Label>
+   987→                    <Input id="demo-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+   988→                  </div>
+   989→                  <div className="space-y-1.5">
+   990→                    <Label htmlFor="demo-email">{t('home.demoEmail')} <span className="text-destructive">*</span></Label>
+   991→                    <Input id="demo-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+   992→                  </div>
+   993→                  <div className="space-y-1.5">
+   994→                    <Label htmlFor="demo-phone">{t('home.demoPhone')}</Label>
+   995→                    <Input id="demo-phone" value={demoForm.phone} onChange={(e) => setDemoForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+234 801 234 5678" />
+   996→                  </div>
+   997→                  <div className="space-y-1.5">
+   998→                    <Label htmlFor="demo-orgtype">{t('home.demoOrgType')}</Label>
+   999→                    <Input list="orgtypes-demo" id="demo-orgtype" value={demoForm.orgType} onChange={(e) => setDemoForm((f) => ({ ...f, orgType: e.target.value }))} placeholder="University" />
+  1000→                    <datalist id="orgtypes-demo"><option>University</option><option>Company</option><option>Church</option><option>Association</option><option>Government</option><option>NGO</option><option>Cooperative</option><option>Other</option></datalist>
+  1001→                  </div>
+  1002→                </div>
+  1003→                <div className="space-y-1.5">
+  1004→                  <Label htmlFor="demo-org">{t('home.demoOrgName')} <span className="text-destructive">*</span></Label>
+  1005→                  <Input id="demo-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="e.g. Lagos Medical Association" />
+  1006→                </div>
+  1007→                <div className="grid grid-cols-2 gap-3">
+  1008→                  <div className="space-y-1.5">
+  1009→                    <Label htmlFor="demo-voters">{t('home.demoEstimatedVoters')}</Label>
+  1010→                    <Input id="demo-voters" type="number" value={demoForm.estimatedVoters} onChange={(e) => setDemoForm((f) => ({ ...f, estimatedVoters: e.target.value }))} placeholder="5000" />
+  1011→                  </div>
+  1012→                  <div className="space-y-1.5">
+  1013→                    <Label htmlFor="demo-date">{t('home.demoPreferredDate')}</Label>
+  1014→                    <Input id="demo-date" type="date" value={demoForm.preferredDate} onChange={(e) => setDemoForm((f) => ({ ...f, preferredDate: e.target.value }))} />
+  1015→                  </div>
+  1016→                </div>
+  1017→                <div className="space-y-1.5">
+  1018→                  <Label htmlFor="demo-msg">{t('home.demoMessage')}</Label>
+  1019→                  <Textarea id="demo-msg" rows={2} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="Tell us about your election needs…" />
+  1020→                </div>
+  1021→                <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+  1022→                  {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+  1023→                  {demoBusy ? t('home.demoSending') : t('home.demoRequestBtn')}
+  1024→                </Button>
+  1025→                <p className="text-center text-xs text-muted-foreground">{t('home.demoNoCommitment')}</p>
+  1026→              </CardContent>
+  1027→            </Card>
+  1028→          </Reveal>
+  1029→          {/* Live Demo Try */}
+  1030→          <Reveal delay={120}>
+  1031→            <Card className="votewise-card-glow h-full overflow-hidden">
+  1032→              <CardHeader>
+  1033→                <Badge variant="secondary" className="mb-2 w-fit gap-1"><Play className="h-3.5 w-3.5" /> {t('home.liveDemoBadge')}</Badge>
+  1034→                <CardTitle className="font-display text-2xl">{t('home.liveDemoTitle')}</CardTitle>
+  1035→                <p className="text-sm text-muted-foreground">
+  1036→                  {t('home.liveDemoSubtitle')}
+  1037→                </p>
+  1038→              </CardHeader>
+  1039→              <CardContent className="space-y-3">
+  1040→                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+  1041→                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.tryVoterJourney')}</div>
+  1042→                  <div className="mt-2 flex flex-col gap-2">
+  1043→                    <Button onClick={() => setView('verify')} className="w-full gap-2">
+  1044→                      <Vote className="h-5 w-5" /> {t('home.tryVotingNow')}
+  1045→                    </Button>
+  1046→                    <div className="grid grid-cols-2 gap-2">
+  1047→                      <Button variant="outline" size="sm" onClick={() => setView('about')} className="gap-1.5">
+  1048→                        <Building2 className="h-4 w-4" /> {t('home.about')}
+  1049→                      </Button>
+  1050→                      <Button variant="outline" size="sm" onClick={() => setView('guide')} className="gap-1.5">
+  1051→                        <BookOpen className="h-4 w-4" /> {t('home.guide')}
+  1052→                      </Button>
+  1053→                    </div>
+  1054→                  </div>
+  1055→                </div>
+  1056→                <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+  1057→                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('home.viewPublicResults')}</div>
+  1058→                  <p className="mt-1 text-xs text-muted-foreground">{t('home.orgsDirectorySubtitle')}</p>
+  1059→                  <Button variant="outline" size="sm" onClick={() => document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })} className="mt-2 w-full gap-1.5">
+  1060→                    <Eye className="h-4 w-4" /> {t('home.viewLiveResults')}
+  1061→                  </Button>
+  1062→                </div>
+  1063→              </CardContent>
+  1064→            </Card>
+  1065→          </Reveal>
+  1066→        </div>
+  1067→      </section>
+  1068→
+  1069→      {/* DOCUMENTATION */}
+  1070→      <section id="docs" className="border-y border-border/60 bg-secondary/30 scroll-mt-20">
+  1071→        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6">
+  1072→          <Reveal>
+  1073→            <div className="mb-10 text-center">
+  1074→              <Badge variant="secondary" className="mb-2 gap-1"><FileText className="h-3.5 w-3.5" /> {t('home.docsBadge')}</Badge>
+  1075→              <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.docsTitle')}</h2>
+  1076→              <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+  1077→                {t('home.docsSubtitle')}
+  1078→              </p>
+  1079→            </div>
+  1080→          </Reveal>
+  1081→          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  1082→            {DOC_LINKS.map((d, i) => (
+  1083→              <Reveal key={d.title} delay={i * 80}>
+  1084→                <button
+  1085→                  onClick={() => {
+  1086→                    if (d.action === 'security' || d.action === 'how') {
+  1087→                      setView('home'); setTimeout(() => document.getElementById(d.action === 'security' ? 'security' : 'how')?.scrollIntoView({ behavior: 'smooth' }), 80)
+  1088→                    } else { setView(d.action as any) }
+  1089→                  }}
+  1090→                  className="w-full text-left"
+  1091→                >
+  1092→                  <Card className="h-full transition-all hover:shadow-md hover:-translate-y-0.5">
+  1093→                    <CardContent className="p-5">
+  1094→                      <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+  1095→                        <d.icon className="h-5 w-5" />
+  1096→                      </div>
+  1097→                      <h3 className="mt-3 font-display text-sm font-semibold">{d.title}</h3>
+  1098→                      <p className="mt-1.5 text-xs text-muted-foreground">{d.desc}</p>
+  1099→                      <div className="mt-3 flex items-center gap-1 text-xs font-medium text-primary">
+  1100→                        {t('home.readMore')} <ArrowRight className="h-3 w-3" />
+  1101→                      </div>
+  1102→                    </CardContent>
+  1103→                  </Card>
+  1104→                </button>
+  1105→              </Reveal>
+  1106→            ))}
+  1107→          </div>
+  1108→        </div>
+  1109→      </section>
+  1110→
+  1111→      {/* CONTACT */}
+  1112→      <section id="contact" className="mx-auto w-full max-w-3xl px-4 py-16 sm:px-6 scroll-mt-20">
+  1113→        <Reveal>
+  1114→          <div className="mb-8 text-center">
+  1115→            <Badge variant="secondary" className="mb-2 gap-1"><Mail className="h-3.5 w-3.5" /> {t('home.contactBadge')}</Badge>
+  1116→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.contactTitle')}</h2>
+  1117→            <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+  1118→              {t('home.contactSubtitle')}
+  1119→            </p>
+  1120→          </div>
+  1121→        </Reveal>
+  1122→        <Reveal delay={100}>
+  1123→          <Card className="votewise-card-glow">
+  1124→            <CardContent className="space-y-3 p-6">
+  1125→              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  1126→                <div className="space-y-1.5">
+  1127→                  <Label htmlFor="contact-name">{t('home.contactName')}</Label>
+  1128→                  <Input id="contact-name" value={demoForm.name} onChange={(e) => setDemoForm((f) => ({ ...f, name: e.target.value }))} placeholder="Jane Doe" />
+  1129→                </div>
+  1130→                <div className="space-y-1.5">
+  1131→                  <Label htmlFor="contact-email">{t('home.demoEmail')}</Label>
+  1132→                  <Input id="contact-email" type="email" value={demoForm.email} onChange={(e) => setDemoForm((f) => ({ ...f, email: e.target.value }))} placeholder="jane@yourorg.org" />
+  1133→                </div>
+  1134→              </div>
+  1135→              <div className="space-y-1.5">
+  1136→                <Label htmlFor="contact-org">{t('home.contactOrgOptional')}</Label>
+  1137→                <Input id="contact-org" value={demoForm.org} onChange={(e) => setDemoForm((f) => ({ ...f, org: e.target.value }))} placeholder="Your organization" />
+  1138→              </div>
+  1139→              <div className="space-y-1.5">
+  1140→                <Label htmlFor="contact-msg">{t('home.contactMessage')}</Label>
+  1141→                <Textarea id="contact-msg" rows={4} value={demoForm.message} onChange={(e) => setDemoForm((f) => ({ ...f, message: e.target.value }))} placeholder="How can we help?" />
+  1142→              </div>
+  1143→              <Button onClick={submitDemoRequest} disabled={demoBusy} className="w-full gap-2">
+  1144→                {demoBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+  1145→                {demoBusy ? t('home.contactSending') : t('home.contactSend')}
+  1146→              </Button>
+  1147→              <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-muted-foreground">
+  1148→                <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> hello@votewise.com.ng</span>
+  1149→                <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> +234 800 VOTEWISE</span>
+  1150→              </div>
+  1151→            </CardContent>
+  1152→          </Card>
+  1153→        </Reveal>
+  1154→      </section>
+  1155→
+  1156→      {/* ORG SIGNUP CTA */}
+  1157→      <section className="border-t border-border/60 bg-gradient-to-br from-accent/10 via-primary/5 to-transparent">
+  1158→        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center">
+  1159→          <div>
+  1160→            <Badge variant="secondary" className="mb-2 gap-1"><Sparkles className="h-3.5 w-3.5" /> {t('home.signupBadge')}</Badge>
+  1161→            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t('home.signupTitle')}</h2>
+  1162→            <p className="mt-2 max-w-lg text-muted-foreground">
+  1163→              {t('home.signupSubtitle')}
+  1164→            </p>
+  1165→            <div className="mt-4 space-y-1.5">
+  1166→              {[
+  1167→                t('home.signupFeature1'),
+  1168→                t('home.signupFeature2'),
+  1169→                t('home.signupFeature3'),
+  1170→                t('home.signupFeature4'),
+  1171→              ].map((f) => (
+  1172→                <div key={f} className="flex items-center gap-2 text-sm">
+  1173→                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {f}
+  1174→                </div>
+  1175→              ))}
+  1176→            </div>
+  1177→            <Button size="lg" onClick={() => setView('signup')} className="mt-6 gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
+  1178→              <Building2 className="h-5 w-5" /> {t('home.registerYourOrg')}
+  1179→            </Button>
+  1180→          </div>
+  1181→          <div className="grid grid-cols-3 gap-3">
+  1182→            {[
+  1183→              { icon: Building2, label: 'University', desc: 'Union election' },
+  1184→              { icon: Heart, label: 'NGO', desc: 'Board election' },
+  1185→              { icon: Church, label: 'Church', desc: 'Parish council' },
+  1186→              { icon: Briefcase, label: 'Company', desc: 'Staff election' },
+  1187→              { icon: Users2, label: 'Cooperative', desc: 'Exec election' },
+  1188→              { icon: Award, label: 'Prof. Body', desc: 'Officers election' },
+  1189→            ].map((o, i) => (
+  1190→              <div key={i} className="rounded-xl border border-border/60 bg-card p-4 text-center">
+  1191→                <o.icon className="mx-auto h-8 w-8 text-primary" />
+  1192→                <div className="mt-2 text-sm font-semibold">{o.label}</div>
+  1193→                <div className="text-[10px] text-muted-foreground">{o.desc}</div>
+  1194→              </div>
+  1195→            ))}
+  1196→          </div>
+  1197→        </div>
+  1198→      </section>
+  1199→    </div>
+  1200→  )
+  1201→}
+  1202→
+  1203→function HeroStat({ value, suffix, label }: { value: number; suffix?: string; label: string }) {
+  1204→  const [display, setDisplay] = useState(0)
+  1205→  useEffect(() => {
+  1206→    const duration = 800
+  1207→    const start = display
+  1208→    const diff = value - start
+  1209→    if (diff === 0) return
+  1210→    const startTime = Date.now()
+  1211→    const t = setInterval(() => {
+  1212→      const elapsed = Date.now() - startTime
+  1213→      const progress = Math.min(1, elapsed / duration)
+  1214→      const eased = 1 - Math.pow(1 - progress, 3)
+  1215→      setDisplay(Math.round(start + diff * eased))
+  1216→      if (progress >= 1) clearInterval(t)
+  1217→    }, 16)
+  1218→    return () => clearInterval(t)
+  1219→  }, [value])
+  1220→  return (
+  1221→    <div className="rounded-xl border border-border/60 bg-card/50 p-3 backdrop-blur">
+  1222→      <div className="font-display text-2xl font-bold tabular-nums text-primary sm:text-3xl">
+  1223→        {display.toLocaleString()}{suffix}
+  1224→      </div>
+  1225→      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+  1226→    </div>
+  1227→  )
+  1228→}
+  1229→
+  1230→// Local cn helper (avoid extra import churn in this file).
+  1231→function cn(...classes: (string | false | undefined | null)[]): string {
+  1232→  return classes.filter(Boolean).join(' ')
+  1233→}
+  1234→
+  1235→// ---------------------------------------------------------------------------
+  1236→// Verify an Election — public verification portal CTA.
+  1237→// Lets anyone paste an election ID or a /verify/[id] / /results/[id] URL and
+  1238→// jump straight to the public verification portal for that certified election.
+  1239→// ---------------------------------------------------------------------------
+  1240→
+  1241→function LearnHowToVoteSection() {
+  1242→  const { t } = useTranslation()
+  1243→  return (
+  1244→    <section
+  1245→      id="learn"
+  1246→      className="border-b border-border/60 bg-gradient-to-b from-accent/5 to-background scroll-mt-20"
+  1247→    >
+  1248→      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+  1249→        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+  1250→          <motion.div
+  1251→            initial={{ opacity: 0, x: -16 }}
+  1252→            whileInView={{ opacity: 1, x: 0 }}
+  1253→            viewport={{ once: true, margin: '-80px' }}
+  1254→            transition={{ duration: 0.5 }}
+  1255→            className="space-y-4"
+  1256→          >
+  1257→            <Badge variant="secondary" className="gap-1">
+  1258→              <GraduationCap className="h-3.5 w-3.5" /> Voter Education
+  1259→            </Badge>
+  1260→            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+  1261→              Learn How to Vote{' '}
+  1262→              <span className="text-primary">Securely</span>
+  1263→            </h2>
+  1264→            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+  1265→              New to VoteWise? Our Voter Education Portal walks you through the entire
+  1266→              voting process — from registration to receipt verification — with step-by-step
+  1267→              guides, security explanations, video tutorials, and best practices.
+  1268→            </p>
+  1269→            <ul className="space-y-2.5 pt-1">
+  1270→              <li className="flex items-start gap-2.5 text-sm">
+  1271→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1272→                  <BookOpen className="h-4 w-4" />
+  1273→                </span>
+  1274→                <span>
+  1275→                  <strong className="text-foreground">8-Step Voting Journey</strong> —
+  1276→                  understand exactly what happens at each stage of voting.
+  1277→                </span>
+  1278→              </li>
+  1279→              <li className="flex items-start gap-2.5 text-sm">
+  1280→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1281→                  <Shield className="h-4 w-4" />
+  1282→                </span>
+  1283→                <span>
+  1284→                  <strong className="text-foreground">Security Explained</strong> —
+  1285→                  learn how your vote is encrypted, anonymized, and audited.
+  1286→                </span>
+  1287→              </li>
+  1288→              <li className="flex items-start gap-2.5 text-sm">
+  1289→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1290→                  <Lightbulb className="h-4 w-4" />
+  1291→                </span>
+  1292→                <span>
+  1293→                  <strong className="text-foreground">Best Practices</strong> —
+  1294→                  tips for secure voting and what to do if something goes wrong.
+  1295→                </span>
+  1296→              </li>
+  1297→            </ul>
+  1298→            <div className="flex flex-wrap items-center gap-3 pt-2">
+  1299→              <Button size="lg" onClick={() => window.location.href = '/learn'} className="gap-2">
+  1300→                <GraduationCap className="h-5 w-5" /> Open Education Portal
+  1301→              </Button>
+  1302→              <Button size="lg" variant="outline" onClick={() => window.location.href = '/status'} className="gap-2">
+  1303→                <UserCheck className="h-5 w-5" /> Check Your Registration
+  1304→              </Button>
+  1305→            </div>
+  1306→          </motion.div>
+  1307→          <motion.div
+  1308→            initial={{ opacity: 0, x: 16 }}
+  1309→            whileInView={{ opacity: 1, x: 0 }}
+  1310→            viewport={{ once: true, margin: '-80px' }}
+  1311→            transition={{ duration: 0.5 }}
+  1312→            className="relative"
+  1313→          >
+  1314→            <Card className="votewise-card-glow">
+  1315→              <CardContent className="p-6 space-y-4">
+  1316→                <div className="flex items-center gap-3">
+  1317→                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+  1318→                    <GraduationCap className="h-6 w-6" />
+  1319→                  </div>
+  1320→                  <div>
+  1321→                    <div className="font-display text-lg font-bold">Voter Education Portal</div>
+  1322→                    <div className="text-xs text-muted-foreground">Everything you need to vote confidently</div>
+  1323→                  </div>
+  1324→                </div>
+  1325→                <Separator />
+  1326→                <div className="grid grid-cols-2 gap-3">
+  1327→                  <div className="rounded-lg border border-border/60 p-3 text-center">
+  1328→                    <div className="text-2xl font-bold text-primary">8</div>
+  1329→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Voting Steps</div>
+  1330→                  </div>
+  1331→                  <div className="rounded-lg border border-border/60 p-3 text-center">
+  1332→                    <div className="text-2xl font-bold text-primary">4</div>
+  1333→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Video Guides</div>
+  1334→                  </div>
+  1335→                  <div className="rounded-lg border border-border/60 p-3 text-center">
+  1336→                    <div className="text-2xl font-bold text-primary">10+</div>
+  1337→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">FAQs</div>
+  1338→                  </div>
+  1339→                  <div className="rounded-lg border border-border/60 p-3 text-center">
+  1340→                    <div className="text-2xl font-bold text-primary">6</div>
+  1341→                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Best Practices</div>
+  1342→                  </div>
+  1343→                </div>
+  1344→                <Alert>
+  1345→                  <Lightbulb className="h-4 w-4" />
+  1346→                  <AlertDescription className="text-xs">
+  1347→                    Knowledge is power. Understanding how voting works builds trust and increases turnout.
+  1348→                  </AlertDescription>
+  1349→                </Alert>
+  1350→              </CardContent>
+  1351→            </Card>
+  1352→          </motion.div>
+  1353→        </div>
+  1354→      </div>
+  1355→    </section>
+  1356→  )
+  1357→}
+  1358→
+  1359→function VerifyElectionSection() {
+  1360→  const [input, setInput] = useState('')
+  1361→  const { t } = useTranslation()
+  1362→
+  1363→  function resolveElectionId(raw: string): string | null {
+  1364→    const v = raw.trim()
+  1365→    if (!v) return null
+  1366→    // Accept a raw election ID (cuid-like, 20+ chars).
+  1367→    if (/^[a-z0-9]{20,}$/i.test(v)) return v
+  1368→    // Accept /verify/<id> or /results/<id> URLs (absolute or relative).
+  1369→    const m = v.match(/\/(?:verify|results)\/([a-z0-9]+)/i)
+  1370→    if (m) return m[1]
+  1371→    // Accept a full URL with the path above.
+  1372→    try {
+  1373→      const u = new URL(v)
+  1374→      const m2 = u.pathname.match(/\/(?:verify|results)\/([a-z0-9]+)/i)
+  1375→      if (m2) return m2[1]
+  1376→    } catch {
+  1377→      // not a URL — fall through
+  1378→    }
+  1379→    // Otherwise treat the trimmed string as an ID and let the portal 404 gracefully.
+  1380→    return v
+  1381→  }
+  1382→
+  1383→  function go() {
+  1384→    const id = resolveElectionId(input)
+  1385→    if (!id) {
+  1386→      toast.error(t('home.electionIdOrUrl'))
+  1387→      return
+  1388→    }
+  1389→    window.location.href = `/verify/${encodeURIComponent(id)}`
+  1390→  }
+  1391→
+  1392→  return (
+  1393→    <section id="verify-election" className="border-b border-border/60 bg-secondary/30 scroll-mt-20">
+  1394→      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+  1395→        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+  1396→          {/* Left: explanation */}
+  1397→          <motion.div
+  1398→            initial={{ opacity: 0, x: -16 }}
+  1399→            whileInView={{ opacity: 1, x: 0 }}
+  1400→            viewport={{ once: true, margin: '-80px' }}
+  1401→            transition={{ duration: 0.5 }}
+  1402→            className="space-y-4"
+  1403→          >
+  1404→            <Badge variant="secondary" className="gap-1">
+  1405→              <ShieldCheck className="h-3.5 w-3.5" /> {t('home.verifyElectionBadge')}
+  1406→            </Badge>
+  1407→            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+  1408→              {t('home.verifyElectionTitle')}{' '}
+  1409→              <span className="text-primary">{t('home.verifyElectionTitleHighlight')}</span>
+  1410→            </h2>
+  1411→            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+  1412→              {t('home.verifyElectionDesc')}
+  1413→            </p>
+  1414→            <ul className="space-y-2.5 pt-1">
+  1415→              <li className="flex items-start gap-2.5 text-sm">
+  1416→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1417→                  <ShieldCheck className="h-4 w-4" />
+  1418→                </span>
+  1419→                <span>
+  1420→                  <strong className="text-foreground">{t('home.verifyElectionCertified')}</strong>{' '}
+  1421→                  {t('home.verifyElectionCertifiedDesc')}
+  1422→                </span>
+  1423→              </li>
+  1424→              <li className="flex items-start gap-2.5 text-sm">
+  1425→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1426→                  <Lock className="h-4 w-4" />
+  1427→                </span>
+  1428→                <span>
+  1429→                  <strong className="text-foreground">{t('home.verifyElectionCrypto')}</strong>{' '}
+  1430→                  {t('home.verifyElectionCryptoDesc')}
+  1431→                </span>
+  1432→              </li>
+  1433→              <li className="flex items-start gap-2.5 text-sm">
+  1434→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1435→                  <ScrollText className="h-4 w-4" />
+  1436→                </span>
+  1437→                <span>
+  1438→                  <strong className="text-foreground">{t('home.verifyElectionTamper')}</strong>{' '}
+  1439→                  {t('home.verifyElectionTamperDesc')}
+  1440→                </span>
+  1441→              </li>
+  1442→            </ul>
+  1443→          </motion.div>
+  1444→
+  1445→          {/* Right: input + go */}
+  1446→          <motion.div
+  1447→            initial={{ opacity: 0, x: 16 }}
+  1448→            whileInView={{ opacity: 1, x: 0 }}
+  1449→            viewport={{ once: true, margin: '-80px' }}
+  1450→            transition={{ duration: 0.5 }}
+  1451→          >
+  1452→            <Card className="votewise-card-glow">
+  1453→              <CardHeader>
+  1454→                <CardTitle className="flex items-center gap-2 font-display text-lg">
+  1455→                  <ShieldCheck className="h-5 w-5 text-primary" /> {t('home.openVerificationPortal')}
+  1456→                </CardTitle>
+  1457→              </CardHeader>
+  1458→              <CardContent className="space-y-4">
+  1459→                <div className="space-y-2">
+  1460→                  <Label htmlFor="verify-election-input">{t('home.electionIdOrUrl')}</Label>
+  1461→                  <Input
+  1462→                    id="verify-election-input"
+  1463→                    placeholder={t('home.electionIdPlaceholder')}
+  1464→                    value={input}
+  1465→                    onChange={(e) => setInput(e.target.value)}
+  1466→                    onKeyDown={(e) => { if (e.key === 'Enter') go() }}
+  1467→                    className="font-mono text-sm"
+  1468→                    autoComplete="off"
+  1469→                    spellCheck={false}
+  1470→                  />
+  1471→                  <p className="text-xs text-muted-foreground">
+  1472→                    {t('home.electionIdHint')}
+  1473→                  </p>
+  1474→                </div>
+  1475→                <Button onClick={go} disabled={!input.trim()} className="w-full gap-2">
+  1476→                  <ExternalLink className="h-4 w-4" /> {t('home.openPortalBtn')}
+  1477→                </Button>
+  1478→                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+  1479→                  <p className="text-xs text-muted-foreground">
+  1480→                    {t('home.dontHaveId')}
+  1481→                  </p>
+  1482→                  <span className="text-xs text-muted-foreground">
+  1483→                    {t('home.askOrganizers')}
+  1484→                  </span>
+  1485→                </div>
+  1486→              </CardContent>
+  1487→            </Card>
+  1488→          </motion.div>
+  1489→        </div>
+  1490→      </div>
+  1491→    </section>
+  1492→  )
+  1493→}
+  1494→
+  1495→// ---------------------------------------------------------------------------
+  1496→// Voter Status Section — cross-org voter self-service lookup CTA.
+  1497→// Prompts the voter to check their registration status, voting history, and
+  1498→// receipts WITHOUT revealing vote choices. Links to /status.
+  1499→// ---------------------------------------------------------------------------
+  1500→function VoterStatusSection() {
+  1501→  const { t } = useTranslation()
+  1502→  return (
+  1503→    <section
+  1504→      id="voter-status"
+  1505→      className="border-b border-border/60 bg-gradient-to-b from-primary/5 to-background scroll-mt-20"
+  1506→    >
+  1507→      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 md:py-16">
+  1508→        <div className="grid gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+  1509→          {/* Left: explanation */}
+  1510→          <motion.div
+  1511→            initial={{ opacity: 0, x: -16 }}
+  1512→            whileInView={{ opacity: 1, x: 0 }}
+  1513→            viewport={{ once: true, margin: '-80px' }}
+  1514→            transition={{ duration: 0.5 }}
+  1515→            className="space-y-4"
+  1516→          >
+  1517→            <Badge variant="secondary" className="gap-1">
+  1518→              <UserCheck className="h-3.5 w-3.5" /> {t('home.voterStatusBadge')}
+  1519→            </Badge>
+  1520→            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+  1521→              {t('home.voterStatusTitle')}{' '}
+  1522→              <span className="text-primary">{t('home.voterStatusTitleHighlight')}</span>
+  1523→            </h2>
+  1524→            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">
+  1525→              {t('home.voterStatusDesc')}
+  1526→            </p>
+  1527→            <ul className="space-y-2.5 pt-1">
+  1528→              <li className="flex items-start gap-2.5 text-sm">
+  1529→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1530→                  <UserCheck className="h-4 w-4" />
+  1531→                </span>
+  1532→                <span>
+  1533→                  <strong className="text-foreground">{t('home.voterStatusRegistration')}</strong>{' '}
+  1534→                  {t('home.voterStatusRegistrationDesc')}
+  1535→                </span>
+  1536→              </li>
+  1537→              <li className="flex items-start gap-2.5 text-sm">
+  1538→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1539→                  <Vote className="h-4 w-4" />
+  1540→                </span>
+  1541→                <span>
+  1542→                  <strong className="text-foreground">{t('home.voterStatusParticipation')}</strong>{' '}
+  1543→                  {t('home.voterStatusParticipationDesc')}
+  1544→                </span>
+  1545→              </li>
+  1546→              <li className="flex items-start gap-2.5 text-sm">
+  1547→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1548→                  <Lock className="h-4 w-4" />
+  1549→                </span>
+  1550→                <span>
+  1551→                  <strong className="text-foreground">{t('home.voterStatusSecrecy')}</strong>{' '}
+  1552→                  {t('home.voterStatusSecrecyDesc')}
+  1553→                </span>
+  1554→              </li>
+  1555→              <li className="flex items-start gap-2.5 text-sm">
+  1556→                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+  1557→                  <Hash className="h-4 w-4" />
+  1558→                </span>
+  1559→                <span>
+  1560→                  <strong className="text-foreground">{t('home.voterStatusHashing')}</strong>{' '}
+  1561→                  {t('home.voterStatusHashingDesc')}
+  1562→                </span>
+  1563→              </li>
+  1564→            </ul>
+  1565→          </motion.div>
+  1566→
+  1567→          {/* Right: identifier chips + CTA */}
+  1568→          <motion.div
+  1569→            initial={{ opacity: 0, x: 16 }}
+  1570→            whileInView={{ opacity: 1, x: 0 }}
+  1571→            viewport={{ once: true, margin: '-80px' }}
+  1572→            transition={{ duration: 0.5 }}
+  1573→          >
+  1574→            <Card className="votewise-card-glow">
+  1575→              <CardHeader>
+  1576→                <CardTitle className="flex items-center gap-2 font-display text-lg">
+  1577→                  <ShieldCheck className="h-5 w-5 text-primary" /> {t('home.whatYouWillSee')}
+  1578→                </CardTitle>
+  1579→              </CardHeader>
+  1580→              <CardContent className="space-y-4">
+  1581→                <div className="grid grid-cols-2 gap-3">
+  1582→                  <IdentifierChip icon={Mail} label={t('home.identifierEmail')} />
+  1583→                  <IdentifierChip icon={Phone} label={t('home.identifierPhone')} />
+  1584→                  <IdentifierChip icon={Hash} label={t('home.identifierVoterId')} />
+  1585→                  <IdentifierChip icon={UserCheck} label={t('home.identifierAny')} />
+  1586→                </div>
+  1587→                <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
+  1588→                  <p className="flex items-start gap-2">
+  1589→                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+  1590→                    <span>
+  1591→                      {t('home.voterStatusDesc')}
+  1592→                    </span>
+  1593→                  </p>
+  1594→                </div>
+  1595→                <Button asChild className="w-full gap-2">
+  1596→                  <Link href="/status">
+  1597→                    <UserCheck className="h-4 w-4" /> {t('home.checkVoterStatus')}
+  1598→                    <ArrowRight className="h-4 w-4" />
+  1599→                  </Link>
+  1600→                </Button>
+  1601→                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+  1602→                  <p className="text-xs text-muted-foreground">
+  1603→                    {t('home.dontHaveVoterId')}
+  1604→                  </p>
+  1605→                  <span className="text-xs text-muted-foreground">
+  1606→                    {t('home.useEmailOrPhone')}
+  1607→                  </span>
+  1608→                </div>
+  1609→              </CardContent>
+  1610→            </Card>
+  1611→          </motion.div>
+  1612→        </div>
+  1613→      </div>
+  1614→    </section>
+  1615→  )
+  1616→}
+  1617→
+  1618→function IdentifierChip({ icon: Icon, label }: { icon: any; label: string }) {
+  1619→  return (
+  1620→    <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card p-2.5">
+  1621→      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+  1622→        <Icon className="h-4 w-4" />
+  1623→      </div>
+  1624→      <span className="text-xs font-medium">{label}</span>
+  1625→    </div>
+  1626→  )
+  1627→}
+  1628→

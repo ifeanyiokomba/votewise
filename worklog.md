@@ -11301,3 +11301,288 @@ Stage Summary:
 - ✅ Auto-syncs to process.env — all platform code works seamlessly
 - ✅ Test button verifies keys against real provider APIs
 - ✅ Only platform super admins can access
+
+---
+Task ID: TERMII-STUDY
+Agent: Termii UI/UX Researcher
+Task: Analyze Termii.com design patterns for VoteWise redesign inspiration
+
+Work Log:
+- Loaded the agent-browser skill (v0.32.3) and opened https://termii.com at 1440×900 viewport.
+- Captured full-page screenshots of: homepage (light + dark mode), /pricing, /about, /products/signals, app.termii.com login, plus section-level crops (hero, platform, API, compliance, customer stories, footer, mega-menu, mobile 390px).
+- Used `agent-browser eval` to extract computed styles: typography scale, color palette, button styles, card styles, mega-menu dropdown, footer grid, container max-width, dark-mode tokens, mobile scaling.
+- Tested hover state on the "Product" nav button to inspect the mega-menu (864×341 card with 18px radius + layered shadow).
+- Tested the dark-mode toggle (the `<html>` element flips class between `light lenis` and `lenis dark`).
+- Tested mobile responsive at iPhone 12 (390×844) — nav stays horizontal, no hamburger; H1 scales 48px → 33.6px; container padding 40px → 20px.
+- Visited app.termii.com (legacy dashboard) — confirmed it uses an older design system (Karla font, gray text #333, 20px-radius buttons) vs. the new Geist-based marketing site.
+- Confirmed key trust signals on homepage: 24-logo SVG marquee, animated odometer counters (3B+, 190+, 99.9%), SOC 2 Type II + ISO 27001 compliance badges, customer-story carousel with Chipper Cash / Umba / Paystack / Moniepoint.
+- Did NOT modify any source files; this was research-only. Screenshots saved under /home/z/my-project/termii-research/.
+
+Stage Summary:
+
+═══════════════════════════════════════════════════════════════════════════
+1) VISUAL DESIGN LANGUAGE
+═══════════════════════════════════════════════════════════════════════════
+
+COLOR PALETTE (extracted from computed styles, light mode):
+- Background (page):    rgb(253, 253, 251)  #FDFDFB  — warm off-white (very subtle yellow tint, NOT pure white)
+- Foreground (text):    rgb(14, 21, 18)     #0E1512  — near-black with green undertone (their "ink" color)
+- Muted text:           rgb(103, 116, 109)  #67746D  — desaturated sage-gray for secondary copy
+- Primary (brand):      rgb(22, 61, 46)     #163D2E  — deep forest green (buttons, accents, final-CTA bg)
+- Primary-deep:         rgb(30, 92, 68)     #1E5C44  — slightly brighter forest green (used on hover/secondary)
+- Accent (highlight):   rgb(0, 196, 140)    #00C48C  — bright mint/teal — used ONLY for tiny punctuation highlights (e.g. the trailing "." in H1, small icons)
+- Accent-light:         rgb(46, 204, 151)   #2ECC97  — softer mint for hover/active states
+- Accent-pale:          rgb(134, 239, 172)  #86EFAC  — mint-100 for tints/badges
+- Surface-tint (warm):  rgb(249, 246, 243)  #F9F6F3  — feature-card background, slightly warmer than page bg
+- Border:               rgb(238, 240, 234)  #EEF0EA  — hairline borders, very subtle
+- Border-soft:          rgb(232, 235, 229)  #E8EBE5  — button borders
+- Status red:           rgb(255, 95, 87)    #FF5F57  — error/fraud indicators
+- Status amber:         rgb(254, 188, 46)   #FEBC2E  — warning
+- Status green:         rgb(40, 200, 64)    #28C840  — success
+
+DARK MODE TOKENS:
+- Background: rgb(8, 9, 10)  #08090A  — near-black, slightly cool
+- Foreground: rgb(237, 237, 240)  #EDEDF0  — near-white
+- Toggle: `<html>` element swaps class `light lenis` ↔ `lenis dark`
+
+TYPOGRAPHY (Geist font family — Vercel's open-source typeface):
+- Display/H1: 48px / weight 450 (medium-light) / line-height 50.88px / letter-spacing -0.96px  ← negative tracking for tightness
+- H2 (section): 36px / weight 450 / line-height 44px / letter-spacing -0.72px
+- H2 (sub-section): 24-30px / weight 450
+- H3 (small heading): 20px / weight 450 / line-height 28px / letter-spacing -0.4px
+- H3 (label heading): 14-16px / weight 450 / letter-spacing -0.32px
+- Body (lead): 18px / weight 400 / line-height 29.25px (1.625)
+- Body (default): 14-16px / weight 400 / line-height 22-26px
+- Caption/eyebrow: 13px / weight 400
+- Nav items: 14px / weight 500
+- Buttons: 14-15.2px / weight 500
+- Code: "Geist Mono" (monospace variant of Geist) for code samples in API section
+- WEIGHTS: 400 (regular), 450 (medium-light — unusual, this is Geist's signature "almost-medium"), 500 (medium). No 600/700 used in marketing site — restraint = premium.
+
+SIGNATURE TOUCH: H1 ends with a single period " ." where the period is colored in the bright mint accent (#00C48C) — a subtle brand signature that recurs across page variants ("Every Fraud Alert Guaranteed ." / "Every OTP Guaranteed ." / "Every Transaction Guaranteed ." — these rotate on reload).
+
+SPACING & GRID:
+- Max content width: 1152px (centered, with 144px side margin on 1440 viewport)
+- Horizontal padding inside container: 40px desktop / 20px mobile
+- Vertical section padding: ~96-112px top/bottom (rhythm of "big air" between sections)
+- Card padding: 16-24px (small cards) → 40px (customer-story cards)
+- Grid gap: 12-16px for tight card grids, 48px for footer columns, 32px for two-col layouts
+- Common grid templates: 4-col (255px × 4), 3-col (346/353px × 3), 2-col (408+613 asymmetric)
+
+BORDER RADIUS:
+- Small buttons / inputs: 8-10px
+- Cards: 14-18px (their "soft" radius — large enough to feel modern, small enough to feel enterprise)
+- Pills/badges: 10px (NOT fully rounded — keeps enterprise feel)
+- Mega-menu panel: 18px
+- Special: one card used asymmetric radius `18px 18px 18px 8px` (one corner deliberately different — playful touch)
+- "Read all stories" pill: border-radius 33554432px (fully rounded pill — used sparingly)
+
+SHADOWS (premium restraint — most cards have NO shadow):
+- Subtle: `0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06)` — for pills/badges on light bg
+- Elevated: `0 8px 16px rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.04)` — for mega-menu and floating transaction-status card mockup
+- Cards (feature grid): NO shadow, just 1px border `rgb(238, 240, 234)` + warm tinted bg — creates "lattice" feel
+- Customer-story cards: NO border, NO shadow, NO bg — pure typography + whitespace separation
+
+ICONOGRAPHY:
+- Custom SVG icons (16×16, 24×24 viewBoxes) with 1-1.5px stroke
+- Stroke color matches text context: muted (#67746D) for default, ink (#0E1512) for active
+- No emoji, no stock icon libraries detected
+- Logo cloud uses inline SVG brand marks (66px wide, 12-25px tall — uniform width, varied height)
+- Compliance badges: simple SVG lock/shield marks for SOC 2 Type II + ISO 27001
+
+═══════════════════════════════════════════════════════════════════════════
+2) LAYOUT PATTERNS
+═══════════════════════════════════════════════════════════════════════════
+
+HEADER / NAV:
+- Fixed position (`position: fixed`), 65px tall, semi-transparent bg `oklab(0.993…/0.9)` (90% opacity warm white) + 1px hairline bottom border `rgb(238, 240, 234)`
+- Centered 1152px container with: logo (left, 106×18 SVG wordmark) → nav buttons (center-left) → "Sign in" + "Get started" + dark-mode toggle (right)
+- Nav uses BUTTON elements (not links) for dropdown triggers — Product, Industries, Devs, Company
+- "Pricing" is a plain link (no dropdown)
+- "Get started" CTA: solid forest green `#163D2E` bg, white text, 10px radius, weight 500, 14px, no shadow
+- "Sign in": ghost link, ink text, 10px radius, no border
+- Mega-menu (Product): 864×341 panel, white bg, 18px radius, layered shadow, contains 3-column layout with category headers (Products / Solutions / Resources), each item has icon + title + one-line description
+- Mobile: nav does NOT collapse to hamburger — they hide "Industries" + "Pricing" but keep "Product / Devs / Company" as buttons (uses native dropdown behavior). Logo + "Get started" remain visible.
+
+HERO SECTION (above the fold):
+- Layout: 2-column asymmetric grid (left ~408px text col, right ~613px visual col), 48px gap
+- LEFT COLUMN:
+  - Eyebrow pill (badge) at top: white bg, 1px border, subtle shadow, "3B+ transactions processed" with a tiny status dot
+  - H1 (48px, weight 450): "Every [X] Guaranteed ." — rotates between Fraud Alert / OTP / Notification / Transaction on each reload (dynamic, conveys breadth)
+  - Subhead (18px, muted): one-line value prop
+  - Two CTAs side-by-side: primary "Start building" (forest green, 15.2px) + secondary "Book a demo" (white bg, 1px border)
+- RIGHT COLUMN:
+  - Animated product UI mockup: a "transaction status card" (288px wide, 18px radius, white bg, layered shadow) showing TXN-9190, ₦85,000, status pipeline (Verified → Secured → Sent → Confirmed) with green check icons + "Processing transfer…" spinner
+  - Mockup uses real-feeling microcopy ("Ayla · Termii AI 99.9% delivery verified via SMS. Finalizing…") — sells the product visually without needing screenshots
+
+SECTION SPACING & RHYTHM:
+- ~13 sections on homepage, total height ~11,419px (long, scroll-driven narrative)
+- Each section: ~96-112px vertical padding (big air), 1152px max-width inner container
+- Section bg alternates between transparent (page warm white shows through) and tinted variants:
+  - `oklab(0.974…/0.4)` — very faint warm tint (used for the "Our story" timeline on About page)
+  - `oklab(0.999…/0.4-0.7)` — translucent white overlay cards
+  - `rgb(249, 246, 243)` — warm cream for feature cards
+- Rhythm pattern: tall hero (901px) → short trust strip (437px) → medium problem section (712px) → tall product-feature bento (973px, 958px) → API section with code tabs → integration logos (1260px) → pipeline visual (693px) → use-case grid (926px) → AI section (866px) → compliance (1012px) → customer stories carousel (809px) → company logos (894px) → final CTA (467px) → footer (509px)
+
+CARD DESIGNS (4 distinct patterns):
+1. **Feature card** (most common): warm-tinted bg `#F9F6F3`, 1px hairline border, 14px radius, 24px padding, NO shadow. Used in problem/solution grids (4-col).
+2. **Floating UI mockup**: white bg, 18px radius, layered elevated shadow `0 8px 16px rgba(0,0,0,0.06)`. Used for product visualizations (transaction card, dashboard preview).
+3. **Stat card**: white bg, 1px border, 14px radius, 16px padding. Shows metric + label (e.g. "SMS — Delivery rate — 99.4%").
+4. **Customer-story card**: NO bg, NO border, NO shadow, NO radius. Pure typography — 40px padding, separated by whitespace. Headline + 2-3 line story + "Read the full story →" link. This is the most "premium" treatment — restraint signals confidence.
+5. **Mega-menu panel**: white bg, 1px border, 18px radius, layered shadow, padding 0 (children handle padding).
+
+FOOTER:
+- 5 columns: Product / Industries / Developers / Company / Legal — each with 4-7 plain text links (no decoration)
+- 6-col grid: `182px 130px 130px 130px 130px 130px` with 48px gap
+- Footer column headers: 14px H3 weight 450
+- Footer links: 14px, weight 400, color `#0E1512` (no muted gray — footer is high-contrast)
+- Support email `support@termii.com` sits separately above the columns
+- Social icons (X, LinkedIn, Instagram) sit in a flex row, 4px gap, small 16-20px SVGs
+- Footer height: 509px — generous, no cramping
+- NO newsletter signup form, NO "trusted by" badges repeated, NO big CTA — just clean navigation
+
+═══════════════════════════════════════════════════════════════════════════
+3) UX PATTERNS
+═══════════════════════════════════════════════════════════════════════════
+
+CTA BUTTON STYLES:
+- **Primary**: solid `#163D2E` (deep forest green) bg, white text, 10px radius, weight 500, 14-15.2px, no shadow. Padding `0 16px 0 20px` (asymmetric — more padding right of text, where arrow icon sits). Includes a small arrow `→` SVG.
+- **Secondary**: white bg, 1px border `#E8EBE5`, ink text, 10px radius, weight 500, no shadow. Padding `0 20px`.
+- **Tertiary/ghost**: transparent bg, muted gray text `#67746D`, no border, 8px radius, weight 500, 14px. Used for nav items.
+- **Pill**: fully-rounded (33554432px radius) — used for "Read all stories" link, white bg + border.
+- **Icon CTA**: status-pill badges (e.g. "3B+ transactions processed") with a colored dot icon, white bg, subtle shadow.
+- NEVER uses gradient buttons, NEVER uses heavy shadows on buttons. Restraint = premium.
+
+TRUST INDICATORS (placement order):
+1. **Hero badge pill** (top of hero): "3B+ transactions processed" with green dot — immediately above H1
+2. **Logo cloud strip** (right after hero): 24 SVG brand logos in tight 6-col grid, 1px gap (looks like a continuous marquee). Headline: "Trusted by leading fintechs, banks and institutions globally" (24px, muted gray).
+3. **Animated stat counters**: 3B+ transactions, 190+ countries, 99.9% delivery. Numbers are 44px weight 400 (lighter than H1 — feels like data, not marketing). Uses odometer-style animation (digits 0-9 visible in DOM during scroll-triggered count-up).
+4. **Customer-story carousel**: 4 stories (Chipper Cash, Umba, Paystack, Moniepoint) with Prev/Next buttons + "Read all stories" link. Each story: bold headline-as-quote + 2-3 line outcome + "Read the full story →".
+5. **Compliance badges** (in dedicated "Built for regulated industries" section): SOC 2 Type II + ISO 27001 logos + supporting text about licensing.
+6. **Press logos** in About page ("In the press" section) — TechCrunch, TechCabal, etc.
+7. **Footer**: clean nav, support email prominent, no badge spam.
+
+STATISTICS / METRICS PRESENTATION:
+- Big numbers use **light weight (400)**, NOT bold — counter-intuitive but reads as "data" not "hype"
+- Numbers always paired with a label below in smaller muted text
+- Animated count-up on scroll (odometer effect — visible from the digit-rotation in DOM)
+- Stats shown inside the right-column product mockup, not as standalone tiles — they live inside the product visualization (e.g. "99.9% delivery verified via SMS" appears inside the floating transaction card)
+
+ANIMATION / MICRO-INTERACTION HINTS:
+- Uses **Lenis** smooth scroll library (class `lenis` on `<html>`) — buttery scroll feel
+- Dark-mode toggle is a sun/moon switch with smooth transition
+- Mega-menu opens on hover with no jarring animation (instant appear, but content within may fade)
+- Customer-story carousel has Prev/Next arrow buttons
+- Animated stat counters trigger on scroll into view
+- Hero mockup likely has subtle motion (status pipeline animates: "Processing transfer… → Transfer confirmed")
+- Code tabs (cURL/Node.js/Python/PHP) with copy-to-clipboard button — interactive, not static
+- NO heavy parallax, NO scroll-jacking, NO auto-playing video — restraint
+
+MOBILE RESPONSIVE:
+- H1 scales 48px → 33.6px (uses `clamp()` or similar fluid type)
+- Container padding 40px → 20px
+- Nav keeps horizontal layout (no hamburger) — they hide secondary items instead
+- 4-col grids collapse to 2-col on mobile (verified on signals page)
+- Hero 2-col layout collapses to 1-col stack
+- Card radius stays at 14-18px (no reduction)
+- Body font sizes stay readable (14-16px minimum)
+- Touch targets stay ≥44px (the 51px-tall login input is a good reference)
+
+═══════════════════════════════════════════════════════════════════════════
+4) PREMIUM SAAS FEEL — WHAT MAKES IT WORK
+═══════════════════════════════════════════════════════════════════════════
+
+1. **RESTRAINT IS THE BRAND**: No gradients. No glow effects. No drop shadows on cards. No emoji. Single accent color used sparingly. The whole palette is essentially "warm off-white + deep forest green + 1 bright mint punctuation dot." Less is more — and it reads as enterprise-grade.
+
+2. **WARM NEUTRALS, NOT PURE WHITE**: Page bg `#FDFDFB` (warm) instead of pure `#FFFFFF`. Card bg `#F9F6F3` (warmer cream). Borders `#EEF0EA` (warm gray). This subtle warmth (1-2% yellow tint) makes the site feel like a printed annual report, not a tech demo.
+
+3. **FOREST GREEN AS PRIMARY, NOT BLUE/PURPLE**: Most SaaS use Stripe-blue or Linear-purple. Termii's deep forest green `#163D2E` reads as "money, trust, growth, Africa" without being cliché. The bright mint accent `#00C48C` is used only for tiny punctuation — never for large fills.
+
+4. **GEIST TYPEFACE + WEIGHT 450**: Vercel's Geist font, used at the unusual weight 450 (between regular 400 and medium 500), gives headings a distinctive "almost-medium" feel. Negative letter-spacing (-0.96px on H1) keeps large headlines tight and modern. Mono variant used for code samples.
+
+5. **THE PERIOD TRICK**: H1 ends with " ." where the period is mint-green. Tiny, but it's a brand signature that recurs across page variants. Memorable without being loud.
+
+6. **TYPOGRAPHY-AS-SEPARATOR**: Customer-story cards have NO borders, NO shadows, NO bg color. They rely purely on whitespace + typography hierarchy. This is the most confident move on the page — it says "we don't need decoration."
+
+7. **PRODUCT VISUALIZATION > SCREENSHOTS**: Hero uses an animated "transaction status card" mockup (TXN-9190, ₦85,000, Verified → Sent → Confirmed) instead of a static dashboard screenshot. Sells the product without showing the actual UI. Makes the value prop feel tangible.
+
+8. **DATA-AS-DESIGN**: Big stats use weight 400 (light), not bold. Reads as factual, not boastful. Numbers always paired with labels.
+
+9. **LONG-FORM SCROLL NARRATIVE**: ~11,400px tall homepage with 13 sections, each section earns its place with a clear heading. No "above the fold" anxiety. The page is a story: problem → solution → product → API → integrations → pipeline → use cases → AI → compliance → proof → logos → CTA.
+
+10. **DARK MODE BUILT-IN**: A simple sun/moon switch in the nav. Dark mode bg is `#08090A` (near-black, slightly cool), text `#EDEDF0`. Not an afterthought.
+
+11. **FIXED TRANSPARENT NAV**: 65px tall, 90%-opacity warm white bg, hairline bottom border. Stays out of the way. Mega-menu opens on hover with a soft elevated shadow.
+
+12. **NO NEWSLETTER SPAM, NO EXIT-INTENT POPUPS, NO CHATBOTS ON MARKETING SITE**: Clean. The support email is in the footer. Trust is built by content quality, not interruption.
+
+13. **COMPLIANCE PROOF, NOT JUST CLAIMS**: SOC 2 Type II + ISO 27001 badges shown as actual SVG marks, not text. "Built for regulated industries. Certified, licensed and audited." — speaks directly to enterprise/fintech buyers.
+
+14. **CUSTOMER STORIES ARE OUTCOMES, NOT TESTIMONIALS**: "Chipper Cash eliminated OTP drop-off and scaled verification across 7 African countries" — outcome-first headline, not a quote. Reads as a case study link, not a fluffy quote card.
+
+15. **ASYMMETRIC GRIDS**: Hero is 408/613 (not 50/50). Section "From API call to confirmed delivery" uses 408/613 split. Avoids the boring symmetric SaaS look.
+
+═══════════════════════════════════════════════════════════════════════════
+5) ACTIONABLE DESIGN PATTERNS FOR VOTEWISE
+═══════════════════════════════════════════════════════════════════════════
+
+(These are design-language takeaways, not content/branding copies.)
+
+A. COLOR SYSTEM (for VoteWise tokens):
+- Page bg: warm off-white (try `#FDFDFB`)
+- Ink/foreground: near-black with a subtle hue tint (try `#0E1512`)
+- Muted text: desaturated sage-gray (try `#67746D`)
+- Primary brand: pick ONE deep color as the "anchor" — for an election platform, a deep ink-blue `#0F2A4A` or trust-green `#163D2E` works
+- Accent: ONE bright color used ONLY for punctuation/dots/status (try `#00C48C` mint or a VoteWise-specific accent)
+- Border: warm hairline gray (try `#EEF0EA`)
+- Card surface: slightly warmer than page bg (try `#F9F6F3`)
+- Status colors: red `#FF5F57`, amber `#FEBC2E`, green `#28C840` — for vote/election status indicators
+
+B. TYPOGRAPHY:
+- Use Geist (or Inter as a fallback) at weights 400/450/500 only — avoid 600/700 in marketing UI
+- H1: 48px, weight 450, line-height ~1.06, letter-spacing -0.02em
+- H2: 36px, weight 450, letter-spacing -0.02em
+- Body lead: 18px, line-height 1.625, muted color
+- Code/data: Geist Mono
+- Add a signature touch: color a single character (period or arrow) in the accent color
+
+C. LAYOUT:
+- Max-width 1152px, 40px side padding desktop / 20px mobile
+- Fixed 65px nav with 90%-opacity bg + 1px hairline bottom border
+- Vertical section padding 96-112px (generous air)
+- Asymmetric 2-col hero (40/60 split, NOT 50/50)
+- Card grid: 4-col on desktop, 2-col on tablet, 1-col on mobile, 16px gap, 14px radius, 1px hairline border, NO shadow
+- Customer-story / testimonial cards: NO bg/border/shadow — pure typography + 40px padding
+
+D. UX PATTERNS TO ADOPT:
+- Hero: eyebrow badge (e.g. "X votes processed") + H1 + subhead + 2 CTAs (primary solid + secondary bordered) + animated product mockup on the right
+- Trust strip immediately after hero: tight grid of partner/institution logos
+- Animated odometer stats on scroll: turnout %, votes cast, constituencies, audit-log entries
+- Section rhythm: alternate problem/solution/use-case sections with generous whitespace
+- Code sample section with tabs (cURL/Node/Python) — useful for VoteWise's developer API
+- Customer-story carousel: outcome-first headlines ("UNILAG ran a 42,000-voter election with zero disputes")
+- Compliance section: show actual badge SVGs (NDPR, ISO 27001, etc.) — not text claims
+- Final CTA: simple, two buttons ("Sign up" + "Book a demo"), no dark dramatic card needed
+- Footer: 5 link columns + support email + 3 social icons, generous 500px height
+
+E. PREMIUM-SIGNAL CHECKLIST:
+- Warm neutrals, never pure white
+- Single deep brand color, one tiny accent
+- No gradients, no glow, no heavy shadows
+- Weight 450 + negative letter-spacing on headlines
+- Typography-as-separator (no border on testimonial cards)
+- Product mockup > static screenshot
+- Light-weight big numbers (weight 400, not bold)
+- Long-form scroll narrative, ~13 sections
+- Built-in dark mode toggle in nav
+- Lenis smooth scroll
+- Compliance badges as SVG marks
+- No popups, no chatbots, no newsletter spam on marketing site
+
+F. WHAT TO AVOID (lessons from app.termii.com legacy):
+- Don't use a different design system for marketing vs. app (Termii's app.termii.com uses Karla font + gray #333 text + 20px-radius buttons — feels disconnected from the polished marketing site)
+- Don't use bold weights (700+) for headings — reads as "old SaaS"
+- Don't use pure white backgrounds — feels sterile
+- Don't use heavy shadows — feels 2018
+- Don't use hamburger menu on tablet — keep nav horizontal where possible
+
