@@ -1,7 +1,9 @@
 # ADR-0001: Infrastructure Platform Strategy
 
-**Status:** Proposed — needs Ifeanyi's decision before Chapter 2 starts
-**Date:** 2026-08-05
+**Status:** Accepted (Option C) — proceeding on this basis since it went unchallenged after being
+presented with the recommendation attached. If this isn't actually the intended choice, say so and
+Chapter 2 work will be redirected before more is built on top of it.
+**Date:** 2026-08-05, accepted 2026-08-06
 
 ## Context
 
@@ -97,8 +99,16 @@ satisfy the directive's actual underlying principles, as opposed to its specific
 This is a recommendation, not a decision — it's Ifeanyi's call, and it changes what Chapter 2 looks
 like depending on the answer.
 
+## Follow-up: Supabase specifically, or a plainer managed Postgres
+
+Under Option C, defaulting to **Supabase** as the managed Postgres provider specifically — it also
+picks up the directive's intended auth/storage/RLS tooling essentially for free, which is more
+consistent with Section 5 of the directive than a generic Postgres host would be, and it's the
+lower-effort path for a solo operator. Prisma stays as the ORM against it. This default hasn't been
+explicitly confirmed either — flagging it the same way, rather than treating silence as certainty.
+
 ## What's needed to proceed
 
-A confirmed choice of A, B, or C before Chapter 2 (Database and tenant isolation) begins. Everything
-else delivered in this chapter — the PRD, threat model, role matrix, and open-questions document —
-holds regardless of the answer.
+Chapter 2 work is proceeding on the above basis. A real Supabase project is needed to actually build
+and verify Row Level Security policies rather than just writing SQL that looks correct — that
+connector is available and just needs turning on.

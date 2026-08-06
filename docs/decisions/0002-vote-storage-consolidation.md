@@ -1,7 +1,7 @@
 # ADR-0002: Vote Storage Consolidation
 
-**Status:** Proposed — target design decided, migration path pending Chapter 2/6
-**Date:** 2026-08-05
+**Status:** Accepted — trace complete, immediate exposure closed, schema consolidation still pending
+**Date:** 2026-08-05, updated 2026-08-06
 
 ## Context
 
@@ -46,12 +46,30 @@ From what's already built, this retires:
 - Having three parallel models doing overlapping jobs. One canonical table for eligibility/
   participation, one canonical table for accepted ballots.
 
-## What's needed to proceed
+## Trace results (2026-08-06)
 
-Before Chapter 2 writes the actual migration: a trace of which of the three existing models the live
-vote-casting API route (`POST /api/v1/voting/*` or equivalent) actually writes to today, and whether
-the other two are dead code, migration remnants, or — the concerning case — still active and
-inconsistent with each other. That trace is Chapter 2 work, not resolved here.
+There were three vote-casting entry points, not one, and they were not equally dead:
+
+- **`POST /api/vote/cast`** — already formally deprecated before this session, returns 410. Its own
+  comment correctly identifies it as the old `EncryptedVote`-writing path and points to the real one.
+- **`POST /api/workspace/ballot/submit`** — the real, current path. Goes through
+  `src/lib/sve/vote-recorder.ts`, part of a genuinely careful module (`src/lib/sve/`: crypto,
+  validation-pipeline, ballot-builder, receipt, rla, tally, live-counter). This is the one to build
+  on, not replace.
+- **`POST /api/v1/voting/cast`** — **live, reachable, and not referenced by any current frontend
+  page**, meaning nothing in the app currently links to it, but nothing stopped it from accepting a
+  direct request either. It wrote `candidateId` and `voterId` as **plain-text fields on the same
+  `VoteRecord` row**, with no encryption (its own code comment even said *"in production: encrypt
+  with AES-256-GCM first"* — meaning it knew it wasn't production-ready and shipped anyway) and no
+  check that the authenticated voter's organization matched the election's organization.
+
+This is now fixed: `/api/v1/voting/cast` has been disabled (410, same pattern as the other
+deprecated route), committed separately from the rest of this chapter's work so it's easy to review
+on its own. See the commit "Disable unencrypted, identity-linked vote-casting endpoint."
+
+This closes the immediate exposure. It does not close ADR-0002 itself — `Ballot.voterId` and the
+general three-model overlap (Section "Decision" above) still need the schema consolidation once
+ADR-0001's infrastructure question is being executed against.
 
 ## Consequences
 
