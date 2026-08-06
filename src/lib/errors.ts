@@ -71,6 +71,9 @@ export const ERROR_CODES = {
   // Server errors (500)
   INTERNAL_ERROR: { code: 'INTERNAL_ERROR', message: 'An internal error occurred. Please try again.', status: 500 },
   SERVICE_UNAVAILABLE: { code: 'SERVICE_UNAVAILABLE', message: 'Service temporarily unavailable. Please try again.', status: 503 },
+
+  // Deprecated endpoints (410)
+  GONE: { code: 'GONE', message: 'This endpoint is no longer available', status: 410 },
 } as const
 
 export type ErrorCode = keyof typeof ERROR_CODES
