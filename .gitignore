@@ -81,3 +81,9 @@ screenshot-*.png
 # Modified marker
 .modifieddb/*.db-wal
 db/*.db-shm
+-e 
+# npm lockfile — this project uses bun (bun.lock) as its package manager.
+# package-lock.json can appear locally if npm is used for one-off tooling
+# (e.g. Chapter 2's verification test, which needed tsx/prisma outside bun);
+# not committed, to avoid two competing lockfiles.
+package-lock.json

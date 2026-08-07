@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["dom", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/lib/db": ["./chapter2-verification/mock-db.ts"],
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["chapter2-verification/**/*.ts", "src/lib/sve/**/*.ts", "src/lib/crypto.ts", "src/lib/secrets.ts"]
+}

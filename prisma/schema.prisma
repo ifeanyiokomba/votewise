@@ -14,8 +14,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// CHAPTER 2 NOTE (2026-08-06): provider swapped from sqlite to postgresql per
+// ADR-0001 (Supabase, Option C). The `client.$queryRawUnsafe('PRAGMA
+// journal_mode=WAL')` call in src/lib/db.ts is SQLite-specific and already
+// no-ops safely against Postgres via its existing .catch() — no change
+// needed there. Row Level Security (Chapter 2's other deliverable) requires
+// Postgres; it cannot be added against SQLite.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

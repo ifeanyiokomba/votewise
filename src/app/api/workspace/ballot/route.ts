@@ -28,6 +28,20 @@ export async function POST(req: NextRequest) {
   const { electionId, voterId, isSimulation, sessionToken } = body
   if (!electionId) return errorJson('Election ID is required', 400)
 
+  // Cross-tenant gate (Chapter 2). Nothing past this point may act on an
+  // election or voter outside the organization resolved from the hostname.
+  // This was previously missing entirely — org.id was threaded through and
+  // stored on the records created below, but never used to reject a
+  // mismatched electionId/voterId. 404, not 403: don't confirm or deny that
+  // the election exists under a different organization.
+  const electionOrgCheck = await db.electionSession.findUnique({
+    where: { id: electionId },
+    select: { organizationId: true },
+  })
+  if (!electionOrgCheck || electionOrgCheck.organizationId !== org.id) {
+    return errorJson('Election not found', 404)
+  }
+
   // Resolve the voter. For real votes, we accept either a voterId or a sessionToken.
   let resolvedVoterId = voterId as string | undefined
   let sessionId: string | undefined
@@ -79,6 +93,17 @@ export async function POST(req: NextRequest) {
     if (!resolvedVoterId) {
       return errorJson('A valid voter session or voter ID is required to generate a ballot.', 401)
     }
+
+    // Cross-tenant gate, part two: whichever path produced resolvedVoterId
+    // (session token, direct voterId, or preview), confirm that voter
+    // actually belongs to this organization before a ballot is built.
+    const voterOrgCheck = await db.voter.findUnique({
+      where: { id: resolvedVoterId },
+      select: { organizationId: true },
+    })
+    if (!voterOrgCheck || voterOrgCheck.organizationId !== org.id) {
+      return errorJson('Voter not found', 404)
+    }
   }
 
   try {
@@ -109,6 +134,7 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     if (e.message === 'ELECTION_NOT_FOUND') return errorJson('Election not found', 404)
     if (e.message === 'VOTER_NOT_FOUND') return errorJson('Voter not found', 404)
+    if (e.message === 'VOTER_ORGANIZATION_MISMATCH') return errorJson('Voter not found', 404)
     console.error('[ballot/generate] error', e)
     return errorJson('Failed to generate ballot', 500)
   }

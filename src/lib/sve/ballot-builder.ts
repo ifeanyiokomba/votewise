@@ -107,6 +107,16 @@ export async function buildBallot(opts: BuildBallotOptions): Promise<BuildBallot
       where: { id: voterId },
     })
     if (!voter) throw new Error('VOTER_NOT_FOUND')
+
+    // Defense in depth (Chapter 2): this function is documented as the ONLY
+    // way to create a ballot, so it shouldn't rely solely on callers to have
+    // already checked that the voter and the election belong to the same
+    // organization. The route layer checks this too, but a bug or a future
+    // caller that skips that check should not be able to produce a ballot
+    // that crosses a tenant boundary.
+    if (!isSimulation && voter.organizationId !== election.organizationId) {
+      throw new Error('VOTER_ORGANIZATION_MISMATCH')
+    }
   }
 
   const voterHash = voterId ? hashVoterIdentity(voterId) : hashVoterIdentity(`sim-${electionId}-${Date.now()}`)
