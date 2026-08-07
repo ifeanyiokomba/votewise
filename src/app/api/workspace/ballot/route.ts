@@ -50,24 +50,46 @@ export async function POST(req: NextRequest) {
     // Try session token first (preferred path).
     if (sessionToken) {
       const { validateSession } = await import('@/lib/sve')
-      const session = await validateSession(sessionToken)
+      const session = await validateSession(sessionToken, org.id)
       if (!session) return errorJson('Invalid or expired voting session. Please start a new one.', 401)
       resolvedVoterId = session.voterId
       sessionId = session.sessionId
     } else if (resolvedVoterId) {
-      // Voter ID provided directly — find or create an active session.
+      // Voter ID provided directly. Check org membership immediately, before
+      // this ID is used for anything — the blanket check further down still
+      // runs too, but this path shouldn't rely on it alone.
+      const directVoterCheck = await db.voter.findUnique({
+        where: { id: resolvedVoterId },
+        select: { organizationId: true },
+      })
+      if (!directVoterCheck || directVoterCheck.organizationId !== org.id) {
+        return errorJson('Voter not found', 404)
+      }
+
+      // Find or create an active session.
       const active = await getActiveSession(resolvedVoterId, electionId)
       if (active) {
         sessionId = active.sessionId
       } else {
         // Auto-start a session for the voter (if election is live + voter eligible).
-        const session = await startVotingSession({
-          electionId,
-          voterId: resolvedVoterId,
-          organizationId: org.id,
-          req,
-        })
-        sessionId = session.sessionId
+        try {
+          const session = await startVotingSession({
+            electionId,
+            voterId: resolvedVoterId,
+            organizationId: org.id,
+            req,
+          })
+          sessionId = session.sessionId
+        } catch (e: any) {
+          // Should not be reachable given the check above — startVotingSession's
+          // own internal verification is defense in depth, not the first line
+          // of defense here. If it ever does trigger, fail the same way the
+          // check above would rather than let it become an unhandled 500.
+          if (e.message === 'VOTER_ORGANIZATION_MISMATCH' || e.message === 'ELECTION_ORGANIZATION_MISMATCH') {
+            return errorJson('Voter not found', 404)
+          }
+          throw e
+        }
       }
     }
 

@@ -16,6 +16,7 @@ process.env.SVE_BALLOT_PEPPER = 'd'.repeat(32)
 process.env.SVE_VOTER_PEPPER = 'e'.repeat(32)
 
 import { buildBallot } from '../src/lib/sve/ballot-builder'
+import { startVotingSession, validateSession } from '../src/lib/sve/session'
 
 let failures = 0
 
@@ -73,6 +74,49 @@ async function main() {
     'Simulation: no voterId, isSimulation=true',
     () => buildBallot({ electionId: 'election-org-a', isSimulation: true }),
   )
+
+  // startVotingSession: voter belongs to org-b, but org-a is claimed.
+  await expectThrows(
+    'startVotingSession: voter-org-b, organizationId=org-a',
+    () => startVotingSession({ electionId: 'election-org-a', voterId: 'voter-org-b', organizationId: 'org-a' }),
+    'VOTER_ORGANIZATION_MISMATCH',
+  )
+
+  // startVotingSession: election belongs to org-a, but org-b is claimed
+  // (using voter-org-b so the voter check passes and this isolates the
+  // election check specifically).
+  await expectThrows(
+    'startVotingSession: election-org-a, organizationId=org-b',
+    () => startVotingSession({ electionId: 'election-org-a', voterId: 'voter-org-b', organizationId: 'org-b' }),
+    'ELECTION_ORGANIZATION_MISMATCH',
+  )
+
+  // startVotingSession: everything actually matches — must still succeed.
+  await expectSucceeds(
+    'startVotingSession: voter-org-a, election-org-a, organizationId=org-a',
+    async () => {
+      const s = await startVotingSession({ electionId: 'election-org-a', voterId: 'voter-org-a', organizationId: 'org-a' })
+      return { ballot: { content: { positions: [{}] } }, _sessionId: s.sessionId } // reuse the pass/fail shape
+    },
+  )
+
+  // validateSession: token is real, but the caller's resolved org doesn't match.
+  const mismatchedSession = await validateSession('valid-token-org-a', 'org-b')
+  if (mismatchedSession === null) {
+    console.log('PASS: validateSession — org-a token rejected when caller resolved to org-b.')
+  } else {
+    console.error('FAIL: validateSession — org-a token was accepted for org-b.')
+    failures++
+  }
+
+  // validateSession: token and caller's org actually match.
+  const matchedSession = await validateSession('valid-token-org-a', 'org-a')
+  if (matchedSession?.voterId === 'voter-org-a') {
+    console.log('PASS: validateSession — org-a token accepted for org-a.')
+  } else {
+    console.error(`FAIL: validateSession — expected a valid session, got ${JSON.stringify(matchedSession)}`)
+    failures++
+  }
 
   console.log(`\n--- ${failures === 0 ? 'ALL PASSED' : `${failures} FAILURE(S)`} ---`)
   process.exit(failures === 0 ? 0 : 1)

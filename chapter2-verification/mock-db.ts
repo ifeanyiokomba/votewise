@@ -51,6 +51,21 @@ const voters: Fixture = {
   'voter-org-b': { id: 'voter-org-b', organizationId: 'org-b', fullName: 'Voter B', facultyId: null, departmentId: null },
 }
 
+const votingSessions: Fixture = {
+  'valid-token-org-a': {
+    id: 'vsession-1',
+    sessionToken: 'valid-token-org-a',
+    organizationId: 'org-a',
+    electionId: 'election-org-a',
+    voterId: 'voter-org-a',
+    accredited: false,
+    hasVoted: false,
+    expiresAt: new Date(Date.now() + 30 * 60_000),
+    deviceFingerprint: null,
+    ipAddress: null,
+  },
+}
+
 export const db = {
   electionSession: {
     findUnique: async ({ where }: any) => elections[where.id] ?? null,
@@ -60,5 +75,19 @@ export const db = {
   },
   ballot: {
     create: async ({ data }: any) => ({ id: 'ballot-test-id', ...data }),
+  },
+  votingSession: {
+    findUnique: async ({ where }: any) => votingSessions[where.sessionToken] ?? null,
+    updateMany: async () => ({ count: 0 }),
+    create: async ({ data }: any) => ({
+      id: 'vsession-new',
+      sessionToken: data.sessionToken,
+      accredited: false,
+      hasVoted: false,
+      deviceFingerprint: data.deviceFingerprint ?? null,
+      ipAddress: data.ipAddress ?? null,
+      expiresAt: data.expiresAt,
+      ...data,
+    }),
   },
 }

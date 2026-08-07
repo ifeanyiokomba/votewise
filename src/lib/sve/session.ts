@@ -43,6 +43,22 @@ export interface VotingSessionInfo {
  */
 export async function startVotingSession(opts: StartSessionOptions): Promise<VotingSessionInfo> {
   const { electionId, voterId, organizationId, req, ttlMinutes = 30 } = opts
+
+  // Defense in depth (Chapter 2): callers are expected to have already
+  // verified the election and voter belong to `organizationId` (both current
+  // callers do), but this function creates the record that everything
+  // downstream trusts, so it verifies independently rather than assuming.
+  const [voterCheck, electionCheck] = await Promise.all([
+    db.voter.findUnique({ where: { id: voterId }, select: { organizationId: true } }),
+    db.electionSession.findUnique({ where: { id: electionId }, select: { organizationId: true } }),
+  ])
+  if (!voterCheck || voterCheck.organizationId !== organizationId) {
+    throw new Error('VOTER_ORGANIZATION_MISMATCH')
+  }
+  if (!electionCheck || electionCheck.organizationId !== organizationId) {
+    throw new Error('ELECTION_ORGANIZATION_MISMATCH')
+  }
+
   const sessionToken = randomToken(32)
   const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000)
   const device = req?.headers.get('user-agent')?.slice(0, 120) || 'unknown'
@@ -109,15 +125,21 @@ export async function getActiveSession(voterId: string, electionId: string): Pro
 }
 
 /**
- * Validate a session token. Returns the session if valid + active, null otherwise.
+ * Validate a session token. Returns the session if valid + active AND
+ * belonging to expectedOrganizationId, null otherwise. The organization
+ * check is mandatory, not optional — a session token is bearer-style, so
+ * validating it without also confirming it belongs to the org resolved
+ * from the request's hostname would let a token leaked or guessed across
+ * a tenant boundary be honored anyway.
  */
-export async function validateSession(sessionToken: string): Promise<VotingSessionInfo | null> {
+export async function validateSession(sessionToken: string, expectedOrganizationId: string): Promise<VotingSessionInfo | null> {
   const session = await db.votingSession.findUnique({
     where: { sessionToken },
   })
   if (!session) return null
   if (session.hasVoted) return null
   if (session.expiresAt < new Date()) return null
+  if (session.organizationId !== expectedOrganizationId) return null
   return {
     sessionId: session.id,
     sessionToken: session.sessionToken,

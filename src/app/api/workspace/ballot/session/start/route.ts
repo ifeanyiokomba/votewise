@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const voterToken = req.headers.get('x-voter-token')
   if (!resolvedVoterId && voterToken) {
     const voter = await db.voter.findFirst({
-      where: { OR: [{ sessionToken: voterToken }, { otpCode: voterToken }] },
+      where: { OR: [{ sessionToken: voterToken }, { otpCode: voterToken }], organizationId: org.id },
     })
     if (voter) resolvedVoterId = voter.id
   }
@@ -79,9 +79,9 @@ export async function POST(req: NextRequest) {
   // Validate voter is eligible.
   const voter = await db.voter.findUnique({
     where: { id: resolvedVoterId },
-    select: { id: true, hasVoted: true, flagged: true, status: true, fullName: true },
+    select: { id: true, hasVoted: true, flagged: true, status: true, fullName: true, organizationId: true },
   })
-  if (!voter) return errorJson('Voter not found', 404)
+  if (!voter || voter.organizationId !== org.id) return errorJson('Voter not found', 404)
   if (voter.hasVoted) return errorJson('You have already voted in this election', 409)
   if (voter.flagged || voter.status === 'SUSPENDED') {
     return errorJson('Your account has been flagged — contact the electoral committee', 403)
@@ -97,13 +97,24 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Start a new session.
-  const session = await startVotingSession({
-    electionId,
-    voterId: resolvedVoterId,
-    organizationId: org.id,
-    req,
-  })
+  // Start a new session. election and voter org membership were both already
+  // verified above; startVotingSession's own check is defense in depth and
+  // should not be reachable here, but is still handled rather than left to
+  // become an unhandled 500 if it ever is.
+  let session: Awaited<ReturnType<typeof startVotingSession>>
+  try {
+    session = await startVotingSession({
+      electionId,
+      voterId: resolvedVoterId,
+      organizationId: org.id,
+      req,
+    })
+  } catch (e: any) {
+    if (e.message === 'VOTER_ORGANIZATION_MISMATCH' || e.message === 'ELECTION_ORGANIZATION_MISMATCH') {
+      return errorJson('Voter not found', 404)
+    }
+    throw e
+  }
 
   // Audit: record the session start.
   await db.voterTimelineEvent.create({
