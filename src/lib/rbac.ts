@@ -160,6 +160,19 @@ export function requires2FA(role: Role | string): boolean {
   return normalized === 'PLATFORM_SUPER_ADMIN' || normalized === 'ORG_OWNER' || normalized === 'SUPPORT_AGENT'
 }
 
+// Which roles require a second approver to disable MFA, once it's enabled.
+// Deliberately NOT gated by NODE_ENV the way requires2FA() is: that gate
+// exists because MFA enrollment itself is optional outside production, so
+// there's usually nothing to disable in dev. This list exists to prevent a
+// stolen session token from being sufficient, on its own, to remove MFA
+// protection from the roles it matters most for -- the same set requires2FA
+// mandates it for in production.
+const ROLES_REQUIRING_APPROVAL_TO_DISABLE_MFA: Role[] = ['PLATFORM_SUPER_ADMIN', 'ORG_OWNER', 'SUPPORT_AGENT']
+
+export function requiresApprovalToDisableMfa(role: Role | string): boolean {
+  return ROLES_REQUIRING_APPROVAL_TO_DISABLE_MFA.includes(normalizeRole(role))
+}
+
 // Get all capabilities for a role (for UI display + debugging)
 export function capabilitiesFor(role: Role | string): Capability[] {
   return MATRIX[normalizeRole(role)] || []

@@ -12,9 +12,9 @@
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      "@/lib/db": ["./chapter2-verification/mock-db.ts"],
+      "@/lib/db": ["./verification/mock-db.ts"],
       "@/*": ["./src/*"]
     }
   },
-  "include": ["chapter2-verification/**/*.ts", "src/lib/sve/**/*.ts", "src/lib/crypto.ts", "src/lib/secrets.ts"]
+  "include": ["verification/**/*.ts", "src/lib/sve/**/*.ts", "src/lib/crypto.ts", "src/lib/secrets.ts", "src/lib/approval.ts", "src/lib/rbac.ts", "src/lib/reauth.ts"]
 }

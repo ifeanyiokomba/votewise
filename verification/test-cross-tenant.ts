@@ -1,7 +1,7 @@
 // Chapter 2 verification test — real assertions against the real, unmodified
 // src/lib/sve/ballot-builder.ts, with @/lib/db mocked (see tsconfig.test.json
 // and mock-db.ts). Run with:
-//   npx tsx --tsconfig tsconfig.test.json chapter2-verification/test-cross-tenant.ts
+//   npx tsx --tsconfig tsconfig.test.json verification/test-cross-tenant.ts
 //
 // This is NOT the same shape of thing as the project's own TQASGR suite
 // (which TECHNICAL_DEBT.md confirms simulates execution). This script

@@ -32,7 +32,7 @@
 // an environment where the Prisma CLI can actually run, before this is
 // trusted as fully proven rather than carefully designed.
 
-import { db } from './db'
+import { db } from '@/lib/db'
 import type { Prisma, PrismaClient } from '@prisma/client'
 
 type TenantTransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>

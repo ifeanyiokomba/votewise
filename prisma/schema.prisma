@@ -1175,6 +1175,45 @@ model EncryptedVote {
 // ---------------------------------------------------------------------------
 // Election officials (RBAC) — replaces flat Admin/Observer
 // ---------------------------------------------------------------------------
+// CHAPTER 3 (2026-08-06): generic multi-person approval mechanism for
+// critical actions. Non-negotiable principle #6: "Critical election actions
+// must require multi-person authorization." First consumer: disabling MFA
+// on a high-privilege account (src/lib/approval.ts,
+// src/app/api/auth/2fa/disable/route.ts). Chapters 5 (election state
+// transitions) and 4/8 (credential/OTP overrides) are expected to reuse
+// this same mechanism rather than inventing their own -- actionType is a
+// free-form string specifically so new consumers don't need a schema
+// change to adopt it.
+model PrivilegedActionApproval {
+  id                String    @id @default(cuid())
+  organizationId    String?   // null for platform-level actions
+  actionType        String    // e.g. "MFA_DISABLE" -- Chapter 5+ will add more
+  resourceId        String    // the entity being acted on, e.g. the official's own id
+  requestedById     String
+  requiredApprovals Int       @default(1)
+  status            String    @default("PENDING") // PENDING | APPROVED | REJECTED | EXPIRED
+  reason            String?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+  votes             PrivilegedActionApprovalVote[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([resourceId, actionType])
+}
+
+model PrivilegedActionApprovalVote {
+  id         String   @id @default(cuid())
+  requestId  String
+  request    PrivilegedActionApproval @relation(fields: [requestId], references: [id])
+  approverId String
+  decision   String   // APPROVE | REJECT
+  createdAt  DateTime @default(now())
+
+  @@unique([requestId, approverId]) // one vote per approver per request
+}
+
 model ElectionOfficial {
   id              String   @id @default(cuid())
   tenantId        String?

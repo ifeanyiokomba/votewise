@@ -3,14 +3,14 @@
 // verifyTotp are all pure functions with no database dependency, so this
 // exercises the actual, complete, real code path end to end.
 //
-// Run with:
-//   npx tsx --tsconfig tsconfig.test.json chapter3-verification/test-reauth.ts
-
-process.env.VOTE_ENC_KEY = 'a'.repeat(64)
-process.env.VOTER_HASH_PEPPER = 'b'.repeat(32)
-process.env.HMAC_SECRET = 'c'.repeat(32)
-process.env.SVE_BALLOT_PEPPER = 'd'.repeat(32)
-process.env.SVE_VOTER_PEPPER = 'e'.repeat(32)
+// Run with (secrets must be real shell environment variables, not set
+// inside this file — ES module imports are hoisted above top-level code,
+// so secrets.ts reads process.env before any in-file assignment below
+// would run; this cost real debugging time to find once already, worth
+// not repeating):
+//   export VOTE_ENC_KEY=$(openssl rand -hex 32) VOTER_HASH_PEPPER=$(openssl rand -hex 16) \
+//     HMAC_SECRET=$(openssl rand -hex 16) SVE_BALLOT_PEPPER=$(openssl rand -hex 16) SVE_VOTER_PEPPER=$(openssl rand -hex 16)
+//   npx tsx --tsconfig tsconfig.test.json verification/test-reauth.ts
 
 import { hashPassword, generateTotpSecret, generateTotp, base32Decode } from '../src/lib/crypto'
 import { verifyReauth } from '../src/lib/reauth'

@@ -66,6 +66,18 @@ const votingSessions: Fixture = {
   },
 }
 
+let approvalRequests: Record<string, any> = {}
+let approvalVotes: any[] = []
+let approvalIdCounter = 0
+let voteIdCounter = 0
+
+export function resetApprovalFixtures() {
+  approvalRequests = {}
+  approvalVotes = []
+  approvalIdCounter = 0
+  voteIdCounter = 0
+}
+
 export const db = {
   electionSession: {
     findUnique: async ({ where }: any) => elections[where.id] ?? null,
@@ -89,5 +101,29 @@ export const db = {
       expiresAt: data.expiresAt,
       ...data,
     }),
+  },
+  privilegedActionApproval: {
+    create: async ({ data }: any) => {
+      const id = `approval-${++approvalIdCounter}`
+      const record = { id, resolvedAt: null, ...data }
+      approvalRequests[id] = record
+      return record
+    },
+    findUnique: async ({ where }: any) => approvalRequests[where.id] ?? null,
+    update: async ({ where, data }: any) => {
+      approvalRequests[where.id] = { ...approvalRequests[where.id], ...data }
+      return approvalRequests[where.id]
+    },
+  },
+  privilegedActionApprovalVote: {
+    create: async ({ data }: any) => {
+      const record = { id: `vote-${++voteIdCounter}`, createdAt: new Date(), ...data }
+      approvalVotes.push(record)
+      return record
+    },
+    findFirst: async ({ where }: any) =>
+      approvalVotes.find((v) => v.requestId === where.requestId && v.approverId === where.approverId) ?? null,
+    count: async ({ where }: any) =>
+      approvalVotes.filter((v) => v.requestId === where.requestId && v.decision === where.decision).length,
   },
 }
