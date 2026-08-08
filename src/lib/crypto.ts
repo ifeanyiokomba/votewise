@@ -167,7 +167,7 @@ function base32Encode(buf: Buffer): string {
   return output
 }
 
-function base32Decode(str: string): Buffer {
+export function base32Decode(str: string): Buffer {
   const cleaned = str.replace(/=+$/, '').toUpperCase().replace(/\s/g, '')
   let bits = 0, value = 0, output: number[] = []
   for (const char of cleaned) {
@@ -206,7 +206,7 @@ export function verifyTotp(token: string, secret: string, window = 1): boolean {
   return false
 }
 
-function generateTotp(key: Buffer, counter: number): string {
+export function generateTotp(key: Buffer, counter: number): string {
   const buf = Buffer.alloc(8)
   buf.writeBigUInt64BE(BigInt(counter))
   const hmac = createHmac('sha1', key).update(buf).digest()
